@@ -1,0 +1,36 @@
+{
+  "claim_id": "CLAIM-BROKEN",
+  "claim_type": "AUTO_COLLISION",
+  "status": "NEW",
+
+  "incident": {
+    "date": "2026-09-20",
+    "location": "Bordeaux",
+    "collision_type": "FRONT_COLLISION",
+    "injuries_declared": false
+  },
+
+  "vehicle": {
+    "make": "Renault",
+    "model": "Clio",
+    "year": "bonjour"
+  },
+
+  "customer": {
+    "customer_id": "CUSTOMER-00001"
+  },
+
+  "policy": {
+    "policy_id": "POLICY-00001",
+    "product": "AUTO_PREMIUM"
+  },
+
+  "declared_damage": [],
+  "documents": [],
+  "images": [],
+
+  "repair_estimate": {
+    "amount": 3160,
+    "currency": "EUR"
+  }
+}
