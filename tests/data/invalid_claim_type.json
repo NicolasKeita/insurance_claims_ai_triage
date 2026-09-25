@@ -1,0 +1,65 @@
+{
+  "claim_id": "CLAIM-2026-00001",
+  "claim_type": "AUTO_COLLISION",
+  "status": "NEW",
+
+  "incident": {
+    "date": "2026-09-20",
+    "location": "Bordeaux",
+    "collision_type": "FRONT_COLLISION",
+    "injuries_declared": false
+  },
+
+  "vehicle": {
+    "make": "Renault",
+    "model": "Clio",
+    "year": 2021
+  },
+
+  "customer": {
+    "customer_id": "CUSTOMER-00001"
+  },
+
+  "policy": {
+		"policy_id": "POLICY-00001",
+    "product": "AUTO_PREMIUM"
+  },
+
+	"declared_damage": [
+    "FRONT_BUMPER",
+    "DESTROYED_FLUX_CAPACITOR"
+],
+
+  "documents": [
+    {
+      "type": "CLAIM_FORM",
+      "filename": "claim_form.pdf",
+      "available": true
+    },
+    {
+      "type": "ACCIDENT_REPORT",
+      "filename": "accident_report.pdf",
+      "available": true
+    },
+    {
+      "type": "REPAIR_QUOTE",
+      "filename": "garage_quote.pdf",
+      "available": true
+    },
+    {
+      "type": "POLICE_REPORT",
+      "filename": null,
+      "available": false
+    }
+  ],
+
+  "images": [
+    "car_front.jpg",
+    "car_left.jpg"
+  ],
+
+  "repair_estimate": {
+    "amount": 3160,
+    "currency": "EUR"
+  }
+}

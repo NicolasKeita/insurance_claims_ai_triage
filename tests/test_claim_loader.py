@@ -5,6 +5,11 @@ from pydantic import ValidationError
 from pathlib import Path
 
 from claims.loader import load_claim
+from claims.enums import (
+    ClaimType,
+    DamageType,
+    DocumentType,
+)
 
 
 def test_load_claim():
@@ -13,7 +18,7 @@ def test_load_claim():
     claim = load_claim(claim_path)
 
     assert claim.claim_id == "CLAIM-2026-00001"
-    assert claim.claim_type == "AUTO_COLLISION"
+    assert claim.claim_type == ClaimType.AUTO_COLLISION
 
     assert claim.vehicle.make == "Renault"
     assert claim.vehicle.model == "Clio"
@@ -21,6 +26,11 @@ def test_load_claim():
 
     assert claim.repair_estimate.amount == 3160
     assert claim.repair_estimate.currency == "EUR"
+
+    assert claim.declared_damage == [
+        DamageType.FRONT_BUMPER,
+        DamageType.LEFT_HEADLIGHT,
+    ]
 
 def test_claim_contains_missing_police_report():
     claim_path = Path("data/CLAIM-2026-00001/claim.json")
@@ -33,10 +43,16 @@ def test_claim_contains_missing_police_report():
         if not document.available
     ]
 
-    assert "POLICE_REPORT" in missing_documents
+    assert DocumentType.POLICE_REPORT in missing_documents
 
 def test_invalid_claim_is_rejected():
     claim_path = Path("tests/data/invalid_claim.json")
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
+
+def test_unknown_domain_value_is_rejected():
+    claim_path = Path("tests/data/invalid_claim_type.json")
 
     with pytest.raises(ValidationError):
         load_claim(claim_path)

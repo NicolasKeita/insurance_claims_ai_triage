@@ -1,7 +1,13 @@
 from datetime import date
 
 from pydantic import BaseModel
-
+from claims.enums import (
+    ClaimStatus,
+    ClaimType,
+    CollisionType,
+    DamageType,
+    DocumentType,
+)
 
 class Vehicle(BaseModel):
     make: str
@@ -18,11 +24,11 @@ class Policy(BaseModel):
 class Incident(BaseModel):
     date: date
     location: str
-    collision_type: str
+    collision_type: CollisionType
     injuries_declared: bool
 
 class ClaimDocument(BaseModel):
-    type: str
+    type: DocumentType
     filename: str | None
     available: bool
 
@@ -32,15 +38,15 @@ class RepairEstimate(BaseModel):
 
 class Claim(BaseModel):
     claim_id: str
-    claim_type: str
-    status: str
+    claim_type: ClaimType
+    status: ClaimStatus
 
     incident: Incident
     vehicle: Vehicle
     customer: Customer
     policy: Policy
 
-    declared_damage: list[str]
+    declared_damage: list[DamageType]
     documents: list[ClaimDocument]
     images: list[str]
 
