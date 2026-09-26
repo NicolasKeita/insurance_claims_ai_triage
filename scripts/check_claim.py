@@ -5,6 +5,9 @@ from claims.assets import (
     resolve_document_assets,
     resolve_image_assets,
 )
+from claims.document_ingestion import (
+    extract_pdf_text,
+)
 
 
 
@@ -54,3 +57,14 @@ for image in images:
         f"- {image.path} "
         f"({image.media_type})"
     )
+
+print("\nExtracted document text:")
+
+for asset in documents:
+    extraction = extract_pdf_text(asset)
+
+    print()
+    print("=" * 60)
+    print(asset.filename)
+    print("=" * 60)
+    print(extraction.text)
