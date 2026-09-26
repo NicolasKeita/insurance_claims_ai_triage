@@ -13,9 +13,9 @@ from claims.enums import (
 
 
 def test_load_claim():
-    claim_path = Path("data/CLAIM-2026-00001/claim.json")
+    claim_dir = Path("data/CLAIM-2026-00001")
 
-    claim = load_claim(claim_path)
+    claim = load_claim(claim_dir)
 
     assert claim.claim_id == "CLAIM-2026-00001"
     assert claim.claim_type == ClaimType.AUTO_COLLISION
@@ -33,9 +33,9 @@ def test_load_claim():
     ]
 
 def test_claim_contains_missing_police_report():
-    claim_path = Path("data/CLAIM-2026-00001/claim.json")
+    claim_dir = Path("data/CLAIM-2026-00001")
 
-    claim = load_claim(claim_path)
+    claim = load_claim(claim_dir)
 
     missing_documents = [
         document.type

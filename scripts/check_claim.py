@@ -3,9 +3,9 @@ from pathlib import Path
 from claims.loader import load_claim
 
 
-claim_path = Path("data/CLAIM-2026-00001/claim.json")
+claim_dir = Path("data/CLAIM-2026-00001")
 
-claim = load_claim(claim_path)
+claim = load_claim(claim_dir)
 
 print(f"Claim: {claim.claim_id}")
 print(f"Type: {claim.claim_type}")
