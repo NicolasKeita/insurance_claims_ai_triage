@@ -56,3 +56,37 @@ def test_unknown_domain_value_is_rejected():
 
     with pytest.raises(ValidationError):
         load_claim(claim_path)
+
+def test_negative_repair_amount_is_rejected():
+    claim_path = Path("tests/data/invalid_negative_amount.json")
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
+
+def test_invalid_vehicle_year_is_rejected():
+    claim_path = Path("tests/data/invalid_vehicle_year.json")
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
+
+def test_available_document_without_filename_is_rejected():
+    claim_path = Path(
+        "tests/data/invalid_available_document.json"
+    )
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
+
+def test_invalid_currency_format_is_rejected():
+    claim_path = Path("tests/data/invalid_currency.json")
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
+
+def test_future_incident_is_rejected():
+    claim_path = Path(
+        "tests/data/invalid_future_incident.json"
+    )
+
+    with pytest.raises(ValidationError):
+        load_claim(claim_path)
