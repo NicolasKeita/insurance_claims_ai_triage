@@ -19,3 +19,4 @@ class DocumentType(StrEnum):
 class DamageType(StrEnum):
     FRONT_BUMPER = "FRONT_BUMPER"
     LEFT_HEADLIGHT = "LEFT_HEADLIGHT"
+    HOOD = "HOOD"
