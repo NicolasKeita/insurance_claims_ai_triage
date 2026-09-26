@@ -10,6 +10,7 @@ from claims.enums import (
     DamageType,
     DocumentType,
 )
+from claims.validation import ClaimFileValidationError
 
 
 def test_load_claim():
@@ -46,47 +47,71 @@ def test_claim_contains_missing_police_report():
     assert DocumentType.POLICE_REPORT in missing_documents
 
 def test_invalid_claim_is_rejected():
-    claim_path = Path("tests/data/invalid_claim.json")
+    claim_dir = Path("tests/data/invalid_claim")
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_unknown_domain_value_is_rejected():
-    claim_path = Path("tests/data/invalid_claim_type.json")
+    claim_dir = Path("tests/data/invalid_claim_type")
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_negative_repair_amount_is_rejected():
-    claim_path = Path("tests/data/invalid_negative_amount.json")
+    claim_dir = Path("tests/data/invalid_negative_amount")
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_invalid_vehicle_year_is_rejected():
-    claim_path = Path("tests/data/invalid_vehicle_year.json")
+    claim_dir = Path("tests/data/invalid_vehicle_year")
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_available_document_without_filename_is_rejected():
-    claim_path = Path(
-        "tests/data/invalid_available_document.json"
+    claim_dir = Path(
+        "tests/data/invalid_available_document"
     )
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_invalid_currency_format_is_rejected():
-    claim_path = Path("tests/data/invalid_currency.json")
+    claim_dir = Path("tests/data/invalid_currency")
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
 
 def test_future_incident_is_rejected():
-    claim_path = Path(
-        "tests/data/invalid_future_incident.json"
+    claim_dir = Path(
+        "tests/data/invalid_future_incident"
     )
 
     with pytest.raises(ValidationError):
-        load_claim(claim_path)
+        load_claim(claim_dir)
+
+def test_missing_document_file_is_rejected():
+    claim_dir = Path(
+        "tests/data/missing_document"
+    )
+
+    with pytest.raises(ClaimFileValidationError):
+        load_claim(claim_dir)
+
+def test_missing_image_file_is_rejected():
+    claim_dir = Path(
+        "tests/data/missing_image"
+    )
+
+    with pytest.raises(ClaimFileValidationError):
+        load_claim(claim_dir)
+
+def test_claim_with_all_required_files_is_valid():
+    claim_dir = Path(
+        "data/CLAIM-2026-00001"
+    )
+
+    claim = load_claim(claim_dir)
+    assert claim.claim_id == "CLAIM-2026-00001"
