@@ -63,6 +63,7 @@ class OllamaStructuredLlm:
                 format=response_model.model_json_schema(),
                 options={
                     "temperature": 0,
+                    "seed": 42
                 },
                 stream=False,
             )
@@ -78,6 +79,10 @@ class OllamaStructuredLlm:
             )
 
         except ValidationError as error:
+            raw_response = response.message.content
+
             raise LlmError(
-                "LLM returned invalid structured data"
+                "LLM returned invalid structured data.\n\n"
+                f"RAW LLM RESPONSE:\n{raw_response}\n\n"
+                f"PYDANTIC ERROR:\n{error}"
             ) from error

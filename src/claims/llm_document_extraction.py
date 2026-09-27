@@ -1,4 +1,12 @@
 from pydantic import ValidationError
+from decimal import Decimal
+from claims.document_models import (
+    DocumentSource,
+    GarageQuoteExtraction,
+    GarageQuoteLlmOutput,
+    MoneyAmount,
+    QuoteLineItem,
+)
 
 from claims.document_extraction import (
     DocumentExtractionError,
@@ -18,17 +26,24 @@ def build_garage_quote_prompt(
     extraction: PdfTextExtraction,
 ) -> str:
     return f"""
-Extract the repair quote information from the document below.
+Extract ALL explicitly stated information from this insurance repair quote.
 
-Rules:
-- Use only information explicitly present in the document.
-- Do not invent missing values.
-- If garage, claim ID, labor or total is missing, return null.
-- Parts must contain repair/replacement line items.
-- Do not include Labor in parts.
-- Do not include Total in parts.
-- Preserve monetary values exactly as written.
-- Preserve the three-letter currency code.
+Return the result as structured JSON matching the provided schema.
+
+Important mapping rules:
+- "Garage:" maps to garage.
+- "Claim ID:" maps to claim_id.
+- Repair/replacement lines map to parts.
+- "Labor:" maps to labor.
+- "Total:" maps to total.
+- Labor must NOT be included in parts.
+- Total must NOT be included in parts.
+- Monetary "amount" must contain ONLY the numeric value.
+- Correct example: {{"amount": 780, "currency": "EUR"}}
+- Never include the currency inside the amount field.
+- If a field is explicitly present in the document, you MUST extract it.
+- Return null ONLY when the information is genuinely absent.
+- Do not invent missing information.
 
 DOCUMENT:
 
@@ -77,13 +92,31 @@ def extract_garage_quote_with_llm(
             "Missing required quote fields: "
             + ", ".join(missing_fields)
         )
+
+    parts = tuple(
+        QuoteLineItem(
+            description=item.description,
+            price=_to_money_amount(
+                item.price
+            ),
+        )
+        for item in result.parts
+    )
+    labor = _to_money_amount(
+        result.labor
+    )
+
+    total = _to_money_amount(
+        result.total
+    )
+
     try:
         return GarageQuoteExtraction(
             garage=result.garage,
             claim_id=result.claim_id,
-            parts=result.parts,
-            labor=result.labor,
-            total=result.total,
+            parts=parts,
+            labor=labor,
+            total=total,
             source=DocumentSource(
                 document_type=extraction.asset.type,
                 filename=extraction.asset.filename,
@@ -95,3 +128,11 @@ def extract_garage_quote_with_llm(
         raise DocumentExtractionError(
             "LLM produced an invalid garage quote"
         ) from error
+
+def _to_money_amount(
+    value,
+) -> MoneyAmount:
+    return MoneyAmount(
+        amount=Decimal(str(value.amount)),
+        currency=value.currency,
+    )

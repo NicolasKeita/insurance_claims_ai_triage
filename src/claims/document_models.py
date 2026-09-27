@@ -110,7 +110,19 @@ class GarageQuoteLlmOutput(BaseModel):
     garage: str | None
     claim_id: str | None
 
-    parts: tuple[QuoteLineItem, ...] = ()
+    parts: tuple[LlmQuoteLineItem, ...] = ()
 
-    labor: MoneyAmount | None
-    total: MoneyAmount | None
+    labor: LlmMoneyAmount | None
+    total: LlmMoneyAmount | None
+
+class LlmMoneyAmount(BaseModel):
+    amount: float = Field(ge=0)
+
+    currency: str = Field(
+        min_length=3,
+        max_length=3,
+        pattern=r"^[A-Z]{3}$",
+    )
+class LlmQuoteLineItem(BaseModel):
+    description: str
+    price: LlmMoneyAmount
