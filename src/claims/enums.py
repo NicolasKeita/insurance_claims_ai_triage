@@ -20,3 +20,8 @@ class DamageType(StrEnum):
     FRONT_BUMPER = "FRONT_BUMPER"
     LEFT_HEADLIGHT = "LEFT_HEADLIGHT"
     HOOD = "HOOD"
+
+class TextExtractionMethod(StrEnum):
+    NATIVE = "NATIVE"
+    OCR = "OCR"
+    HYBRID = "HYBRID"
