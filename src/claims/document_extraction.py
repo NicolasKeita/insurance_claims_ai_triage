@@ -18,13 +18,6 @@ from claims.enums import (
 )
 
 from claims.document_ingestion import PdfTextExtraction
-from claims.document_models import (
-    DocumentSource,
-    GarageQuoteExtraction,
-    MoneyAmount,
-    QuoteLineItem,
-)
-from claims.enums import DocumentType
 
 class DocumentExtractionError(Exception):
     pass
