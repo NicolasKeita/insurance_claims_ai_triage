@@ -9,6 +9,9 @@ class ClaimStatus(StrEnum):
 
 class CollisionType(StrEnum):
     FRONT_COLLISION = "FRONT_COLLISION"
+    REAR_COLLISION = "REAR_COLLISION"
+    SIDE_COLLISION = "SIDE_COLLISION"
+    PARKING_DAMAGE = "PARKING_DAMAGE"
 
 class DocumentType(StrEnum):
     CLAIM_FORM = "CLAIM_FORM"
@@ -25,3 +28,9 @@ class TextExtractionMethod(StrEnum):
     NATIVE = "NATIVE"
     OCR = "OCR"
     HYBRID = "HYBRID"
+
+class TriageWorkflow(StrEnum):
+    FAST_TRACK = "FAST_TRACK"
+    STANDARD = "STANDARD"
+    EXPERT_REVIEW = "EXPERT_REVIEW"
+    INVESTIGATION = "INVESTIGATION"

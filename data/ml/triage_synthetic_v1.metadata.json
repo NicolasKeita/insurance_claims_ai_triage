@@ -1,0 +1,11 @@
+{
+  "dataset_version": "triage_synthetic_v1",
+  "sample_count": 5000,
+  "seed": 42,
+  "class_distribution": {
+    "EXPERT_REVIEW": 1475,
+    "FAST_TRACK": 963,
+    "INVESTIGATION": 700,
+    "STANDARD": 1862
+  }
+}
