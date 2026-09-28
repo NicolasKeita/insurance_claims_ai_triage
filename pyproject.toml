@@ -13,9 +13,11 @@ dependencies = [
     "ollama>=0.6.2,<0.7",
     "PyMuPDF>=1.28,<2",
     "pytesseract>=0.3.13,<0.4",
-
     "numpy>=2,<3",
     "pandas>=2.2,<4",
+
+    "scikit-learn>=1.9,<1.10",
+    "joblib>=1.4,<2",
 ]
 
 [project.optional-dependencies]
