@@ -1,0 +1,30 @@
+{
+  "dataset_version": "anomaly_evaluation_v1",
+  "role": "evaluation",
+  "sample_count": 1000,
+  "seed": 42,
+  "requested_anomaly_fraction": 0.2,
+  "actual_anomaly_fraction": 0.2,
+  "anomaly_kind_distribution": {
+    "EXTREME_REPAIR_COST": 50,
+    "DAMAGE_COST_MISMATCH": 50,
+    "DOCUMENT_INCONSISTENCY": 50,
+    "MULTIVARIATE_ODDITY": 50,
+    "NONE": 800
+  },
+  "feature_columns": [
+    "claim_type",
+    "collision_type",
+    "vehicle_age",
+    "repair_amount",
+    "declared_damage_count",
+    "additional_damage_count",
+    "document_count",
+    "missing_document_count",
+    "document_completeness_ratio",
+    "injuries_declared",
+    "consistency_issue_count"
+  ],
+  "source": "synthetic_triage_v1",
+  "injection_stage": "after_reference_evaluation_split"
+}
