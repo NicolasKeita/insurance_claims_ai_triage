@@ -52,10 +52,6 @@ def find_latest_candidate_source(client: MlflowClient) -> CandidateModelSource:
 
 
 def register_candidate(*, client: MlflowClient, source: CandidateModelSource):
-    version = mlflow.register_model(
-        model_uri=source.model_uri,
-        name=REGISTERED_MODEL_NAME,
-    )
     tags = {
         "algorithm": source.model_name,
         "source.parent_run_id": source.parent_run_id,
@@ -63,10 +59,27 @@ def register_candidate(*, client: MlflowClient, source: CandidateModelSource):
         "dataset.sha256": source.dataset_sha256,
         "git.commit": source.git_commit,
     }
-    for key, value in tags.items():
-        if value:
-            client.set_model_version_tag(REGISTERED_MODEL_NAME, version.version, key, value)
-    client.set_registered_model_alias(
-        REGISTERED_MODEL_NAME, CANDIDATE_ALIAS, version.version
+    return register_model_version_with_alias(
+        client=client,
+        model_uri=source.model_uri,
+        name=REGISTERED_MODEL_NAME,
+        alias=CANDIDATE_ALIAS,
+        tags=tags,
     )
+
+
+def register_model_version_with_alias(
+    *,
+    client: MlflowClient,
+    model_uri: str,
+    name: str,
+    alias: str,
+    tags: dict[str, str | None],
+):
+    """Register one logged model and attach its lineage before moving an alias."""
+    version = mlflow.register_model(model_uri=model_uri, name=name)
+    for key, value in tags.items():
+        if value is not None and value != "":
+            client.set_model_version_tag(name, version.version, key, str(value))
+    client.set_registered_model_alias(name, alias, version.version)
     return version
