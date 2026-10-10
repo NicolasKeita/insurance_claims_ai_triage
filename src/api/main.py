@@ -4,7 +4,7 @@ from typing import Self
 import os
 from threading import Lock
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, model_validator
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,6 +19,9 @@ from investigation.service import assess_stored_claim
 from persistence.database import DatabaseConfig, create_database_engine, create_session_factory
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import ClaimNotFoundError
+from retrieval.config import DEFAULT_LIMIT, MAX_LIMIT
+from retrieval.models import RetrievalUnavailableError, SimilarClaimsResponse
+from retrieval.similar_claims import create_similar_claims_service
 from ml.anomaly_inference import (
     RegisteredAnomalyAssessment,
     RegisteredAnomalyPredictor,
@@ -79,12 +82,14 @@ def create_app(
     predictor_loader: PredictorLoader = load_candidate_predictor,
     anomaly_predictor_loader: AnomalyPredictorLoader = load_candidate_anomaly_predictor,
     session_factory: sessionmaker[Session] | None = None,
+    similar_service_loader: Callable | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.triage_predictor = None
         app.state.anomaly_predictor = None
         app.state.model_lock = Lock()
+        app.state.similar_service = None
         engine = None
         app.state.session_factory = session_factory
         if session_factory is None and os.environ.get("DATABASE_URL"):
@@ -93,6 +98,9 @@ def create_app(
         try:
             yield
         finally:
+            service = app.state.similar_service
+            if service is not None and hasattr(service, "close"):
+                service.close()
             if engine is not None:
                 engine.dispose()
 
@@ -131,6 +139,31 @@ def create_app(
     @app.get("/v1/claims/{claim_id}/history", response_model=HistoricalClaimProfile)
     def historical_profile(claim_id: str, session: Session = Depends(database_session, scope="function")):
         return HistoricalClaimRepository(session).get_profile(claim_id)
+
+    @app.get("/v1/claims/{claim_id}/similar", response_model=SimilarClaimsResponse)
+    def similar_claims(
+        claim_id: str, request: Request,
+        limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    ):
+        try:
+            with request.app.state.model_lock:
+                if request.app.state.similar_service is None:
+                    factory = request.app.state.session_factory
+                    if similar_service_loader is None and factory is None:
+                        raise HTTPException(status_code=503, detail="Database is not configured")
+                    try:
+                        request.app.state.similar_service = (
+                            similar_service_loader(factory) if similar_service_loader is not None
+                            else create_similar_claims_service(factory)
+                        )
+                    except (ValueError, RuntimeError) as error:
+                        raise HTTPException(status_code=503, detail="Similar claims service configuration failed") from error
+                service = request.app.state.similar_service
+            return service.search(claim_id, limit)
+        except RetrievalUnavailableError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except SQLAlchemyError as error:
+            raise HTTPException(status_code=503, detail="Database operation failed") from error
 
     @app.post("/v1/claims/{claim_id}/investigation/assess", response_model=InvestigationAssessment)
     def stored_investigation(

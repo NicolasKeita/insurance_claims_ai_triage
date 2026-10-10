@@ -253,3 +253,116 @@ temporal/customer isolation, exact boundaries, currencies, latest-state ties,
 two-query behavior, fixture conflicts/idempotence, API atomic rollback and
 evidence preservation after history changes. `CODEX_REPORT_STEP_25.md` records
 the actual validation outputs and reproduction commands.
+
+## Similar Claims (STEP26)
+
+PostgreSQL is the **source of truth**. Qdrant is a rebuildable **derived vector
+index**: it supplies technical UUIDs, ranking and `similarity_score`; displayed
+business facts are bulk-reloaded from PostgreSQL. Retrieval never writes SQL
+data, creates an index during HTTP requests, or reads previous AI assessments.
+
+The configurable Sentence Transformer defaults to
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (French/English),
+with symmetric L2-normalized embeddings and COSINE distance. Model construction
+and downloading happen only on explicit indexing or a first valid search;
+API import, lifespan startup and standard tests do not load it. One provider
+and service are cached per API lifespan, with injectable test services.
+
+`claim_retrieval_v1` uses stable labels for type, collision, location, vehicle,
+sorted damages, injuries, repair amount and currency. IDs, incident date,
+customer/policy, status, ML outputs and model/policy versions are excluded from
+embedding text. Dates are structured filters. Qdrant UUID = PostgreSQL claim
+UUID; repeat indexing upserts the same points.
+
+The default collection is `insurance_claims_similar_v1` (override with
+`CLAIMS_SIMILAR_COLLECTION`). Collection metadata stores the representation,
+model name, dimension, normalization and distance contract. Incompatible or
+unmanaged collections raise an explicit error without deletion, including when
+two models share a dimension. Prefer a new collection such as
+`insurance_claims_similar_v2` when the representation/model changes, reindex it,
+then switch the API configuration and restart. The local reproducibility
+manifest is `artifacts/similar_claims/index_manifest.json`; it is not authoritative.
+
+Eligibility is strictly `candidate.incident_date < current.incident_date`, and
+by default `candidate.claim_type == current.claim_type`. Both filters run in
+Qdrant and again after SQL reload. Current, same-day and later incidents are
+excluded. Deleted/missing rows and stale dates/types are skipped. Candidate
+pages refill the requested top K, with a 1000-candidate safety bound; a very
+stale index may return fewer results. Default limit is 5, maximum 20.
+
+PowerShell workflow (from repository root):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e '.[dev]'
+docker compose up -d postgres qdrant
+$env:DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
+$env:CLAIMS_EMBEDDING_MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+$env:CLAIMS_SIMILAR_COLLECTION = 'insurance_claims_similar_v1'
+$env:CLAIMS_INDEX_BATCH_SIZE = '32'
+python -m alembic upgrade head
+python .\scripts\import_reference_claim.py # only if not already imported; duplicates are preserved/rejected
+python .\scripts\seed_historical_claims.py
+python .\scripts\seed_similar_claims.py
+python .\scripts\index_similar_claims.py
+python .\scripts\index_similar_claims.py # same UUIDs, same point count
+python .\scripts\check_similar_claims.py --output .\artifacts\similar_claims\demo_response.json
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+# In a second terminal:
+Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/similar?limit=5'
+```
+
+`GET /v1/claims/{claim_id}/similar?limit=5` returns `claim_id`,
+`representation_version` and `results` with claim ID, incident date, type,
+collision, authoritative repair amount/currency and `similarity_score`.
+Unknown claim: 404; invalid limit: 422; unavailable/missing/incompatible index
+or database: 503. Amounts serialize as decimal strings, matching the existing
+domain convention. Qdrant is pinned to `qdrant/qdrant:v1.19.0`, exposes local
+REST 6333/gRPC 6334, and checks `/readyz` using the image's built-in bash.
+Named volumes survive ordinary `docker compose down`; `down -v` deletes them.
+
+Explicit rebuild of **only** the configured Qdrant index:
+
+```powershell
+python .\scripts\index_similar_claims.py --recreate
+```
+
+Batch SQL reads use keyset pagination and eager damage loading (two queries
+per nonempty batch), with no open SQL transaction during embedding/upsert.
+`SimilarClaimsIndexer.upsert_claim(claim_id)` supports later synchronization
+after a committed SQL change. This V1 uses manual batch synchronization;
+Qdrant is eventually consistent with PostgreSQL. Ordinary upserts do not purge
+deleted SQL rows; search ignores them, and explicit rebuild removes them.
+Concurrent SQL edits during indexing can require another pass.
+
+Six additional reserved `DEMO-STEP26-SIMILAR-*` fixtures demonstrate frontal,
+parking, side and rear collisions, varied vehicles and repair amounts. They
+use a separate demo customer/policy, preserving STEP25 historical counts.
+The current damage enum only describes frontal components; side/rear/parking
+fixtures leave damages empty rather than inventing new enum values.
+
+Tests without infrastructure or model downloads:
+
+```powershell
+Remove-Item Env:TEST_DATABASE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_QDRANT_TESTS -ErrorAction SilentlyContinue
+$env:HF_HUB_OFFLINE = '1'
+$env:TRANSFORMERS_OFFLINE = '1'
+python -m pytest
+# Remove offline flags before a first real model download.
+Remove-Item Env:HF_HUB_OFFLINE,Env:TRANSFORMERS_OFFLINE -ErrorAction SilentlyContinue
+# Opt-in real Qdrant; unique test collections are cleaned up.
+$env:RUN_QDRANT_TESTS = '1'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
+python -m pytest -m qdrant
+# For combined PostgreSQL/Qdrant tests, also configure the dedicated *_test DB:
+$env:TEST_DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims_test'
+python -m pytest -m 'postgres or qdrant'
+```
+
+No human similarity ground truth exists: demo sanity checks cannot establish
+accuracy, precision@5 or recall@5. A similarity score is not a probability and
+is never displayed as a percentage. Dense embeddings are imperfect for precise
+numeric similarity (amount, year, counts). A later reranker could combine
+semantic, numeric and categorical comparisons; this V1 implements none.
