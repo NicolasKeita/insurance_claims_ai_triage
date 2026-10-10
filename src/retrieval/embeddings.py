@@ -21,8 +21,10 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     normalized = True
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, *, asymmetric: bool = False):
         self.model_name = model_name
+        # Existing claim-to-claim indexes retain their symmetric encode contract.
+        self.asymmetric = asymmetric
         self._model = None
         self._lock = Lock()
 
@@ -40,14 +42,19 @@ class SentenceTransformerEmbeddingProvider:
             raise ValueError("Embedding model has no sentence embedding dimension")
         return int(dimension)
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    def _encode(self, texts: list[str], method: str) -> list[list[float]]:
         if not texts:
             return []
-        vectors = self._load().encode(
+        model = self._load()
+        encoder = getattr(model, method, None) if self.asymmetric else None
+        vectors = (encoder if callable(encoder) else model.encode)(
             texts, normalize_embeddings=True, convert_to_numpy=True,
             show_progress_bar=False,
         )
         return np.asarray(vectors, dtype=np.float32).tolist()
 
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self._encode(texts, "encode_document")
+
     def embed_query(self, text: str) -> list[float]:
-        return self.embed_documents([text])[0]
+        return self._encode([text], "encode_query")[0]

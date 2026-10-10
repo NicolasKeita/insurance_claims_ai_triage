@@ -40,6 +40,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 markers = [
+    "rag: opt-in retrieval integration requiring RUN_RAG_TESTS=1, Qdrant and a real embedding model",
     "postgres: integration tests requiring a dedicated TEST_DATABASE_URL",
     "qdrant: integration tests requiring explicit RUN_QDRANT_TESTS=1 and QDRANT_URL",
 ]

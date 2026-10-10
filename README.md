@@ -366,3 +366,142 @@ accuracy, precision@5 or recall@5. A similarity score is not a probability and
 is never displayed as a percentage. Dense embeddings are imperfect for precise
 numeric similarity (amount, year, counts). A later reranker could combine
 semantic, numeric and categorical comparisons; this V1 implements none.
+
+## Policy and procedure RAG (STEP27)
+
+The demo policy and procedure documents are synthetic and are not real insurance terms or legal guidance.
+Markdown sources and their strict JSON metadata sidecars in `data/knowledge/`
+are authoritative. The two policy products (`AUTO_PREMIUM`, `AUTO_BASIC`) and
+the global auto handling procedure exist only to demonstrate the architecture.
+Qdrant stores derived text copies and provenance for inspection; search reloads
+chunks from local sources before displaying text or resolving citations.
+
+`insurance_policy_chunks_v1` and `insurance_procedure_chunks_v1` are separate
+COSINE collections. `knowledge_chunking_v1` follows heading paths and paragraph
+boundaries, prefers sentence endings for long paragraphs, and uses a configurable
+600-character maximum with no overlap. Oversized single tokens are split as a
+last resort. UUID5 chunk IDs depend on source metadata/version, section, index,
+text, and chunking configuration; identical input produces identical IDs.
+
+The existing embedding abstraction is reused. `RAG_EMBEDDING_MODEL` is independent
+of `CLAIMS_EMBEDDING_MODEL`; both initially default to the cached multilingual
+MiniLM model. RAG uses normalized `encode_document()` / `encode_query()` when
+available, with a fallback to `encode()`. A model without specialized prompts
+may yield equivalent query/document encoding. Similar Claims keeps symmetric
+`encode()` and its existing collection contract. Dimensions are discovered.
+Changing model, dimension, chunking version or size requires a new collection
+version or an explicit rebuild; incompatible/unmanaged indexes are rejected.
+Model loading stays lazy; standard tests use fake providers and in-memory Qdrant.
+
+Search applies source type, optional product/language/source ID, and optional `as_of_date`.
+Validity uses inclusive start and exclusive end: `effective_from <= date <
+effective_to`; null bounds are open. Supplying a product means exact filtering,
+with no fallback to another product. A general search without `as_of_date` does
+not select a current version automatically. A claim-aware POLICY search reads
+the claim from PostgreSQL, forces `claim.policy.product`, and uses its incident
+date. The claim request has no client-supplied product/date. PROCEDURE search is
+global and has no automatic date filter: no reliable handling date exists yet.
+Call the general endpoint with explicit filters when a handling date is known.
+
+`KnowledgeRagService` retrieves first and passes only that context to the existing
+structured Ollama provider. The prompt forbids outside knowledge and invented
+terms, and requests `insufficient_evidence=true` for unsupported questions.
+Unknown cited chunk IDs are rejected (HTTP 502), even in an insufficient answer;
+an answer claiming sufficient evidence must cite a chunk. Citation metadata is
+resolved from structured citations. If the LLM also repeats references in prose,
+those IDs are validated, promoted into the citation list, and their markers are
+removed. Unknown inline IDs are rejected too. Metadata is
+resolved by the application, never supplied by the LLM. Empty retrieval returns
+an insufficient answer without calling the LLM. Citation membership checks do
+not prove that every statement is entailed: generation can still make errors.
+No agent, reranker, or changes to InvestigationPolicy/scoring are introduced.
+
+HTTP endpoints (limits: 1–20; invalid payload: 422; unknown claim: 404;
+unavailable index/DB/LLM: 503):
+
+- `POST /v1/knowledge/search`: `query`, `source_type`, optional `product`,
+  `language` (default `en`), `source_id`, `as_of_date`, `limit` (default 5).
+- `POST /v1/knowledge/answer`: `question`, `source_type`, optional `product`,
+  `language`, `source_id`, `as_of_date`, `retrieval_limit` (default 5).
+- `POST /v1/claims/{claim_id}/knowledge/search`: `query`, `source_type`,
+  `language`, `limit`; product/date come from the persisted claim for POLICY.
+- `POST /v1/claims/{claim_id}/knowledge/answer`: `question`, `source_type`,
+  `language`, `retrieval_limit`; same persisted-claim convention.
+
+Search returns `results` with chunk text, provenance and `similarity_score`.
+Answer returns `answer`, `citations` (chunk ID, source ID/version, title, section),
+and `insufficient_evidence`. A similarity score is not a probability or percentage.
+INFO logs record filters, retrieved IDs/scores and cited IDs. Queries are DEBUG
+only; the explicit local smoke script prints demo excerpts. Do not enable this
+demo output blindly for sensitive documents.
+
+PowerShell from the repository root (choose an already installed Ollama model):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+docker compose up -d postgres qdrant
+$env:DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
+$env:RAG_EMBEDDING_MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+$env:RAG_POLICY_COLLECTION = 'insurance_policy_chunks_v1'
+$env:RAG_PROCEDURE_COLLECTION = 'insurance_procedure_chunks_v1'
+$env:RAG_MAX_CHUNK_CHARS = '600'
+$env:RAG_INDEX_BATCH_SIZE = '32'
+python -m alembic upgrade head
+# Import reference only if absent; the import preserves/rejects duplicates.
+python .\scripts\import_reference_claim.py
+python .\scripts\index_knowledge_base.py
+python .\scripts\index_knowledge_base.py # stable IDs, unchanged point counts
+python .\scripts\evaluate_knowledge_retrieval.py # no Ollama required
+ollama list
+# Set to the installed model you want to use. Start Ollama if it is not running.
+$env:CLAIMS_LLM_MODEL = '<installed-model-name>'
+$env:OLLAMA_HOST = 'http://127.0.0.1:11434'
+python .\scripts\check_knowledge_rag.py
+python .\scripts\check_knowledge_api.py # real services via HTTP TestClient
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+In a second configured terminal:
+
+```powershell
+$search = @{query='collision deductible'; source_type='POLICY'; product='AUTO_PREMIUM'; language='en'; limit=5} | ConvertTo-Json
+Invoke-RestMethod 'http://127.0.0.1:8000/v1/knowledge/search' -Method Post -ContentType 'application/json' -Body $search
+$answer = @{question='What is the collision deductible?'; source_type='POLICY'; language='en'; retrieval_limit=5} | ConvertTo-Json
+Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/knowledge/answer' -Method Post -ContentType 'application/json' -Body $answer
+```
+
+The index manifest is `artifacts/rag/knowledge_index_manifest.json`. Repeat
+upserts do not delete obsolete chunks; search ignores IDs absent from current
+sources. A manifest records this run's sources/chunks plus total stored point
+counts. Remove old versions/obsolete points with an explicitly controlled rebuild
+of only the two owned RAG collections (PostgreSQL/Similar Claims are untouched):
+
+```powershell
+python .\scripts\index_knowledge_base.py --recreate
+```
+
+The versioned 13-case retrieval benchmark is
+`data/evaluation/rag_retrieval_v1.json`: 12 answerable queries, one unsupported
+volcanic-ash question. Ground truth is exact source ID + section. Macro Recall@1,
+@3, @5 counts distinct relevant sections; MRR uses the first relevant rank within
+five results. Unsupported queries are excluded from recall/MRR and separately
+report returned count, top score and empty-result rate. With no calibrated
+threshold, those are diagnostics, not unsupported-answer detection accuracy.
+Generation abstention is tested separately. Results are saved to
+`artifacts/rag/retrieval_metrics.json` and `retrieval_results.csv`. This small
+synthetic benchmark compares configurations and cannot establish production
+quality; pytest imposes no semantic quality threshold.
+
+```powershell
+Remove-Item Env:TEST_DATABASE_URL,Env:RUN_QDRANT_TESTS,Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
+$env:HF_HUB_OFFLINE = '1'
+$env:TRANSFORMERS_OFFLINE = '1'
+python -m pytest
+# Real retrieval integration (cached model, no Ollama); unique test collections:
+$env:RUN_RAG_TESTS = '1'
+python -m pytest -m rag
+Remove-Item Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
+# Remove offline flags if a chosen model has not yet been downloaded.
+Remove-Item Env:HF_HUB_OFFLINE,Env:TRANSFORMERS_OFFLINE -ErrorAction SilentlyContinue
+```

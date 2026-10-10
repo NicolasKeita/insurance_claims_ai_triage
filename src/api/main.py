@@ -34,6 +34,7 @@ from ml.inference import (
     TriagePrediction,
     load_candidate_predictor,
 )
+from api.knowledge import install_knowledge_routes
 
 PredictorLoader = Callable[[], RegisteredTriagePredictor]
 AnomalyPredictorLoader = Callable[[], RegisteredAnomalyPredictor]
@@ -83,6 +84,9 @@ def create_app(
     anomaly_predictor_loader: AnomalyPredictorLoader = load_candidate_anomaly_predictor,
     session_factory: sessionmaker[Session] | None = None,
     similar_service_loader: Callable | None = None,
+    knowledge_retriever_loader: Callable | None = None,
+    knowledge_rag_loader: Callable | None = None,
+    knowledge_claim_loader: Callable | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -90,6 +94,8 @@ def create_app(
         app.state.anomaly_predictor = None
         app.state.model_lock = Lock()
         app.state.similar_service = None
+        app.state.knowledge_retriever = None
+        app.state.knowledge_rag = None
         engine = None
         app.state.session_factory = session_factory
         if session_factory is None and os.environ.get("DATABASE_URL"):
@@ -101,6 +107,9 @@ def create_app(
             service = app.state.similar_service
             if service is not None and hasattr(service, "close"):
                 service.close()
+            knowledge_service = app.state.knowledge_retriever
+            if knowledge_service is not None and hasattr(knowledge_service, "close"):
+                knowledge_service.close()
             if engine is not None:
                 engine.dispose()
 
@@ -232,6 +241,8 @@ def create_app(
             ),
         )
 
+    install_knowledge_routes(app, retriever_loader=knowledge_retriever_loader,
+                             rag_loader=knowledge_rag_loader, claim_loader=knowledge_claim_loader)
     return app
 
 

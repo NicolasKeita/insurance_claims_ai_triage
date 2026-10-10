@@ -1,0 +1,5 @@
+{
+  "source_id": "AUTO_PREMIUM_POLICY", "source_type": "POLICY",
+  "title": "Demo AUTO_PREMIUM policy", "version": "1", "product": "AUTO_PREMIUM",
+  "language": "en", "effective_from": "2026-01-01", "effective_to": null
+}
