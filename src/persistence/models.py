@@ -183,3 +183,39 @@ class InvestigationAssessmentRow(AssessmentMixin, Base):
     review_recommended: Mapped[bool]
     policy_version: Mapped[str]
     signals: Mapped[list[dict]] = mapped_column(JSONB)
+
+
+class AgentRunRow(IdentityMixin, Base):
+    """Immutable audit snapshot; no relationship cascades or business writes."""
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        UniqueConstraint("insertion_order"),
+        Index("ix_agent_runs_claim_latest", "claim_pk", "created_at", "insertion_order"),
+        CheckConstraint("status IN ('COMPLETED', 'FAILED')", name="status"),
+        CheckConstraint("iteration_count >= 0 AND tool_call_count >= 0", name="nonnegative_counts"),
+        CheckConstraint("elapsed_seconds >= 0", name="nonnegative_elapsed"),
+        CheckConstraint("completed_at >= created_at", name="completion_time"),
+        CheckConstraint(
+            "(status = 'COMPLETED' AND recommendation IS NOT NULL AND error IS NULL) OR "
+            "(status = 'FAILED' AND recommendation IS NULL AND error IS NOT NULL)",
+            name="terminal_result",
+        ),
+    )
+    claim_pk: Mapped[UUID] = mapped_column(ForeignKey("claims.id"))
+    run_id: Mapped[str] = mapped_column(unique=True)
+    insertion_order: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    objective: Mapped[str]
+    status: Mapped[str]
+    agent_version: Mapped[str]
+    prompt_version: Mapped[str]
+    llm_model: Mapped[str | None]
+    iteration_count: Mapped[int]
+    tool_call_count: Mapped[int]
+    tools_used: Mapped[list[str]] = mapped_column(JSONB)
+    evidence: Mapped[list[dict]] = mapped_column(JSONB)
+    trace: Mapped[list[dict]] = mapped_column(JSONB)
+    recommendation: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    elapsed_seconds: Mapped[float]
+    error: Mapped[str | None]

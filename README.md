@@ -414,7 +414,8 @@ removed. Unknown inline IDs are rejected too. Metadata is
 resolved by the application, never supplied by the LLM. Empty retrieval returns
 an insufficient answer without calling the LLM. Citation membership checks do
 not prove that every statement is entailed: generation can still make errors.
-No agent, reranker, or changes to InvestigationPolicy/scoring are introduced.
+The RAG component does not change InvestigationPolicy/scoring; the advisory
+agent introduced in STEP28 reuses its retriever.
 
 HTTP endpoints (limits: 1–20; invalid payload: 422; unknown claim: 404;
 unavailable index/DB/LLM: 503):
@@ -505,3 +506,120 @@ Remove-Item Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
 # Remove offline flags if a chosen model has not yet been downloaded.
 Remove-Item Env:HF_HUB_OFFLINE,Env:TRANSFORMERS_OFFLINE -ErrorAction SilentlyContinue
 ```
+
+## Advisory claims agent (STEP28)
+
+The versioned `claims_agent_v1` uses an explicit LangGraph loop:
+`PLAN -> TOOL -> PLAN`, or `PLAN -> FINALIZE -> VALIDATE -> END`.
+The existing `StructuredLlm` abstraction produces a validated Pydantic plan
+containing exactly one action. Native model tool calling is not required.
+After at most **8 planner/tool iterations**, the graph finalizes with the
+available evidence and records the limit as an uncertainty. Exact duplicate
+tool invocations are blocked. HTTP callers cannot change the iteration limit,
+tool set, or system prompt.
+
+All eight tools read through existing repositories/services:
+
+| Tool | Read source |
+| --- | --- |
+| `GET_CLAIM` | Persisted claim |
+| `GET_HISTORY` | HistoricalClaimProfile |
+| `GET_TRIAGE` | Latest stored triage assessment |
+| `GET_ANOMALY` | Latest stored anomaly assessment |
+| `GET_INVESTIGATION` | Latest stored investigation assessment |
+| `FIND_SIMILAR_CLAIMS` | SimilarClaimsService; up to 5 earlier comparable claims |
+| `SEARCH_POLICY` | KnowledgeRetriever; current product and incident date, up to 5 chunks |
+| `SEARCH_PROCEDURE` | Global procedure KnowledgeRetriever; up to 5 chunks |
+
+The URL claim ID defines the scope; planner arguments cannot supply another
+claim ID. Tools perform no business writes, inference, reindexing, SQL generation,
+approvals, denials, payment, messaging or fraud determination. Missing stored
+assessments return `NOT_AVAILABLE` rather than computing or persisting new ones.
+Anomaly means statistical atypicality; similar claims are comparative facts,
+not evidence that a previous handling decision applies to this claim.
+
+Collected evidence has stable references and bounded summaries. Recommendation
+and rationale evidence IDs must belong to the evidence collected during that run;
+invented citations fail validation. Policy/procedure citation metadata is resolved
+by application code. Tool output, persisted free text, and retrieved documents
+are untrusted evidence and cannot add instructions or capabilities. Citation
+membership validates provenance, not full semantic entailment.
+The finalizer requires explicit rationale, uncertainties and evidence IDs. Its
+aggregate evidence context is capped at 18,000 characters, retaining every ID;
+shortened details become an uncertainty. The agent requests an 8192-token Ollama
+context through the existing structured LLM adapter to avoid the default local
+4096-token context truncating structured responses.
+
+The recommendation always has `human_review_required=true`. Its allowed next
+actions are `CONTINUE_STANDARD_REVIEW`, `REQUEST_ADDITIONAL_INFORMATION`,
+`REFER_TO_EXPERT`, `REFER_FOR_INVESTIGATION_REVIEW`, and `NO_RECOMMENDATION`.
+A human retains the final claim decision. The demo policies and procedures
+remain **synthetic** and do not establish real coverage or handling requirements.
+
+Completed and failed runs are appended to PostgreSQL `agent_runs`, with versions,
+model identifier, counters, elapsed time, evidence, recommendation, and a bounded
+structured action trace. Runs coexist when a claim is reviewed again. No private
+model chain of thought is requested or stored. This audit persistence is the
+agent's only write; business claim/assessment data stays unchanged.
+
+Endpoints:
+
+- `POST /v1/claims/{claim_id}/agent/review`: optional JSON body with only an
+  optional `objective` (1–2000 characters); omitted body uses the default objective.
+- `GET /v1/claims/{claim_id}/agent/runs?limit=20`: newest runs first, limit 1–100.
+- `GET /v1/agent/runs/{run_id}`: retrieve a completed or failed audit run.
+
+Unknown claims/runs return 404; invalid input returns 422; unavailable services
+return sanitized 503 errors; invalid evidence grounding returns 502. Failed review
+responses include the persisted run ID when a run was created. Agent services,
+embeddings, and retrievers are loaded lazily once per API lifespan, sharing the
+existing Similar Claims and knowledge caches. Read-only audit endpoints load no LLM.
+
+PowerShell from the repository root (reuse existing imported/indexed data):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e '.[dev]'
+docker compose up -d postgres qdrant
+$env:DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
+$env:CLAIMS_EMBEDDING_MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+$env:CLAIMS_SIMILAR_COLLECTION = 'insurance_claims_similar_v1'
+$env:RAG_EMBEDDING_MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+$env:RAG_POLICY_COLLECTION = 'insurance_policy_chunks_v1'
+$env:RAG_PROCEDURE_COLLECTION = 'insurance_procedure_chunks_v1'
+$env:RAG_MAX_CHUNK_CHARS = '600'
+python -m alembic upgrade head
+# Only on initial setup: import_reference_claim.py rejects existing duplicates.
+# python .\scripts\import_reference_claim.py
+python .\scripts\seed_historical_claims.py
+python .\scripts\seed_similar_claims.py
+python .\scripts\index_similar_claims.py
+python .\scripts\index_knowledge_base.py
+ollama list
+# Choose an installed model; start Ollama if it is not running.
+$env:CLAIMS_LLM_MODEL = '<installed-model-name>'
+$env:OLLAMA_HOST = 'http://127.0.0.1:11434'
+python .\scripts\check_claims_agent.py --debug
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+No MLflow server is required for agent reviews: assessments are read from existing
+snapshots. An absent assessment stays unavailable. In a second terminal:
+
+```powershell
+$body = @{objective='Review this claim and recommend the next human review step.'} | ConvertTo-Json
+$run = Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/agent/review' -Method Post -ContentType 'application/json' -Body $body
+$run.recommendation
+Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/agent/runs?limit=2'
+Invoke-RestMethod "http://127.0.0.1:8000/v1/agent/runs/$($run.run_id)"
+```
+
+The smoke script defaults to `CLAIM-2026-00001`, prints tools, iterations, evidence
+IDs, recommendation and uncertainties, and saves the terminal result under
+`artifacts/agent/claims_agent_smoke.json`. `--debug` prints the structured action
+trace. Standard pytest uses fake planners/finalizers/tools and needs no external
+services. PostgreSQL tests remain opt-in through `TEST_DATABASE_URL`.
+Small local models may plan imperfectly, and recommendations depend on evidence
+quality/availability. This V1 has no long-term conversational memory or
+quantitative agent benchmark. `CODEX_REPORT_STEP_28.md` records actual validation.

@@ -33,8 +33,12 @@ class OllamaStructuredLlm:
         *,
         system_prompt: str | None = None,
         timeout: float = 120,
+        context_window: int | None = None,
     ):
         self.model = model
+        if context_window is not None and (type(context_window) is not int or context_window < 1024):
+            raise ValueError("context_window must be at least 1024 tokens")
+        self.context_window = context_window
         self.system_prompt = system_prompt or (
             "You extract structured data from insurance documents. "
             "Use only information explicitly present in the document. "
@@ -66,7 +70,8 @@ class OllamaStructuredLlm:
                 format=response_model.model_json_schema(),
                 options={
                     "temperature": 0,
-                    "seed": 42
+                    "seed": 42,
+                    **({"num_ctx": self.context_window} if self.context_window is not None else {}),
                 },
                 stream=False,
             )
