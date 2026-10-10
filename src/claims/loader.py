@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from pathlib import Path
 
 from claims.models import Claim
@@ -10,7 +11,7 @@ def load_claim_case(claim_dir: Path) -> ClaimCase:
     claim_path = claim_dir / "claim.json"
 
     with claim_path.open(encoding="utf-8") as file:
-        raw_claim = json.load(file)
+        raw_claim = json.load(file, parse_float=Decimal)
 
     claim = Claim.model_validate(raw_claim)
 

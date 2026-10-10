@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
 from claims.enums import (
@@ -51,7 +52,7 @@ class ClaimDocument(BaseModel):
         return self
 
 class RepairEstimate(BaseModel):
-    amount: float = Field(ge=0)
+    amount: Decimal = Field(ge=0)
     currency: str = Field(
         min_length=3,
         max_length=3,
