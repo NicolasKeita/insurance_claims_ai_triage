@@ -32,6 +32,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vision = [
+    "ultralytics>=8.4.175,<8.5",
+    "Pillow>=12,<13",
+]
 dev = [
     "pytest>=8"
 ]
@@ -41,6 +45,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 markers = [
+    "vision: opt-in vision integration requiring RUN_VISION_TESTS=1 and an existing local damage checkpoint (no downloads)",
     "rag: opt-in retrieval integration requiring RUN_RAG_TESTS=1, Qdrant and a real embedding model",
     "postgres: integration tests requiring a dedicated TEST_DATABASE_URL",
     "qdrant: integration tests requiring explicit RUN_QDRANT_TESTS=1 and QDRANT_URL",

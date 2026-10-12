@@ -1,0 +1,17 @@
+# Seeded baseline. Change the version/output directory for a new experiment.
+# CPU is deliberate; set device = "0" in a copied config for CUDA device 0.
+version = "cardd_yolo26n_seg_v1"
+epochs = 100
+imgsz = 640
+batch = 16
+patience = 100
+seed = 42
+device = "cpu"
+workers = 0
+optimizer = "auto"
+base_model = "yolo26n-seg.pt"
+dataset_yaml = "data/external_prepared/cardd_yolo/dataset.yaml"
+output_dir = "artifacts/vision/damage_segmentation_v1"
+experiment_name = "insurance-claims-vision-damage"
+track_mlflow = false
+log_checkpoint = false

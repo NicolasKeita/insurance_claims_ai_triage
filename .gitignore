@@ -7,6 +7,13 @@ __pycache__/
 *.so
 
 artifacts/
+data/external/
+data/external_prepared/
+*.pt
+*.onnx
+*.engine
+runs/
+/Ultralytics/
 
 .venv/
 __pycache__/
