@@ -180,6 +180,7 @@ def run_evaluation(
         "threshold_selection": "configured baseline; no TEST threshold tuning",
         "environment": environment, "evaluation_config": config.payload(),
         "dataset": summary["dataset"],
+        "metrics_scope": manifest.get("metrics_scope", "Evaluation on the configured local COCO test split."),
         **extract_segmentation_metrics(result, manifest["category_mapping"], manifest["splits"]["test"]),
     }
     write_json(metrics_path, payload)

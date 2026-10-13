@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TRAINING_CONFIG = REPO_ROOT / "configs/vision/cardd_yolo26n_seg_v1.toml"
+DEFAULT_TRAINING_CONFIG = REPO_ROOT / "configs/vision/cardd_hf_yolo26n_seg_v1.toml"
 
 
 @dataclass(frozen=True)
@@ -66,6 +66,7 @@ def load_training_config(path: Path = DEFAULT_TRAINING_CONFIG) -> DamageTraining
     if unknown:
         raise ValueError(f"Unknown training configuration keys: {sorted(unknown)}")
     payload["base_model"] = os.environ.get("DAMAGE_BASE_MODEL", payload["base_model"])
+    payload["dataset_yaml"] = os.environ.get("DAMAGE_DATASET_YAML", payload["dataset_yaml"])
     for key in ("dataset_yaml", "output_dir"):
         value = Path(payload[key]).expanduser()
         payload[key] = (REPO_ROOT / value).resolve() if not value.is_absolute() else value.resolve()
@@ -182,7 +183,7 @@ def run_training(
 
 def dataset_provenance(dataset_yaml: Path, manifest: dict[str, Any]) -> dict[str, Any]:
     """Portable provenance excludes the source dataset root."""
-    return {
+    provenance = {
         "dataset_yaml_sha256": file_sha256(dataset_yaml),
         "annotation_hashes": manifest["annotation_hashes"],
         "category_mapping": manifest["category_mapping"],
@@ -190,6 +191,13 @@ def dataset_provenance(dataset_yaml: Path, manifest: dict[str, Any]) -> dict[str
         "preparation_version": manifest.get("preparation_version"),
         "prepared_manifest_sha256": file_sha256(dataset_yaml.parent / "cardd_dataset_manifest.json"),
     }
+    if manifest.get("source_name") == "CarDD HF mirror":
+        provenance.update({key: manifest.get(key) for key in (
+            "source_name", "source_repository", "source_revision", "actual_sample_count",
+            "annotation_fields", "official_splits_used", "split_version",
+            "split_manifest_sha256", "metrics_scope",
+        )})
+    return provenance
 
 
 def verify_class_names(names: Any, mapping: list[dict[str, Any]]) -> None:

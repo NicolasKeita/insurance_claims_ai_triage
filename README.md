@@ -2,145 +2,164 @@
 
 This project extracts claim documents, compares the available evidence, builds structured `TriageFeatures`, and serves three separate assessments: operational triage, statistical anomaly detection, and deterministic investigation signals.
 
-## Computer Vision: CarDD damage segmentation
+## Computer Vision: CarDD HF mirror damage segmentation
 
-The separate `vision` package observes physical damage types and normalized regions
-in vehicle photographs with a fine-tuned **YOLO26 instance segmentation** model.
-`VisualDamageType` is separate from the claim's declared vehicle parts. This step
-does not map damage regions to bumpers, doors or other parts, compare documents
-with photos, or add investigation signals.
+The development source is **CarDD HF mirror (`harpreetsahota/CarDD`)**, a
+FiftyOne export whose README reports 2,816 samples. It is a subset/mirror of
+CarDD, and our workflow uses a **project split**, not the official CarDD splits.
+The detector observes physical damage types and normalized image regions with
+YOLO26 instance segmentation. `VisualDamageType` is separate from the claim's
+vehicle parts; this step adds no part localization or investigation signal.
 
-CarDD is an external dataset. Obtain it manually through the
-[official site and licensing form](https://cardd-ustc.github.io/); this repository
-does not download or redistribute its images. CarDD has its own conditions.
-Ultralytics is provided under AGPL-3.0 or an Enterprise licence depending on use;
-see the [Ultralytics licensing page](https://www.ultralytics.com/license).
+The mirror includes `CarDD_license.pdf`. Its hosting on Hugging Face does not
+necessarily change the conditions of the original images. Keep that provenance
+and the original conditions; the repository does not redistribute photographs.
+See the [source repository](https://huggingface.co/datasets/harpreetsahota/CarDD)
+and [original CarDD project](https://cardd-ustc.github.io/). Ultralytics uses
+AGPL-3.0 or an Enterprise licence depending on use; see its
+[licensing page](https://www.ultralytics.com/license).
 
-Install the optional stack in the project virtualenv. No torch version is pinned
-by this project. Installing a CUDA toolkit does not make a CPU-only torch build
-use the GPU; check the interpreter used for training, since the global Python and
-the virtualenv may have different torch installations.
+Dataset loading uses the official
+[FiftyOne Hugging Face integration](https://docs.voxel51.com/integrations/huggingface.html),
+`fiftyone.utils.huggingface.load_from_hub()`, rather than relying on
+`datasets.load_dataset()` to recover labels. FiftyOne 1.22 supports Python
+3.10–3.13; use a separate compatible environment when the application's Python
+is 3.14. This project's Python minimum is 3.11, so use 3.11–3.13 for that
+environment. The optional `cardd-hf` extra keeps this stack separate from base
+installation and from the `vision` extra. No torch build is pinned or replaced.
+The local `.venv-cardd` used for this task has Python 3.12 and FiftyOne; it only
+loads/prepares data. Training remains in the application/vision environment.
+
+PowerShell from the repository root, after creating `.venv-cardd` with a
+supported Python interpreter:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev,vision]"
-python -c "import sys, torch; print(sys.executable); print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
+.\.venv-cardd\Scripts\python.exe -m pip install -e ".[cardd-hf]" --no-deps
+.\.venv-cardd\Scripts\python.exe -m pip install "fiftyone>=1.22.1,<1.23" "huggingface-hub>=1.33,<3" "pydantic>=2"
+$env:CARDD_HF_DATASET = "harpreetsahota/CarDD"
+$env:CARDD_HF_REVISION = "56900bde8dddfe00eb7c03114a1d46e9105e3cdb"
+$env:CARDD_HF_CACHE_DIR = "C:\datasets\cardd_hf_v1"
+$env:CARDD_HF_PREPARED_DIR = "C:\datasets\cardd_hf_v1\prepared_yolo_v2"
+.\.venv-cardd\Scripts\python.exe .\scripts\inspect_cardd_dataset.py --download
+.\.venv-cardd\Scripts\python.exe .\scripts\prepare_cardd_yolo.py --download --converter native
 ```
 
-From the repository root, using the manually obtained `CarDD_COCO` directory:
+`--download` explicitly enables loading/downloading through FiftyOne. Subsequent
+calls reuse the persistent local dataset and files after validating provenance.
+`--dataset-name NAME --cache-dir PATH` inspects/reuses an existing local FiftyOne
+dataset with stored source metadata. `--revision SHA`, `--repository`,
+`--annotation-field`, `--cache-dir`, `--output-dir`, `--manifest` and
+`--split-manifest` provide explicit overrides. The actual source SHA is recorded
+and used for every download. Source storage, Hugging Face cache and the local
+FiftyOne database can all live outside the repository. Without a storage override,
+the cache defaults to the user's local application data directory. The prepared
+data fallback `data/external_prepared/cardd_hf_v1/` is ignored by Git. Images,
+FiftyOne files, caches, generated runs and model weights are never committed.
+
+Inspection reads the actual field schema and labels, finds the usable instance
+segmentation field, counts samples/instances/classes, checks dimensions, and
+reports duplicate filenames, filepaths and full-image SHA-256 hashes. Bounding
+boxes alone or an unclassified semantic mask are insufficient: the script stops
+with an explicit error if usable instance segmentations are absent. Field names
+are discovered rather than assumed. The mirror's original `detections` and
+`segmentations` names are observations of this source, not a universal contract.
+Masks are traced into foreground pixel-cell contours; supplied polylines retain
+their vertices. Hole rings and multipart contours use retraced bridges for YOLO's
+single-contour representation. Rasterized bridges can add pixels; this limitation
+and topology counts are recorded. No mask is synthesized from a bounding box.
+
+A small deterministic multilabel allocation balances image/class representation
+while preserving exact sizes, default ratios **70% / 15% / 15%** and **seed 42**.
+Images with identical encoded bytes, filename or filepath are grouped into one
+split, so exact duplicate photographs cannot leak between splits. Near-duplicate
+perceptual similarity is not automatically detected. The frozen manifest is
+`artifacts/vision/cardd_hf_split_v2.json`: source SHA, stable sample IDs,
+source/content/annotation fingerprints, classes, ratios, seed, split IDs,
+distributions and split version. Existing manifests are validated and reused;
+source or parameter mismatches fail instead of regenerating the same version.
+Rare-class or grouping constraints that prevent balanced coverage are documented.
+The initial `cardd_hf_split_v1.json` is retained unchanged: inspecting its class
+distribution revealed excess scratch images in TRAIN. Version v2 adds deterministic
+group swaps to balance all labels while retaining exact split sizes. This change
+was made before any model training or evaluation. Existing v1 manifests can still
+be explicitly validated/reused; they are never silently regenerated as v2.
+
+Preparation applies those frozen IDs and writes image/label pairs and
+`dataset.yaml`. It validates class indices, normalized polygons, exact inventories,
+instance counts, source-to-prepared image hashes, split membership and label hashes.
+The portable manifest is `artifacts/vision/cardd_hf_dataset_manifest.json`, with a
+copy named `cardd_dataset_manifest.json` in the prepared directory for shared
+training validation. `--converter native` requires no Ultralytics installation in
+the data environment; `auto` can use the compatible official COCO converter on
+staged polygons with `use_segments=True, cls91to80=False`, after strict checks.
+Existing output directories are never overwritten. The old local COCO adapter is
+available only through explicit `--source coco`; it is not this development source.
+
+Training configuration defaults to
+`configs/vision/cardd_hf_yolo26n_seg_v1.toml`: pretrained `yolo26n-seg.pt`, 100
+epochs, imgsz 640, batch 16, patience 100, seed 42, workers 0, optimizer `auto`,
+explicit CPU. `DAMAGE_BASE_MODEL` overrides the initial weights;
+`DAMAGE_DATASET_YAML` points at prepared data outside the repository. Effective
+configuration, source/split provenance, actual device and versions are logged.
+This is a seeded/reproducible configuration, with no bitwise GPU determinism
+promise. Check CUDA in the actual training interpreter, since the global Python
+and the application's virtualenv may use different torch builds.
 
 ```powershell
-$env:CARDD_DATASET_DIR = "C:\datasets\CarDD_COCO"
-python .\scripts\inspect_cardd_dataset.py
-python .\scripts\prepare_cardd_yolo.py
-python .\scripts\train_damage_segmentation.py
-python .\scripts\evaluate_damage_segmentation.py
-python .\scripts\check_claim_vision.py
-python -m pytest -q
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,vision]"
+$env:DAMAGE_DATASET_YAML = "$env:CARDD_HF_PREPARED_DIR\dataset.yaml"
+.\.venv\Scripts\python.exe .\scripts\train_damage_segmentation.py
+.\.venv\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
+.\.venv\Scripts\python.exe .\scripts\check_claim_vision.py
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Inspection is read-only and requires all three splits. It reads the actual COCO
-category IDs/names, image and annotation counts, class distributions, images
-without annotations, and rejects overlapping IDs/filenames. The official layout
-is `annotations/instances_{train,val,test}2017.json` with corresponding
-`{train,val,test}2017/` image directories. Missing data produces instructions
-without downloading it.
+Pass `--device 0` to train/evaluate only when CUDA works in that environment.
+TRAIN optimizes, VAL selects the best checkpoint and early stopping, and TEST
+remains frozen for final evaluation. TEST never selects the checkpoint,
+hyperparameters or threshold. `DAMAGE_CONFIDENCE_THRESHOLD` defaults to the
+uncalibrated 0.25 baseline and is recorded before TEST. Test metrics preserve
+box/mask precision, recall, mAP50 and mAP50-95 and available per-class metrics;
+unavailable values stay null. Weak measured classes and distributions accompany
+global scores. **Metrics are evaluated on the project's deterministic held-out
+split of the 2,816-sample Hugging Face CarDD mirror, not on the official CarDD test
+split.** There are no official benchmark scores implied by these outputs.
 
-Preparation writes `data/external_prepared/cardd_yolo/dataset.yaml`, images and
-normalized segmentation polygons. It remaps actual category IDs to contiguous
-YOLO class IDs, prefers the compatible official
-[COCO converter](https://docs.ultralytics.com/reference/data/converter/)
-with `use_segments=True, cls91to80=False`, and validates the resulting class IDs,
-geometry, images, label hashes and expected instance counts. A validated native
-polygon converter is available with `--converter native`; `--converter
-ultralytics` requires the official converter to succeed. The `auto` mode records
-any fallback in the manifest. Sources remain unchanged, and an existing prepared
-directory is never overwritten; choose a new `--output-dir` for a new version.
+Generated artifacts live under `artifacts/vision/damage_segmentation_v1/`:
+`train/weights/best.pt`, `training_summary.json`, `test_metrics.json`,
+`per_class_metrics.csv`, and bounded `error_examples/` with metadata. Evaluation
+verifies the exact VAL-selected checkpoint hash and dataset/split provenance.
+Error matching is a class-aware greedy box-IoU approximation, not exact mask
+FP/FN analysis or a representative estimate of every failure mode.
 
-Missing, RLE, crowd or malformed segmentations fail by default. The explicit
-`--unsupported skip` option counts exclusions by reason and class; it never
-creates rectangular masks from bounding boxes. Multipart components are joined
-with retraced connectors to preserve their vertices in YOLO's single polygon
-format. Disconnected topology and holes cannot be represented exactly, and
-rasterized bridge pixels are possible. These limitations and multipart counts
-are recorded in the manifest. Empty labels are retained for images without
-converted annotations. Tiny synthetic test images are format/geometry fixtures,
-not examples of CarDD damage.
+`UltralyticsDamageDetector` loads an existing local trained checkpoint lazily,
+once per instance. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` configure inference.
+Image validation includes decoding, format/size/dimensions and EXIF orientation.
+`ClaimVisionService.assess_claim(case)` reuses `ClaimCase`, `ImageAsset` and
+`resolve_image_assets()` and preserves per-image boxes, optional polygons and
+confidence. Repeated observations are not counted as unique physical damage.
+`check_claim_vision.py` saves annotated masks/boxes/classes/confidence and JSON
+under `artifacts/vision/reference_claim/` only after successful real inference.
+The reference JPEGs currently are empty placeholders. Debug images never replace
+the structured output. The claim-aware HTTP endpoint remains deferred because
+PostgreSQL filenames do not provide a physical claim storage root.
 
-Preparation saves `artifacts/vision/cardd_dataset_manifest.json` and a copy next
-to the prepared dataset. Portable metadata includes SHA-256 hashes of the three
-annotation files, source-to-domain-to-YOLO category mapping, split/class counts,
-timestamp and preparation version, and excludes the source root. Images are not
-hashed individually. Generated data, runs and weights are ignored by Git.
+Empty detections mean **no supported damage detected above the configured
+confidence threshold**, not no damage. Confidence is not a probability of claim
+validity. Only the training taxonomy is supported; real insurance photos may
+differ from this mirror. No OCR, LLM detection, vehicle-part mapping or
+image/document consistency is used in this step.
 
-The versioned baseline configuration is
-`configs/vision/cardd_yolo26n_seg_v1.toml`: pretrained `yolo26n-seg.pt`, 100 epochs,
-640-pixel inputs, batch 16, patience 100, seed 42, workers 0 and optimizer `auto`.
-`DAMAGE_BASE_MODEL` overrides the starting checkpoint. This is a seeded,
-reproducible configuration; bitwise GPU determinism is not guaranteed. CPU is the
-explicit default. For CUDA, select device `"0"` in the configuration or pass
-`--device 0` to the training script, after verifying torch CUDA in that interpreter.
-All effective options and actual library/device versions are recorded.
-
-TRAIN performs optimization; VAL selects `best.pt` and early stopping; TEST is
-reserved for final evaluation. Training writes the single selected checkpoint
-at `artifacts/vision/damage_segmentation_v1/train/weights/best.pt` and a
-`training_summary.json` with checkpoint and dataset provenance. Existing run
-directories are rejected. Evaluation verifies that provenance and evaluates only
-that selected best checkpoint on TEST. It writes `test_metrics.json`,
-`per_class_metrics.csv` and `error_examples/`. Box and mask precision, recall,
-mAP50 and mAP50-95 are retained when exposed by the framework; unavailable metrics
-stay null. Class distributions and the weakest measured classes accompany the
-global scores. Error examples use class-aware box-IoU matching: FP/FN and
-localization labels are diagnostic approximations, not exact mask error analysis.
-
-`DAMAGE_CONFIDENCE_THRESHOLD` defaults to the uncalibrated baseline `0.25` and is
-recorded before TEST; evaluation uses the saved threshold. Threshold selection
-and hyperparameter tuning must use VAL, never TEST. No threshold-calibration
-experiment has been performed in this step.
-
-For local inference, `UltralyticsDamageDetector` loads an existing trained
-checkpoint once per instance, lazily, and isolates framework results from the
-domain. `DAMAGE_MODEL_PATH` can select another local trained checkpoint;
-`DAMAGE_DEVICE` selects the inference device. Imports and ordinary pytest never
-download weights. Images are checked for existence, format, decoding, dimensions
-and size, and EXIF orientation is applied before inference. Each
-`ImageDamageAssessment` contains boxes, optional normalized polygons, confidence
-scores and a per-image detection count. `ClaimVisionService.assess_claim(case)`
-reuses `ClaimCase`, `ImageAsset` and `resolve_image_assets()` and returns a
-`ClaimVisionAssessment` with per-image observations and aggregate damage types.
-Repeated observations across photos are not counted as unique vehicle damages.
-
-`check_claim_vision.py` preflights `CLAIM-2026-00001`, prints structured
-observations and saves annotated images and JSON under
-`artifacts/vision/reference_claim/` only after successful real inference. Masks,
-boxes, class names and confidence are debug visualizations; structured domain
-objects remain the application data. The current reference JPEGs are empty
-placeholders and must be replaced with usable photos before inference.
-
-An empty detection list means **no supported damage detected above the configured
-confidence threshold**, not that the image or vehicle has no damage. The model
-only supports its training taxonomy, and insurance photographs may differ from
-CarDD. Detection confidence is not a probability of claim validity. No OCR, LLM,
-vehicle-part inference or document/image consistency signal is used here.
-
-MLflow tracking is enabled by `track_mlflow = true` in the TOML or an explicitly
-supplied `MLFLOW_TRACKING_URI`; an enabled run requires that URI. It reuses the
-existing tracking setup with the separate
-`insurance-claims-vision-damage` experiment, records provenance/configuration,
-versions, device, split distributions and validation/test metrics, and uploads
-selected metadata. Raw CarDD images and error-example photographs are excluded.
-Checkpoint logging requires explicit `log_checkpoint = true`; the built-in image
-logging callbacks are suppressed. Vision Model Registry packaging and the
-`candidate` alias are deferred; no production registration is performed.
-
-The claim-aware HTTP endpoint is deferred: PostgreSQL persists image filenames,
-not a storage root from which a real `ClaimCase` can be located. The file-based
-service avoids inventing such a path. The standard tests need no CarDD, checkpoint,
-GPU, Internet or external service. The optional `vision` integration test requires
-`RUN_VISION_TESTS=1` and an existing `DAMAGE_MODEL_PATH`; it never downloads weights
-or trains. Execution evidence and unavailable-data status are recorded in
-`CODEX_REPORT_STEP_29.md`.
+MLflow is enabled by `track_mlflow = true` or an explicit `MLFLOW_TRACKING_URI`
+and uses the separate `insurance-claims-vision-damage` experiment. It records
+source revision, frozen split, seed/config/device/versions and measured metrics,
+with JSON/CSV/TOML artifact allowlisting and optional checkpoint upload.
+Raw photographs and error images are excluded; built-in image logging callbacks
+are removed. Vision Registry packaging remains deferred, with no production
+alias. Standard pytest uses synthetic fixtures/stubs and requires no FiftyOne,
+MongoDB, dataset, weights, GPU or network. Real model tests require
+`RUN_VISION_TESTS=1` plus a local checkpoint and never download/train. The durable
+execution record and actual provenance are in `CODEX_REPORT_STEP_29.md`.
 
 ## Meaning of the outputs
 

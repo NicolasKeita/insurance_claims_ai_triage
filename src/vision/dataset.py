@@ -1,7 +1,8 @@
-"""External CarDD COCO inspection and validated YOLO polygon preparation.
+"""Legacy local COCO inspection/preparation and shared YOLO validation.
 
 No dataset, framework, model or weight is loaded at module import. Inspection is
-read-only. Preparation preserves the official splits and never changes sources.
+read-only. The COCO adapter preserves supplied splits and never changes sources.
+The default HF mirror workflow uses its own frozen split in cardd_hf modules.
 """
 
 from __future__ import annotations
@@ -511,8 +512,15 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
     if not manifest_path.is_file():
         raise DatasetValidationError(f"Prepared dataset manifest missing: {manifest_path}")
     manifest = _read_json(manifest_path)
-    if manifest.get("preparation_version") != PREPARATION_VERSION:
+    from vision.cardd_hf_preparation import HF_PREPARATION_VERSION
+
+    is_hf_mirror = manifest.get("preparation_version") == HF_PREPARATION_VERSION
+    if manifest.get("preparation_version") != PREPARATION_VERSION and not is_hf_mirror:
         raise DatasetValidationError("Unsupported prepared dataset manifest version")
+    if is_hf_mirror:
+        from vision.cardd_hf_preparation import validate_hf_prepared_manifest
+
+        validate_hf_prepared_manifest(manifest)
     mapping = manifest.get("category_mapping")
     if not isinstance(mapping, list) or not mapping:
         raise DatasetValidationError("Prepared category mapping must be nonempty")
@@ -528,8 +536,13 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
     hashes = manifest.get("annotation_hashes", {})
     if not isinstance(hashes, dict) or set(hashes) != set(SPLITS) or any(not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value) for value in hashes.values()):
         raise DatasetValidationError("Prepared manifest must contain SHA-256 annotation hashes for all splits")
-    stable = {"annotation_hashes": hashes, "category_mapping": valid_mapping, "preparation_version": PREPARATION_VERSION}
-    fingerprint = hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if is_hf_mirror:
+        from vision.cardd_hf_preparation import hf_prepared_fingerprint
+
+        fingerprint = hf_prepared_fingerprint(manifest, valid_mapping)
+    else:
+        stable = {"annotation_hashes": hashes, "category_mapping": valid_mapping, "preparation_version": PREPARATION_VERSION}
+        fingerprint = hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if manifest.get("dataset_fingerprint") != fingerprint:
         raise DatasetValidationError("Prepared manifest fingerprint disagrees with categories/annotation hashes")
     if document.get("names") != [item["name"] for item in mapping] or document.get("nc") != len(mapping):
@@ -566,6 +579,8 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
             image_path = _contained_file(dataset_root, image_name)
             label_path = _contained_file(dataset_root, label_name)
             _check_image(image_path, width, height)
+            if is_hf_mirror and annotation_hash(image_path) != entry.get("image_sha256"):
+                raise DatasetValidationError(f"Prepared HF image content changed: {image_path}")
             rows = validate_segmentation_label(label_path, class_count=len(mapping), expected_count=count)
             if dict(Counter(str(row[0]) for row in rows)) != entry.get("class_counts") or annotation_hash(label_path) != entry.get("label_sha256"):
                 raise DatasetValidationError(f"Prepared labels changed or class counts disagree with manifest: {label_path}")

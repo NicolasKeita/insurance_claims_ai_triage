@@ -22,6 +22,7 @@ def offline_environment(monkeypatch):
     monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     monkeypatch.delenv("DAMAGE_BASE_MODEL", raising=False)
     monkeypatch.delenv("DAMAGE_CONFIDENCE_THRESHOLD", raising=False)
+    monkeypatch.delenv("DAMAGE_DATASET_YAML", raising=False)
 
 
 @pytest.fixture

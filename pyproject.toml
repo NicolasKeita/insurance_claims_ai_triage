@@ -32,6 +32,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cardd-hf = [
+    "fiftyone>=1.22.1,<1.23; python_version < '3.14'",
+    "huggingface-hub>=1.33,<3",
+    "Pillow>=12,<13",
+]
 vision = [
     "ultralytics>=8.4.175,<8.5",
     "Pillow>=12,<13",

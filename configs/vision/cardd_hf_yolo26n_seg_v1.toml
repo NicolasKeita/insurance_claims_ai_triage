@@ -1,0 +1,17 @@
+# CarDD HF mirror (harpreetsahota/CarDD), frozen project split v1.
+# This is not the official CarDD benchmark. CPU is the explicit default.
+version = "cardd_hf_yolo26n_seg_v1"
+epochs = 100
+imgsz = 640
+batch = 16
+patience = 100
+seed = 42
+device = "cpu"
+workers = 0
+optimizer = "auto"
+base_model = "yolo26n-seg.pt"
+dataset_yaml = "data/external_prepared/cardd_hf_v1/dataset.yaml"
+output_dir = "artifacts/vision/damage_segmentation_v1"
+experiment_name = "insurance-claims-vision-damage"
+track_mlflow = false
+log_checkpoint = false
