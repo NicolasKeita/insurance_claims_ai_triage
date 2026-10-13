@@ -112,12 +112,25 @@ def map_ultralytics_result(
             polygon = None
             if polygons is not None:
                 points = _list(polygons[index])
+                if any(not isinstance(point, (list, tuple)) or len(point) != 2 for point in points):
+                    raise DetectorOutputError("Each polygon point must contain x and y")
+                normalized_points = [NormalizedPoint(x=point[0], y=point[1]) for point in points]
                 if len(points) < 3:
                     assessment_warnings.append(f"Detection {index} has no usable segmentation polygon; bounding box retained.")
                 else:
-                    if any(len(point) != 2 for point in points):
-                        raise DetectorOutputError("Each polygon point must contain x and y")
-                    polygon = NormalizedPolygon(points=[NormalizedPoint(x=point[0], y=point[1]) for point in points])
+                    # Contours of a thin binary mask can retrace their points
+                    # and enclose zero area even with three or more vertices.
+                    # Validate coordinates first: only this known contour
+                    # degeneracy may degrade to a box with a warning.
+                    area_twice = sum(
+                        point.x * normalized_points[(position + 1) % len(normalized_points)].y
+                        - normalized_points[(position + 1) % len(normalized_points)].x * point.y
+                        for position, point in enumerate(normalized_points)
+                    )
+                    if abs(area_twice) <= 1e-12:
+                        assessment_warnings.append(f"Detection {index} has a zero-area segmentation contour; bounding box retained.")
+                    else:
+                        polygon = NormalizedPolygon(points=normalized_points)
             if confidence >= confidence_threshold:
                 detections.append(VisualDamageDetection(
                     damage_type=mapping[int(class_id)], confidence=confidence,

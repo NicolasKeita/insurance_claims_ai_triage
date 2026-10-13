@@ -73,7 +73,19 @@ class OrchestrationStub:
         best = Path(kwargs["project"]) / kwargs["name"] / "weights/best.pt"
         best.parent.mkdir(parents=True)
         best.write_bytes(b"stub checkpoint for orchestration tests only")
-        self.trainer = SimpleNamespace(best=best, device="cpu", epoch=99)
+        last = best.with_name("last.pt")
+        last.write_bytes(b"different final stub checkpoint")
+        self.trainer = SimpleNamespace(
+            best=best, last=last, device="cpu", epoch=42,
+            fitness=1.0, best_fitness=1.0,
+            stopper=SimpleNamespace(best_epoch=43),
+        )
+        for callback in self.callbacks.get("on_model_save", []):
+            callback(self.trainer)
+        self.trainer.epoch = 99
+        self.trainer.fitness = 0.5
+        for callback in self.callbacks.get("on_model_save", []):
+            callback(self.trainer)
         return example_metric()
 
     def val(self, **kwargs):
@@ -96,8 +108,8 @@ def completed_fixture(config, manifest):
 
 def test_versioned_baseline_and_environment_base_override(monkeypatch):
     config = load_training_config()
-    assert (config.epochs, config.imgsz, config.batch, config.patience, config.seed) == (100, 640, 16, 100, 42)
-    assert config.device == "cpu" and config.workers == 0 and config.optimizer == "auto"
+    assert (config.epochs, config.imgsz, config.batch, config.patience, config.seed) == (100, 640, 8, 20, 42)
+    assert config.device == "0" and config.workers == 0 and config.optimizer == "auto"
     monkeypatch.setenv("DAMAGE_BASE_MODEL", "yolo26s-seg.pt")
     assert load_training_config().base_model == "yolo26s-seg.pt"
 
@@ -123,15 +135,39 @@ def test_training_stub_preserves_train_val_selection_and_exact_checkpoint(prepar
     stub, summary = completed_fixture(config, manifest)
     assert stub.training_kwargs["data"] == str(config.dataset_yaml)
     assert stub.training_kwargs["pretrained"] is True and stub.training_kwargs["val"] is True
-    assert "split" not in stub.training_kwargs and "test" not in stub.training_kwargs
+    assert stub.training_kwargs["split"] == "val" and "test" not in stub.training_kwargs
     assert stub.training_kwargs["epochs"] == 100 and stub.training_kwargs["seed"] == 42
-    assert stub.training_kwargs["plots"] is False
+    assert stub.training_kwargs["plots"] is True
     assert summary["checkpoint_selection_split"] == "val"
     assert summary["best_checkpoint"] == "train/weights/best.pt"
+    assert summary["best_epoch"] == 43
+    assert summary["last_checkpoint"] == "train/weights/last.pt"
+    assert summary["last_checkpoint_sha256"] != summary["best_checkpoint_sha256"]
+    assert summary["test_used_during_training"] is False
+    assert summary["early_stopping_triggered"] is False
     assert summary["epochs_completed"] == 100
     assert summary["environment"]["device_used"] == "cpu"
     assert summary["best_checkpoint_sha256"] == file_sha256(config.output_dir / summary["best_checkpoint"])
     assert len(list(config.output_dir.rglob("best.pt"))) == 1
+    assert json.loads((config.output_dir / "training_progress.json").read_text())["status"] == "completed"
+
+
+def test_best_epoch_tracks_actual_checkpoint_write_on_fitness_tie(prepared):
+    config, manifest = prepared
+
+    class TiedFitnessStub(OrchestrationStub):
+        def train(self, **kwargs):
+            result = super().train(**kwargs)
+            self.trainer.epoch = 66
+            self.trainer.fitness = self.trainer.best_fitness
+            for callback in self.callbacks["on_model_save"]:
+                callback(self.trainer)
+            self.trainer.epoch = 99
+            return result
+
+    summary = run_training(config, model_factory=lambda _: TiedFitnessStub(), environment_provider=lambda: {}, dataset_loader=lambda _: manifest)
+    assert summary["best_epoch"] == 67
+    assert summary["early_stopping_best_epoch"] == 43
 
 
 def test_existing_training_run_rejected_before_loading_model(prepared):
@@ -239,6 +275,20 @@ def test_environment_records_observed_cpu_without_claiming_cuda():
     observed = observe_environment(torch, SimpleNamespace(__version__="observed-ultralytics"))
     assert observed["torch_version"] == "observed-test"
     assert observed["cuda_available"] is False and observed["cuda_devices"] == []
+    assert observed["cuda_device_properties"] == []
+
+
+def test_environment_records_actual_cuda_runtime_and_vram():
+    cuda = SimpleNamespace(
+        is_available=lambda: True, device_count=lambda: 1,
+        get_device_name=lambda _: "Observed test GPU",
+        get_device_properties=lambda _: SimpleNamespace(total_memory=8 * 1024 ** 3),
+        get_device_capability=lambda _: (8, 6),
+    )
+    observed = observe_environment(SimpleNamespace(__version__="test+cuda", version=SimpleNamespace(cuda="13.2"), cuda=cuda), SimpleNamespace(__version__="test"))
+    assert observed["cuda_available"] is True and observed["cuda_runtime_version"] == "13.2"
+    assert observed["cuda_device_properties"][0]["total_memory_gib"] == 8.0
+    assert observed["cuda_device_properties"][0]["compute_capability"] == [8, 6]
 
 
 def test_builtin_image_logging_callbacks_removed_without_global_settings():

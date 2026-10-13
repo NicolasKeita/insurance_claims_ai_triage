@@ -1,12 +1,13 @@
-# CarDD HF mirror (harpreetsahota/CarDD), frozen project split v1.
-# This is not the official CarDD benchmark. CPU is the explicit default.
+# CarDD HF mirror (harpreetsahota/CarDD), frozen project split V2.
+# Baseline: RTX 3070 Laptop 8 GiB; override dataset path with DAMAGE_DATASET_YAML.
+# This is not the official CarDD benchmark.
 version = "cardd_hf_yolo26n_seg_v1"
 epochs = 100
 imgsz = 640
-batch = 16
-patience = 100
+batch = 8
+patience = 20
 seed = 42
-device = "cpu"
+device = "0"
 workers = 0
 optimizer = "auto"
 base_model = "yolo26n-seg.pt"

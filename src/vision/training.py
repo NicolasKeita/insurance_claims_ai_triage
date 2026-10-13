@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import platform
+import sys
 import time
 import tomllib
 from dataclasses import asdict, dataclass, fields
@@ -91,11 +92,22 @@ def observe_environment(torch: Any, ultralytics: Any) -> dict[str, Any]:
     count = int(torch.cuda.device_count()) if available else 0
     return {
         "python_version": platform.python_version(),
+        "python_executable": sys.executable,
         "ultralytics_version": str(ultralytics.__version__),
         "torch_version": str(torch.__version__),
         "cuda_available": available,
         "cuda_runtime_version": torch.version.cuda,
         "cuda_devices": [torch.cuda.get_device_name(index) for index in range(count)],
+        "cuda_device_properties": [
+            {
+                "index": index,
+                "name": torch.cuda.get_device_name(index),
+                "total_memory_bytes": int(torch.cuda.get_device_properties(index).total_memory),
+                "total_memory_gib": round(torch.cuda.get_device_properties(index).total_memory / 1024 ** 3, 3),
+                "compute_capability": list(torch.cuda.get_device_capability(index)),
+            }
+            for index in range(count)
+        ],
     }
 
 
@@ -132,6 +144,25 @@ def run_training(
         raise ValueError("Base weights must contain an instance segmentation model (task=segment)")
     model.add_callback("on_pretrain_routine_start", disable_builtin_mlflow_callbacks)
     config.output_dir.mkdir(parents=True, exist_ok=False)
+    progress: dict[str, Any] = {"best_epoch": None}
+
+    def record_checkpoint_progress(trainer: Any) -> None:
+        # save_model writes best.pt whenever fitness equals best_fitness,
+        # including ties. The stopper records only strict improvements, so its
+        # best_epoch can differ from the epoch of the actual selected weights.
+        epoch_completed = int(trainer.epoch) + 1
+        if trainer.fitness == trainer.best_fitness:
+            progress["best_epoch"] = epoch_completed
+        progress.update({
+            "status": "running", "epochs_completed": epoch_completed,
+            "checkpoint_selection_split": "val", "fitness": float(trainer.fitness),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        write_json(config.output_dir / "training_progress.json", progress)
+
+    model.add_callback("on_model_save", record_checkpoint_progress)
+    base_checkpoint = Path(getattr(model, "ckpt_path", config.base_model)).resolve()
+    base_checkpoint_sha256 = file_sha256(base_checkpoint) if base_checkpoint.is_file() else None
     from vision.config import VisionSettings
     from vision.evaluation import extract_segmentation_metrics
     from vision.tracking import vision_tracking_run
@@ -143,19 +174,28 @@ def run_training(
             batch=config.batch, patience=config.patience, seed=config.seed,
             device=config.device, workers=config.workers, optimizer=config.optimizer,
             project=str(config.output_dir), name="train", exist_ok=False,
-            pretrained=True, val=True, save=True, plots=False,
+            pretrained=True, val=True, split="val", save=True, plots=True,
         )
         trainer = model.trainer
         expected_best = config.output_dir / "train/weights/best.pt"
         actual_best = Path(trainer.best).resolve()
         if actual_best != expected_best.resolve() or not actual_best.is_file():
             raise RuntimeError(f"Training did not produce the expected selected checkpoint: {expected_best}")
+        expected_last = config.output_dir / "train/weights/last.pt"
+        actual_last = Path(trainer.last).resolve()
+        if actual_last != expected_last.resolve() or not actual_last.is_file():
+            raise RuntimeError(f"Training did not produce the expected final checkpoint: {expected_last}")
         verify_class_names(getattr(model, "names", None), manifest["category_mapping"])
         actual_device = getattr(trainer, "device", None)
         environment["device_used"] = str(actual_device) if actual_device is not None else None
         epoch = getattr(trainer, "epoch", None)
         epochs_completed = int(epoch) + 1 if epoch is not None else None
         metrics = extract_segmentation_metrics(result, manifest["category_mapping"], manifest["splits"]["val"])
+        stopper = getattr(trainer, "stopper", None)
+        best_epoch = progress["best_epoch"]
+        if best_epoch is None:
+            raise RuntimeError("Training did not record the epoch that wrote the selected best.pt checkpoint")
+        early_stopped = epochs_completed < config.epochs if epochs_completed is not None else None
         summary = {
             "schema_version": 1, "status": "completed", "task": "segment",
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -163,14 +203,32 @@ def run_training(
             "dataset": dataset_provenance(config.dataset_yaml, manifest),
             "confidence_threshold": threshold,
             "checkpoint_selection_split": "val",
+            "training_optimization_split": "train",
+            "training_validation_split": "val",
+            "test_used_during_training": False,
+            "base_checkpoint": str(base_checkpoint),
+            "base_checkpoint_sha256": base_checkpoint_sha256,
             "best_checkpoint": "train/weights/best.pt",
             "best_checkpoint_sha256": file_sha256(actual_best),
+            "last_checkpoint": "train/weights/last.pt",
+            "last_checkpoint_sha256": file_sha256(actual_last),
+            "best_epoch": best_epoch,
+            "best_epoch_source": "on_model_save: actual best.pt write, including fitness ties",
+            "early_stopping_best_epoch": getattr(stopper, "best_epoch", None),
             "epochs_completed": epochs_completed,
-            "stopped_before_requested_epochs": epochs_completed < config.epochs if epochs_completed is not None else None,
+            "effective_batch_size": getattr(trainer, "batch_size", config.batch),
+            "best_validation_fitness": float(trainer.best_fitness) if getattr(trainer, "best_fitness", None) is not None else None,
+            "stopped_before_requested_epochs": early_stopped,
+            "early_stopping_triggered": early_stopped,
             "elapsed_seconds": time.perf_counter() - started,
             "validation_metrics": metrics,
             "reproducibility": "seeded / reproducible configuration; bitwise GPU determinism is not guaranteed",
             "registry": "NOT EXECUTED — custom vision registry packaging deferred; no production alias",
+            "training_artifacts": {
+                "results_csv": "train/results.csv",
+                "results_png": "train/results.png",
+                "args_yaml": "train/args.yaml",
+            },
         }
         summary_path = config.output_dir / "training_summary.json"
         write_json(summary_path, summary)
@@ -178,6 +236,8 @@ def run_training(
             tracking.log_training(summary, summary_path, actual_best)
             summary["mlflow_run_id"] = tracking.run_id
             write_json(summary_path, summary)
+        progress.update({"status": "completed", "epochs_completed": epochs_completed})
+        write_json(config.output_dir / "training_progress.json", progress)
     return summary
 
 

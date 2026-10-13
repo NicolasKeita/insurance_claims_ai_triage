@@ -13,6 +13,7 @@ data/external_prepared/
 .cache/fiftyone/
 .fiftyone/
 .venv-cardd/
+.venv-vision/
 .pytest-tmp-*/
 cardd_hf_cache/
 *.pt

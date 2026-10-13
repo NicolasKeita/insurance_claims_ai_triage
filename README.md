@@ -97,8 +97,8 @@ available only through explicit `--source coco`; it is not this development sour
 
 Training configuration defaults to
 `configs/vision/cardd_hf_yolo26n_seg_v1.toml`: pretrained `yolo26n-seg.pt`, 100
-epochs, imgsz 640, batch 16, patience 100, seed 42, workers 0, optimizer `auto`,
-explicit CPU. `DAMAGE_BASE_MODEL` overrides the initial weights;
+epochs, imgsz 640, batch 8, patience 20, seed 42, workers 0, optimizer `auto`,
+CUDA device `0` (RTX 3070 Laptop, 8 GiB baseline). `DAMAGE_BASE_MODEL` overrides the initial weights;
 `DAMAGE_DATASET_YAML` points at prepared data outside the repository. Effective
 configuration, source/split provenance, actual device and versions are logged.
 This is a seeded/reproducible configuration, with no bitwise GPU determinism
@@ -106,31 +106,40 @@ promise. Check CUDA in the actual training interpreter, since the global Python
 and the application's virtualenv may use different torch builds.
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[dev,vision]"
+# .venv-vision is a separate environment with CUDA-enabled PyTorch.
+# The local run uses --system-site-packages from the verified CUDA interpreter.
+.\.venv-vision\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 $env:DAMAGE_DATASET_YAML = "$env:CARDD_HF_PREPARED_DIR\dataset.yaml"
-.\.venv\Scripts\python.exe .\scripts\train_damage_segmentation.py
-.\.venv\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
-.\.venv\Scripts\python.exe .\scripts\check_claim_vision.py
+$env:DAMAGE_CONFIDENCE_THRESHOLD = "0.25"
+$env:DAMAGE_DEVICE = "0"
+.\.venv-vision\Scripts\python.exe .\scripts\train_damage_segmentation.py
+.\.venv-vision\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
+.\.venv-vision\Scripts\python.exe .\scripts\check_damage_test_smoke.py --max-images 12
+.\.venv-vision\Scripts\python.exe .\scripts\check_claim_vision.py
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Pass `--device 0` to train/evaluate only when CUDA works in that environment.
+Use `--device cpu` explicitly on an interpreter without CUDA. Check the training
+interpreter's CUDA build before starting; `.venv` remains the CPU application/test environment.
 TRAIN optimizes, VAL selects the best checkpoint and early stopping, and TEST
 remains frozen for final evaluation. TEST never selects the checkpoint,
 hyperparameters or threshold. `DAMAGE_CONFIDENCE_THRESHOLD` defaults to the
 uncalibrated 0.25 baseline and is recorded before TEST. Test metrics preserve
 box/mask precision, recall, mAP50 and mAP50-95 and available per-class metrics;
 unavailable values stay null. Weak measured classes and distributions accompany
-global scores. **Metrics are evaluated on the project's deterministic held-out
-split of the 2,816-sample Hugging Face CarDD mirror, not on the official CarDD test
-split.** There are no official benchmark scores implied by these outputs.
+global scores. **Metrics are evaluated on the project's deterministic held-out 422-image test split of the 2,816-image Hugging Face CarDD mirror, not on the official CarDD test split.** There are no official benchmark scores implied by these outputs.
 
 Generated artifacts live under `artifacts/vision/damage_segmentation_v1/`:
-`train/weights/best.pt`, `training_summary.json`, `test_metrics.json`,
-`per_class_metrics.csv`, and bounded `error_examples/` with metadata. Evaluation
+`train/weights/best.pt`, `train/weights/last.pt`, `train/results.csv`,
+`train/results.png`, `training_progress.json`, `training_summary.json`,
+`test_metrics.json`, `per_class_metrics.csv`, bounded `error_examples/` and
+`test_smoke/` with real domain assessments and annotated overlays. Evaluation
 verifies the exact VAL-selected checkpoint hash and dataset/split provenance.
 Error matching is a class-aware greedy box-IoU approximation, not exact mask
-FP/FN analysis or a representative estimate of every failure mode.
+FP/FN analysis or a representative estimate of every failure mode. Correct and
+incorrect segmentation examples also use diagnostic polygon raster IoU, separate
+from framework mask AP. The TEST smoke follows completed evaluation and validates
+checkpoint hash, provenance and the original threshold before inference.
 
 `UltralyticsDamageDetector` loads an existing local trained checkpoint lazily,
 once per instance. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` configure inference.

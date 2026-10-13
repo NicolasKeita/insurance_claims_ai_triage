@@ -1,4 +1,4 @@
-"""Small diagnostic sample, using box overlap rather than exact mask matching."""
+"""Bounded diagnostics; box matching and polygon mask overlap are not mask AP."""
 
 from __future__ import annotations
 
@@ -29,11 +29,13 @@ def box_iou(first: tuple[float, ...], second: tuple[float, ...]) -> float:
 def analyze_instances(
     predictions: list[ErrorInstance], truth: list[ErrorInstance], *,
     confidence_threshold: float, matching_iou: float = 0.5,
+    image_size: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """Greedily match highest-IoU same-class boxes, once per instance.
 
     FP/FN are diagnostic approximations at a fixed threshold, not the framework's
-    mask AP matching. Localization includes unmatched same-class overlap <0.5.
+    mask AP matching. Optional mask IoU rasterizes the prepared YOLO polygons at
+    source image resolution, so it is also separate from framework AP matching.
     """
     accepted = [index for index, pred in enumerate(predictions) if pred.confidence is not None and pred.confidence >= confidence_threshold]
     candidates = [
@@ -52,8 +54,22 @@ def analyze_instances(
             matched_truth.add(target)
             matches.append({"prediction_index": pred, "truth_index": target, "box_iou": overlap})
     false_positives = [index for index in accepted if index not in matched_pred]
+    good_predictions, segmentation_errors = [], []
+    if image_size is not None:
+        for match in matches:
+            pred = predictions[match["prediction_index"]]
+            target = truth[match["truth_index"]]
+            match["polygon_mask_iou"] = polygon_mask_iou(pred.polygon, target.polygon, image_size)
+            if match["polygon_mask_iou"] >= matching_iou:
+                good_predictions.append(match.copy())
+            else:
+                segmentation_errors.append(match.copy())
+    else:
+        good_predictions = [match.copy() for match in matches]
     return {
         "matches": matches,
+        "good_predictions": good_predictions,
+        "segmentation_errors": segmentation_errors,
         "false_positives": false_positives,
         "false_negatives": [index for index in range(len(truth)) if index not in matched_truth],
         "low_confidence": [index for index, pred in enumerate(predictions) if pred.confidence is not None and pred.confidence < confidence_threshold],
@@ -63,6 +79,41 @@ def analyze_instances(
             if pred in false_positives and target not in matched_truth and 0.1 <= overlap < matching_iou
         ],
     }
+
+
+def polygon_mask_iou(
+    first: tuple[tuple[float, float], ...],
+    second: tuple[tuple[float, float], ...],
+    image_size: tuple[int, int],
+) -> float:
+    """Diagnostic overlap of normalized polygons, rasterized with Pillow.
+
+    This does not recreate Ultralytics' resized prototype masks or AP matcher.
+    Missing polygons have zero overlap. Multi-component bridge edges and hole
+    boundaries follow the prepared YOLO polygon representation.
+    """
+    from PIL import Image, ImageChops, ImageDraw
+
+    width, height = image_size
+    if width <= 0 or height <= 0:
+        raise ValueError("Diagnostic mask size must be positive")
+    masks = [Image.new("1", image_size) for _ in range(2)]
+    try:
+        for polygon, mask in zip((first, second), masks):
+            if len(polygon) >= 3:
+                ImageDraw.Draw(mask).polygon([(x * width, y * height) for x, y in polygon], fill=1)
+        intersection = ImageChops.logical_and(*masks)
+        union = ImageChops.logical_or(*masks)
+        try:
+            intersection_count = sum(intersection.histogram()[1:])
+            union_count = sum(union.histogram()[1:])
+            return intersection_count / union_count if union_count else 0.0
+        finally:
+            intersection.close()
+            union.close()
+    finally:
+        for mask in masks:
+            mask.close()
 
 
 def _label_instances(path: Path) -> list[ErrorInstance]:
@@ -127,7 +178,7 @@ def save_error_examples(
     root = config.dataset_yaml.parent
     names = {item["yolo_class_id"]: item["name"] for item in manifest["category_mapping"]}
     images = sorted(manifest["prepared_files"]["test"], key=lambda entry: entry["image"])[:max_images]
-    kinds = ("false_positives", "false_negatives", "low_confidence", "localization_errors")
+    kinds = ("good_predictions", "false_positives", "false_negatives", "low_confidence", "localization_errors", "segmentation_errors")
     totals = dict.fromkeys(kinds, 0)
     selected_per_kind = dict.fromkeys(kinds, 0)
     selected = []
@@ -140,24 +191,35 @@ def save_error_examples(
         )
         detected = _prediction_instances(predictions[0])
         truth = _label_instances(root / entry["label"])
-        events = analyze_instances(detected, truth, confidence_threshold=confidence_threshold)
+        from PIL import Image
+        with Image.open(image_path) as original:
+            image_size = original.size
+        events = analyze_instances(detected, truth, confidence_threshold=confidence_threshold, image_size=image_size)
         for kind in kinds:
             totals[kind] += len(events[kind])
-            if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds)) and len(selected) < max_examples:
-                annotated_name = f"{len(selected) + 1:03d}_{kind}_{image_path.stem}.jpg"
-                _annotate(image_path, directory / annotated_name, detected, truth, names)
-                selected.append({
-                    "filename": entry["image"], "kind": kind, "annotated_filename": annotated_name,
-                    "predictions": [asdict(value) for value in detected],
-                    "ground_truth": [asdict(value) for value in truth], "events": events,
-                })
-                selected_per_kind[kind] += 1
+        eligible = [kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))]
+        if eligible and len(selected) < max_examples:
+            # One overlay per selected image can show several observed events.
+            kind = eligible[0]
+            annotated_name = f"{len(selected) + 1:03d}_{kind}_{image_path.stem}.jpg"
+            _annotate(image_path, directory / annotated_name, detected, truth, names)
+            selected.append({
+                "filename": entry["image"], "kind": kind, "kinds": [key for key in kinds if events[key]],
+                "annotated_filename": annotated_name,
+                "predictions": [asdict(value) for value in detected],
+                "ground_truth": [asdict(value) for value in truth], "events": events,
+            })
+            # Other event kinds remain recorded, but each quota selects a
+            # distinct image instead of one busy image exhausting all quotas.
+            selected_per_kind[kind] += 1
     metadata = {
         "split": "test", "images_inspected": len(images), "maximum_images": max_images,
         "selection": "first filename-sorted test images; bounded diagnostic sample, not a representative estimate",
         "confidence_threshold": confidence_threshold, "diagnostic_candidate_threshold": floor,
-        "matching_box_iou": 0.5, "counts_in_inspected_sample": totals,
-        "limitations": "Greedy same-class box IoU approximation; no exact mask FP/FN. Localization errors use unmatched box IoU [0.1,0.5). Low-confidence predictions below candidate threshold are unavailable. No threshold tuning on TEST.",
+        "matching_box_iou": 0.5, "diagnostic_polygon_mask_iou": 0.5,
+        "counts_in_inspected_sample": totals,
+        "good_prediction_definition": "Same-class one-to-one box IoU >=0.5 and source-resolution rasterized polygon mask IoU >=0.5; other damage in the same image may still be missed.",
+        "limitations": "Greedy same-class box IoU FP/FN approximation, not exact mask FP/FN or AP. Segmentation errors are box matches with prepared-polygon raster IoU <0.5; rasterization and bridge/hole boundaries differ from framework masks. Localization errors use unmatched box IoU [0.1,0.5). Low-confidence predictions below candidate threshold are unavailable. No threshold tuning on TEST.",
         "examples": selected,
     }
     write_json(directory / "metadata.json", metadata)
