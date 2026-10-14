@@ -90,15 +90,18 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 def observe_environment(torch: Any, ultralytics: Any) -> dict[str, Any]:
     """Record observed libraries/hardware; modules are supplied by explicit scripts."""
     available = bool(torch.cuda.is_available())
-    count = int(torch.cuda.device_count()) if available else 0
+    count_reader = getattr(torch.cuda, "device_count", None)
+    count = int(count_reader()) if callable(count_reader) else 0
+    usable_count = count if available else 0
     return {
         "python_version": platform.python_version(),
         "python_executable": sys.executable,
         "ultralytics_version": str(ultralytics.__version__),
         "torch_version": str(torch.__version__),
         "cuda_available": available,
+        "cuda_device_count": count,
         "cuda_runtime_version": torch.version.cuda,
-        "cuda_devices": [torch.cuda.get_device_name(index) for index in range(count)],
+        "cuda_devices": [torch.cuda.get_device_name(index) for index in range(usable_count)],
         "cuda_device_properties": [
             {
                 "index": index,
@@ -107,7 +110,7 @@ def observe_environment(torch: Any, ultralytics: Any) -> dict[str, Any]:
                 "total_memory_gib": round(torch.cuda.get_device_properties(index).total_memory / 1024 ** 3, 3),
                 "compute_capability": list(torch.cuda.get_device_capability(index)),
             }
-            for index in range(count)
+            for index in range(usable_count)
         ],
     }
 
@@ -123,6 +126,7 @@ def disable_builtin_mlflow_callbacks(trainer: Any) -> None:
 
 def load_resume_metadata(
     config: DamageTrainingConfig, manifest: dict[str, Any], threshold: float,
+    *, provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Refuse to resume a different, completed, or already evaluated baseline."""
     for name in ("training_summary.json", "test_metrics.json", "evaluation", "test_smoke"):
@@ -134,7 +138,8 @@ def load_resume_metadata(
     metadata = json.loads(path.read_text(encoding="utf-8"))
     if metadata.get("config") != config.payload():
         raise ValueError("Resume configuration differs from the interrupted baseline")
-    if metadata.get("dataset") != dataset_provenance(config.dataset_yaml, manifest):
+    provenance_provider = provenance_provider or dataset_provenance
+    if metadata.get("dataset") != provenance_provider(config.dataset_yaml, manifest):
         raise ValueError("Resume dataset provenance differs from the interrupted baseline")
     if metadata.get("confidence_threshold") != threshold:
         raise ValueError("Resume confidence threshold differs from the interrupted baseline")
@@ -190,6 +195,9 @@ def run_training(
     environment_provider: Callable[[], dict[str, Any]],
     dataset_loader: Callable[[Path], dict[str, Any]] | None = None,
     resume: bool = False,
+    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
+    confidence_threshold: float | None = None,
+    tracking_factory: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Train on TRAIN; Ultralytics chooses best/early stopping from VAL only.
 
@@ -201,8 +209,11 @@ def run_training(
         dataset_loader = load_prepared_dataset
     manifest = dataset_loader(config.dataset_yaml)
     from vision.config import VisionSettings
-    threshold = VisionSettings.from_env().confidence_threshold
-    recovery = load_resume_metadata(config, manifest, threshold) if resume else None
+    threshold = VisionSettings.from_env().confidence_threshold if confidence_threshold is None else confidence_threshold
+    if isinstance(threshold, bool) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("Confidence threshold must be finite and between zero and one")
+    provenance_provider = provenance_provider or dataset_provenance
+    recovery = load_resume_metadata(config, manifest, threshold, provenance_provider=provenance_provider) if resume else None
     if config.output_dir.exists() and not resume:
         raise FileExistsError(f"Run directory already exists: {config.output_dir}. Choose a new version/output_dir.")
     environment = environment_provider()
@@ -215,7 +226,7 @@ def run_training(
     if not resume:
         config.output_dir.mkdir(parents=True, exist_ok=False)
     progress: dict[str, Any] = {"best_epoch": recovery["best_epoch"] if recovery else None}
-    provenance = dataset_provenance(config.dataset_yaml, manifest)
+    provenance = provenance_provider(config.dataset_yaml, manifest)
     previous_elapsed = float(recovery["elapsed_seconds"]) if recovery else 0.0
     base_checkpoint = Path(recovery["base_checkpoint"] if recovery else getattr(model, "ckpt_path", config.base_model)).resolve()
     base_checkpoint_sha256 = recovery["base_checkpoint_sha256"] if recovery else (file_sha256(base_checkpoint) if base_checkpoint.is_file() else None)
@@ -263,7 +274,8 @@ def run_training(
     model.add_callback("on_model_save", record_checkpoint_progress)
     from vision.evaluation import extract_segmentation_metrics
     from vision.tracking import vision_tracking_run
-    with vision_tracking_run(config) as tracking:
+    tracking_factory = tracking_factory or vision_tracking_run
+    with tracking_factory(config) as tracking:
         training_arguments = dict(
             data=str(config.dataset_yaml), epochs=config.epochs, imgsz=config.imgsz,
             batch=config.batch, patience=config.patience, seed=config.seed,
@@ -369,4 +381,4 @@ def verify_class_names(names: Any, mapping: list[dict[str, Any]]) -> None:
     if isinstance(names, list):
         names = dict(enumerate(names))
     if not isinstance(names, dict) or {int(key): value for key, value in names.items()} != expected:
-        raise ValueError("Checkpoint class names/order do not match the prepared CarDD taxonomy")
+        raise ValueError("Checkpoint class names/order do not match the prepared dataset taxonomy")

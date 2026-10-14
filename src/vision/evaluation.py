@@ -99,7 +99,10 @@ def extract_segmentation_metrics(
     }
 
 
-def selected_checkpoint(config: DamageTrainingConfig, manifest: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+def selected_checkpoint(
+    config: DamageTrainingConfig, manifest: dict[str, Any],
+    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
+) -> tuple[Path, dict[str, Any]]:
     summary_path = config.output_dir / "training_summary.json"
     if not summary_path.is_file():
         raise FileNotFoundError(f"No completed training summary: {summary_path}. Train the baseline first.")
@@ -115,7 +118,8 @@ def selected_checkpoint(config: DamageTrainingConfig, manifest: dict[str, Any]) 
         raise FileNotFoundError(f"Selected checkpoint absent: {checkpoint}")
     if file_sha256(checkpoint) != summary.get("best_checkpoint_sha256"):
         raise ValueError("Selected checkpoint SHA-256 differs from the completed training run")
-    if dataset_provenance(config.dataset_yaml, manifest) != summary.get("dataset"):
+    provenance_provider = provenance_provider or dataset_provenance
+    if provenance_provider(config.dataset_yaml, manifest) != summary.get("dataset"):
         raise ValueError("Prepared dataset provenance differs from the training run; evaluation refused")
     return checkpoint, summary
 
@@ -139,6 +143,10 @@ def run_evaluation(
     environment_provider: Callable[[], dict[str, Any]],
     dataset_loader: Callable[[Path], dict[str, Any]] | None = None,
     max_error_examples: int = 8,
+    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
+    confidence_threshold: float | None = None,
+    tracking_factory: Callable[..., Any] | None = None,
+    include_part_errors: bool = False,
 ) -> dict[str, Any]:
     if max_error_examples < 0:
         raise ValueError("max_error_examples must be non-negative")
@@ -146,9 +154,12 @@ def run_evaluation(
         from vision.dataset import load_prepared_dataset
         dataset_loader = load_prepared_dataset
     manifest = dataset_loader(config.dataset_yaml)
-    checkpoint, summary = selected_checkpoint(config, manifest)
+    checkpoint, summary = (selected_checkpoint(config, manifest) if provenance_provider is None
+                           else selected_checkpoint(config, manifest, provenance_provider))
     from vision.config import VisionSettings
-    threshold = VisionSettings.from_env().confidence_threshold
+    threshold = VisionSettings.from_env().confidence_threshold if confidence_threshold is None else confidence_threshold
+    if isinstance(threshold, bool) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("Confidence threshold must be finite and between zero and one")
     if threshold != summary.get("confidence_threshold"):
         raise ValueError("Confidence threshold differs from training metadata. Configure it before training or calibrate on VAL in a new version; never select it on TEST.")
     evaluation_dir = config.output_dir / "evaluation"
@@ -208,11 +219,13 @@ def run_evaluation(
     _write_per_class_csv(csv_path, payload["per_class"])
     if max_error_examples:
         from vision.error_analysis import save_error_examples
-        analysis = save_error_examples(model, config, manifest, threshold, max_examples=max_error_examples)
+        analysis = save_error_examples(model, config, manifest, threshold, max_examples=max_error_examples,
+                                       include_part_errors=include_part_errors)
         payload["error_analysis"] = analysis
         write_json(metrics_path, payload)
     from vision.tracking import vision_tracking_run
-    with vision_tracking_run(config, run_id=summary.get("mlflow_run_id")) as tracking:
+    tracking_factory = tracking_factory or vision_tracking_run
+    with tracking_factory(config, run_id=summary.get("mlflow_run_id")) as tracking:
         if tracking is not None:
             tracking.log_evaluation(payload, [metrics_path, csv_path])
     return payload

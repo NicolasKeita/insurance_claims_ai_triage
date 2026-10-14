@@ -1,0 +1,17 @@
+# Official Carparts-Seg supplied TRAIN/VAL/TEST; independent COCO initialization.
+version = "carparts_yolo26n_seg_v1"
+epochs = 100
+imgsz = 640
+batch = 8
+patience = 20
+seed = 42
+device = "0"
+workers = 0
+optimizer = "auto"
+base_model = "yolo26n-seg.pt"
+dataset_yaml = "data/external/carparts-seg/dataset.yaml"
+output_dir = "artifacts/vision/vehicle_parts_v1"
+experiment_name = "insurance-claims-vision-parts"
+track_mlflow = true
+log_checkpoint = true
+confidence_threshold = 0.25

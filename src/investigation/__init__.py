@@ -11,7 +11,7 @@ from investigation.models import (
 )
 from investigation.policy import (
     DEFAULT_INVESTIGATION_POLICY, INVESTIGATION_POLICY_V1,
-    INVESTIGATION_POLICY_V2, InvestigationPolicy,
+    INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3, InvestigationPolicy,
 )
 from investigation.history import HistoricalClaimProfile
 
@@ -20,6 +20,7 @@ __all__ = [
     "HistoricalClaimProfile",
     "INVESTIGATION_POLICY_V1",
     "INVESTIGATION_POLICY_V2",
+    "INVESTIGATION_POLICY_V3",
     "DEFAULT_INVESTIGATION_POLICY",
     "InvestigationAssessment",
     "InvestigationPolicy",

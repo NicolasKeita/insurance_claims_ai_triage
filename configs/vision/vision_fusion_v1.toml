@@ -1,0 +1,6 @@
+# Demo baseline, fixed independently of TEST; calibrate later using VAL.
+version = "vision_fusion_v1"
+min_damage_confidence = 0.5
+min_part_confidence = 0.5
+min_damage_containment = 0.6
+ambiguity_margin = 0.05

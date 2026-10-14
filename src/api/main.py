@@ -36,6 +36,7 @@ from ml.inference import (
 )
 from api.knowledge import install_knowledge_routes
 from api.agent import install_agent_routes
+from api.vision import install_vision_routes
 
 PredictorLoader = Callable[[], RegisteredTriagePredictor]
 AnomalyPredictorLoader = Callable[[], RegisteredAnomalyPredictor]
@@ -91,6 +92,7 @@ def create_app(
     agent_service_loader: Callable | None = None,
     agent_claim_loader: Callable | None = None,
     agent_run_store_loader: Callable | None = None,
+    vision_store_loader: Callable | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -102,6 +104,7 @@ def create_app(
         app.state.knowledge_rag = None
         app.state.agent_service = None
         app.state.agent_run_store = None
+        app.state.vision_store = None
         engine = None
         app.state.session_factory = session_factory
         if session_factory is None and os.environ.get("DATABASE_URL"):
@@ -254,6 +257,7 @@ def create_app(
         run_store_loader=agent_run_store_loader, similar_service_loader=similar_service_loader,
         knowledge_retriever_loader=knowledge_retriever_loader,
     )
+    install_vision_routes(app, store_loader=vision_store_loader)
     return app
 
 

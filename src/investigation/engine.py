@@ -3,6 +3,7 @@
 from claims.consistency import ClaimConsistencyReport
 from ml.anomaly_training import AnomalyAssessment
 from ml.features import TriageFeatures
+from vision.models import ClaimMultimodalVisionAssessment
 
 from investigation.models import InvestigationAssessment
 from investigation.history import HistoricalClaimProfile
@@ -12,6 +13,7 @@ from investigation.signals import (
     signals_from_completeness,
     signals_from_consistency,
     signals_from_history,
+    signals_from_multimodal,
 )
 
 
@@ -22,6 +24,7 @@ def assess_investigation(
     features: TriageFeatures,
     policy: InvestigationPolicy = DEFAULT_INVESTIGATION_POLICY,
     history: HistoricalClaimProfile | None = None,
+    visual_assessment: ClaimMultimodalVisionAssessment | None = None,
 ) -> InvestigationAssessment:
     """Apply a versioned heuristic to evidence; no triage prediction is consumed."""
 
@@ -30,6 +33,7 @@ def assess_investigation(
         *signals_from_anomaly(anomaly, policy),
         *signals_from_completeness(features, policy),
         *signals_from_history(history if history is not None else HistoricalClaimProfile(), policy),
+        *(signals_from_multimodal(visual_assessment, policy) if visual_assessment is not None else ()),
     )
     score = policy.score_signals(signals)
     return InvestigationAssessment(

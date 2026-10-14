@@ -30,6 +30,7 @@ def analyze_instances(
     predictions: list[ErrorInstance], truth: list[ErrorInstance], *,
     confidence_threshold: float, matching_iou: float = 0.5,
     image_size: tuple[int, int] | None = None,
+    include_part_errors: bool = False,
 ) -> dict[str, Any]:
     """Greedily match highest-IoU same-class boxes, once per instance.
 
@@ -54,19 +55,24 @@ def analyze_instances(
             matched_truth.add(target)
             matches.append({"prediction_index": pred, "truth_index": target, "box_iou": overlap})
     false_positives = [index for index in accepted if index not in matched_pred]
-    good_predictions, segmentation_errors = [], []
+    good_predictions, segmentation_errors, incomplete_masks = [], [], []
     if image_size is not None:
         for match in matches:
             pred = predictions[match["prediction_index"]]
             target = truth[match["truth_index"]]
-            match["polygon_mask_iou"] = polygon_mask_iou(pred.polygon, target.polygon, image_size)
+            overlap = polygon_mask_overlap(pred.polygon, target.polygon, image_size)
+            match["polygon_mask_iou"] = overlap["iou"]
+            if include_part_errors:
+                match["truth_mask_coverage"] = overlap["truth_coverage"]
+                if pred.polygon and target.polygon and overlap["truth_coverage"] < 0.8:
+                    incomplete_masks.append(match.copy())
             if match["polygon_mask_iou"] >= matching_iou:
                 good_predictions.append(match.copy())
             else:
                 segmentation_errors.append(match.copy())
     else:
         good_predictions = [match.copy() for match in matches]
-    return {
+    result = {
         "matches": matches,
         "good_predictions": good_predictions,
         "segmentation_errors": segmentation_errors,
@@ -79,6 +85,15 @@ def analyze_instances(
             if pred in false_positives and target not in matched_truth and 0.1 <= overlap < matching_iou
         ],
     }
+    if include_part_errors:
+        result["wrong_parts"] = [
+            {"prediction_index": pred, "truth_index": target, "box_iou": box_iou(predictions[pred].box, truth[target].box),
+             "predicted_class_id": predictions[pred].class_id, "truth_class_id": truth[target].class_id}
+            for pred in false_positives for target in result["false_negatives"]
+            if predictions[pred].class_id != truth[target].class_id and box_iou(predictions[pred].box, truth[target].box) >= matching_iou
+        ]
+        result["incomplete_masks"] = incomplete_masks
+    return result
 
 
 def polygon_mask_iou(
@@ -86,6 +101,14 @@ def polygon_mask_iou(
     second: tuple[tuple[float, float], ...],
     image_size: tuple[int, int],
 ) -> float:
+    return polygon_mask_overlap(first, second, image_size)["iou"]
+
+
+def polygon_mask_overlap(
+    first: tuple[tuple[float, float], ...],
+    second: tuple[tuple[float, float], ...],
+    image_size: tuple[int, int],
+) -> dict[str, float]:
     """Diagnostic overlap of normalized polygons, rasterized with Pillow.
 
     This does not recreate Ultralytics' resized prototype masks or AP matcher.
@@ -107,7 +130,9 @@ def polygon_mask_iou(
         try:
             intersection_count = sum(intersection.histogram()[1:])
             union_count = sum(union.histogram()[1:])
-            return intersection_count / union_count if union_count else 0.0
+            truth_count = sum(masks[1].histogram()[1:])
+            return {"iou": intersection_count / union_count if union_count else 0.0,
+                    "truth_coverage": intersection_count / truth_count if truth_count else 0.0}
         finally:
             intersection.close()
             union.close()
@@ -172,6 +197,7 @@ def _annotate(path: Path, output: Path, predictions: list[ErrorInstance], truth:
 def save_error_examples(
     model: Any, config: DamageTrainingConfig, manifest: dict[str, Any],
     confidence_threshold: float, *, max_examples: int = 8, max_images: int = 100,
+    include_part_errors: bool = False,
 ) -> dict[str, Any]:
     directory = config.output_dir / "error_examples"
     directory.mkdir(parents=True, exist_ok=False)
@@ -179,6 +205,8 @@ def save_error_examples(
     names = {item["yolo_class_id"]: item["name"] for item in manifest["category_mapping"]}
     images = sorted(manifest["prepared_files"]["test"], key=lambda entry: entry["image"])[:max_images]
     kinds = ("good_predictions", "false_positives", "false_negatives", "low_confidence", "localization_errors", "segmentation_errors")
+    if include_part_errors:
+        kinds = ("good_predictions", "wrong_parts", "incomplete_masks", "false_positives", "false_negatives", "low_confidence", "localization_errors", "segmentation_errors")
     totals = dict.fromkeys(kinds, 0)
     selected_per_kind = dict.fromkeys(kinds, 0)
     selected = []
@@ -194,7 +222,8 @@ def save_error_examples(
         from PIL import Image
         with Image.open(image_path) as original:
             image_size = original.size
-        events = analyze_instances(detected, truth, confidence_threshold=confidence_threshold, image_size=image_size)
+        events = analyze_instances(detected, truth, confidence_threshold=confidence_threshold, image_size=image_size,
+                                   include_part_errors=include_part_errors)
         for kind in kinds:
             totals[kind] += len(events[kind])
         eligible = [kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))]
@@ -217,6 +246,8 @@ def save_error_examples(
         "selection": "first filename-sorted test images; bounded diagnostic sample, not a representative estimate",
         "confidence_threshold": confidence_threshold, "diagnostic_candidate_threshold": floor,
         "matching_box_iou": 0.5, "diagnostic_polygon_mask_iou": 0.5,
+        "incomplete_mask_definition": "Same-class box match with source-resolution polygon intersection/truth mask area <0.8; fixed diagnostic criterion, not TEST-tuned." if include_part_errors else None,
+        "wrong_part_definition": "Unmatched prediction/GT pair of different classes with box IoU >=0.5; plausible classification confusion, not causal proof." if include_part_errors else None,
         "counts_in_inspected_sample": totals,
         "good_prediction_definition": "Same-class one-to-one box IoU >=0.5 and source-resolution rasterized polygon mask IoU >=0.5; other damage in the same image may still be missed.",
         "limitations": "Greedy same-class box IoU FP/FN approximation, not exact mask FP/FN or AP. Segmentation errors are box matches with prepared-polygon raster IoU <0.5; rasterization and bridge/hole boundaries differ from framework masks. Localization errors use unmatched box IoU [0.1,0.5). Low-confidence predictions below candidate threshold are unavailable. No threshold tuning on TEST.",

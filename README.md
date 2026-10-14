@@ -811,3 +811,69 @@ services. PostgreSQL tests remain opt-in through `TEST_DATABASE_URL`.
 Small local models may plan imperfectly, and recommendations depend on evidence
 quality/availability. This V1 has no long-term conversational memory or
 quantitative agent benchmark. `CODEX_REPORT_STEP_28.md` records actual validation.
+
+## Vehicle parts and multimodal perception (STEP30)
+
+The independent Carparts-Seg model starts from COCO `yolo26n-seg.pt`. It shares
+the step29 image loader, normalized geometry, Ultralytics extraction helpers and
+training/evaluation orchestration. Preparation downloads only the official
+archive when explicitly requested, checks every supplied split and writes
+`artifacts/vision/carparts_dataset_manifest.json`. Imports and standard pytest
+never download images or weights.
+
+Run the explicit baseline from a CUDA-capable interpreter. The same interpreter
+prints its Python executable, torch/CUDA build, CUDA availability and GPU before
+training. A requested GPU with unavailable CUDA fails; there is no CPU fallback.
+`best.pt` is selected from VAL; TEST is evaluated only after training, without
+changing the baseline from TEST results. Both best and last checkpoints are kept.
+
+```powershell
+Set-Location 'C:\Users\nicol\Documents\insurance_claims_ai_triage'
+.\.venv-vision\Scripts\python.exe scripts/prepare_carparts_dataset.py
+.\.venv-vision\Scripts\python.exe scripts/inspect_carparts_dataset.py
+.\.venv-vision\Scripts\python.exe -u scripts/train_vehicle_part_segmentation.py
+# Run final TEST once, after completed training:
+.\.venv-vision\Scripts\python.exe scripts/evaluate_vehicle_part_segmentation.py
+$env:DAMAGE_DEVICE = '0'
+$env:PART_DEVICE = '0'
+.\.venv-vision\Scripts\python.exe scripts/check_multimodal_vision.py
+```
+
+The part experiment is `insurance-claims-vision-parts`, with metadata, VAL/TEST
+metrics and the selected checkpoint logged to a separate local SQLite MLflow
+store by default. An explicit `MLFLOW_TRACKING_URI` takes precedence. Dataset
+images are excluded from logging. Custom vision Registry packaging remains
+deferred; damage and part checkpoints have independent paths and SHA-256 versions.
+
+`ClaimMultimodalVisionService` infers each photo once per model and then fuses its
+observations. Shapely computes mask intersections in normalized image space;
+missing masks use an explicit `BBOX_FALLBACK`. Invalid supplied polygons fail
+validation for fusion. The primary measure is damage containment, since a small
+scratch may be fully within a large bumper with a very small IoU. The versioned
+`vision_fusion_v1` baseline requires damage confidence >=0.5, part confidence
+>=0.5 and containment >=0.6; a containment gap <=0.05 between eligible parts
+stays ambiguous. These thresholds await calibration on VAL.
+
+`object` becomes `VehiclePartType.OTHER` and is excluded from business fusion.
+Only front bumper, hood and front left light map to existing business damage
+types; generic lights, unknown sides and other parts remain unmapped. Quote
+comparison reuses `claims.consistency.map_quote_damage_types`.
+
+`investigation_policy_v3` copies v2 and adds 12 heuristic demo points for each
+additional reliable mapped damage category. Each signal preserves all relevant
+photo observations and model/fusion snapshots. Positive support and declared
+damage without visual confirmation add no points. V1/v2 and the v2 default stay
+unchanged. Two photos are separate observations, without physical-damage
+deduplication.
+
+Migration `0004` adds append-only `vision_assessments` with normalized polygons
+and separate model versions. `VisionAssessmentStore` saves already computed
+results. `GET /v1/claims/{claim_id}/vision/latest` and agent
+`GET_VISUAL_ASSESSMENT` retrieve a stored snapshot without loading models. An
+inference HTTP route is deferred because the current database has image filenames
+but no authoritative filesystem claim directory. The filesystem service and
+reference script provide the inference path.
+
+The durable `CODEX_REPORT_STEP_30.md` records actual execution status, GPU proof,
+counts, metrics, tests and limitations. Reference photos that are empty or invalid
+produce a saved `NOT EXECUTED` status instead of invented observations.

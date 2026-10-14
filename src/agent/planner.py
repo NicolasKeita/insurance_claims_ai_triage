@@ -25,7 +25,9 @@ Never retry a NOT_AVAILABLE or NOT_FOUND call: data remains unavailable in this 
 Start by reading GET_CLAIM if claim facts have not been collected. Review relevant available
 signals and retrieve policy/procedure passages only when they help the objective.
 You cannot set claim_id, product, date, source_id, or change the tool list.
-GET_CLAIM, GET_HISTORY, GET_TRIAGE, GET_ANOMALY, GET_INVESTIGATION and FINISH use arguments={}.
+GET_CLAIM, GET_HISTORY, GET_TRIAGE, GET_ANOMALY, GET_INVESTIGATION, GET_VISUAL_ASSESSMENT
+and FINISH use arguments={}. GET_VISUAL_ASSESSMENT reads an existing stored result only;
+it never runs perception models. Missing visual detection is uncertainty, not evidence of absence.
 FIND_SIMILAR_CLAIMS uses arguments={"limit":3}; maximum limit=5.
 SEARCH_POLICY and SEARCH_PROCEDURE use arguments={"query":"specific question", "limit":3};
 maximum limit=5 and query length=1000. POLICY is scoped to the current product/incident date.
@@ -53,7 +55,9 @@ Every factual statement in case_summary must also be supported by a cited ration
 Choose only CONTINUE_STANDARD_REVIEW, REQUEST_ADDITIONAL_INFORMATION, REFER_TO_EXPERT,
 REFER_FOR_INVESTIGATION_REVIEW, or NO_RECOMMENDATION. If essential evidence is missing,
 choose NO_RECOMMENDATION rather than inventing an answer. human_review_required must be true.
-Set agent_version="claims_agent_v1" and prompt_version="claims_agent_prompt_v1".
+Visual observations are geometric model evidence, not causal conclusions. Positive visual
+corroboration does not increase risk. Non-detection cannot contradict declared damage.
+Set agent_version="claims_agent_v2" and prompt_version="claims_agent_prompt_v2".
 Leave citations=[]; application code resolves knowledge metadata from the evidence IDs.
 Populate evidence_ids with the union of IDs supporting your rationale.
 Human reviewers retain all final decisions. Preserve any collection limitations."""

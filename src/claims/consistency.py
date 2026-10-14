@@ -44,6 +44,26 @@ QUOTE_DAMAGE_MAP = {
     "hood": DamageType.HOOD,
 }
 
+
+def map_quote_damage_types(
+    quote: GarageQuoteExtraction,
+) -> tuple[tuple[DamageType, ...], tuple[str, ...]]:
+    """Reuse the exact quote mapping for document and multimodal comparison.
+
+    Preserve each line occurrence, including unmapped items; callers may build
+    sets for corroboration without changing the document consistency behavior.
+    """
+    damage_types: list[DamageType] = []
+    unmapped_items: list[str] = []
+    for item in quote.parts:
+        damage = QUOTE_DAMAGE_MAP.get(item.description.casefold())
+        if damage is None:
+            unmapped_items.append(item.description)
+        else:
+            damage_types.append(damage)
+    return tuple(damage_types), tuple(unmapped_items)
+
+
 def compare_claim_documents(
     form: ClaimFormExtraction,
     report: AccidentReportExtraction,
@@ -86,26 +106,8 @@ def compare_claim_documents(
         set(form.declared_damage)
         == set(report.reported_damage)
     )
-    quote_damage = []
-    unmapped_quote_items = []
-
-    for item in quote.parts:
-        normalized = item.description.casefold()
-
-        damage = QUOTE_DAMAGE_MAP.get(
-            normalized
-        )
-
-        if damage is None:
-            unmapped_quote_items.append(
-                item.description
-            )
-            continue
-
-        quote_damage.append(damage)
-        declared = set(
-        form.declared_damage
-    )
+    quote_damage, unmapped_quote_items = map_quote_damage_types(quote)
+    declared = set(form.declared_damage)
 
     additional_quote_damage = tuple(
         damage

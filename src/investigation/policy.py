@@ -11,7 +11,8 @@ from investigation.models import InvestigationSignal, ReviewPriority, SignalCode
 HISTORICAL_CODES = frozenset({
     SignalCode.RECENT_CLAIM_FREQUENCY, SignalCode.PREVIOUS_ANOMALOUS_CLAIMS,
 })
-V1_CODES = frozenset(SignalCode) - HISTORICAL_CODES
+MULTIMODAL_CODES = frozenset({SignalCode.VISUAL_ADDITIONAL_DAMAGE})
+V1_CODES = frozenset(SignalCode) - HISTORICAL_CODES - MULTIMODAL_CODES
 
 
 class InvestigationPolicy(BaseModel):
@@ -40,6 +41,8 @@ class InvestigationPolicy(BaseModel):
     recent_claims_30_days_threshold: int | None = Field(default=None, ge=1)
     recent_claims_365_days_threshold: int | None = Field(default=None, ge=1)
     previous_anomalous_claims_threshold: int | None = Field(default=None, ge=1)
+    # Explicit opt-in keeps the existing v1/v2 behavior and API defaults intact.
+    multimodal_enabled: bool = False
 
     @model_validator(mode="after")
     def validate_score_rules(self) -> "InvestigationPolicy":
@@ -48,11 +51,17 @@ class InvestigationPolicy(BaseModel):
             self.recent_claims_365_days_threshold,
             self.previous_anomalous_claims_threshold,
         ))
-        expected = set(SignalCode) if history_enabled else V1_CODES
+        expected = set(V1_CODES)
+        if history_enabled:
+            expected.update(HISTORICAL_CODES)
+        if self.multimodal_enabled:
+            expected.update(MULTIMODAL_CODES)
         if set(self.signal_weights) != expected:
             raise ValueError("signal_weights must cover exactly the enabled signal codes")
         if self.version == "investigation_policy_v1" and history_enabled:
             raise ValueError("Historical rules require a new policy version")
+        if self.version in {"investigation_policy_v1", "investigation_policy_v2"} and self.multimodal_enabled:
+            raise ValueError("Multimodal rules require a new policy version")
         if any(weight < 0 for weight in self.signal_weights.values()):
             raise ValueError("signal weights must be nonnegative")
         if not (
@@ -109,5 +118,16 @@ INVESTIGATION_POLICY_V2 = InvestigationPolicy(
     recent_claims_30_days_threshold=3,
     recent_claims_365_days_threshold=5,
     previous_anomalous_claims_threshold=2,
+)
+INVESTIGATION_POLICY_V3 = InvestigationPolicy(
+    **{
+        **INVESTIGATION_POLICY_V2.model_dump(),
+        "version": "investigation_policy_v3",
+        "signal_weights": {
+            **INVESTIGATION_POLICY_V2.signal_weights,
+            SignalCode.VISUAL_ADDITIONAL_DAMAGE: 12,
+        },
+        "multimodal_enabled": True,
+    }
 )
 DEFAULT_INVESTIGATION_POLICY = INVESTIGATION_POLICY_V2

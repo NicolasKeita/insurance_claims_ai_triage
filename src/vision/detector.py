@@ -1,6 +1,7 @@
 """Lazy Ultralytics adapter and a deterministic fake for dataset-free tests."""
 
 import math
+import hashlib
 from collections.abc import Callable, Mapping
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -59,6 +60,71 @@ def _list(value: Any) -> list:
     return list(value)
 
 
+def local_model_metadata(path: Path) -> VisionModelMetadata:
+    """Snapshot identity of local weights without loading any ML framework."""
+    path = Path(path).resolve()
+    digest = None
+    if path.is_file():
+        sha = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                sha.update(chunk)
+        digest = f"sha256:{sha.hexdigest()}"
+    try:
+        library_version = version("ultralytics")
+    except PackageNotFoundError:
+        library_version = None
+    return VisionModelMetadata(
+        identifier=str(path), version=digest, framework="ultralytics", framework_version=library_version,
+    )
+
+
+def extract_ultralytics_rows(result: Any) -> tuple[list, list, list, list | None]:
+    """Small shared extraction layer for the two segmentation adapters."""
+    boxes = getattr(result, "boxes", None)
+    if boxes is None:
+        return [], [], [], None
+    coordinates, classes, confidences = _list(boxes.xyxyn), _list(boxes.cls), _list(boxes.conf)
+    if not len(coordinates) == len(classes) == len(confidences):
+        raise DetectorOutputError("Detector box/class/confidence counts differ")
+    masks = getattr(result, "masks", None)
+    polygons = list(masks.xyn) if masks is not None else None
+    if polygons is not None and len(polygons) != len(coordinates):
+        raise DetectorOutputError("Detector mask and box counts differ")
+    return coordinates, classes, confidences, polygons
+
+
+def normalized_detection_geometry(box: Any, contour: Any | None, index: int):
+    """Reuse the step29 geometry, retaining explicit missing-mask warnings."""
+    if len(box) != 4:
+        raise DetectorOutputError("Detector box must contain four normalized coordinates")
+    bounding_box = NormalizedBoundingBox(x_min=box[0], y_min=box[1], x_max=box[2], y_max=box[3])
+    if contour is None:
+        return bounding_box, None, []
+    points = _list(contour)
+    if any(not isinstance(point, (list, tuple)) or len(point) != 2 for point in points):
+        raise DetectorOutputError("Each polygon point must contain x and y")
+    normalized_points = [NormalizedPoint(x=point[0], y=point[1]) for point in points]
+    if len(points) < 3:
+        return bounding_box, None, [f"Detection {index} has no usable segmentation polygon; bounding box retained."]
+    area_twice = sum(
+        point.x * normalized_points[(position + 1) % len(normalized_points)].y
+        - normalized_points[(position + 1) % len(normalized_points)].x * point.y
+        for position, point in enumerate(normalized_points)
+    )
+    if abs(area_twice) <= 1e-12:
+        from shapely import make_valid
+        from shapely.geometry import Polygon
+
+        geometry = Polygon([(point.x, point.y) for point in normalized_points])
+        # A retraced thin contour has no area. A self-crossing bowtie encloses
+        # real regions after topology repair and must be rejected, not boxed.
+        if make_valid(geometry).area > 1e-12:
+            raise DetectorOutputError("Detector returned an invalid self-crossing segmentation polygon")
+        return bounding_box, None, [f"Detection {index} has a zero-area segmentation contour; bounding box retained."]
+    return bounding_box, NormalizedPolygon(points=normalized_points), []
+
+
 def category_mapping_from_model_names(names: Any, *, require_complete: bool = False) -> dict[int, VisualDamageType]:
     if isinstance(names, (list, tuple)):
         names = dict(enumerate(names))
@@ -87,16 +153,7 @@ def map_ultralytics_result(
     """Convert framework-like values without importing Ultralytics or torch."""
     VisionSettings(confidence_threshold=confidence_threshold)
     mapping = category_mapping_from_model_names(result.names)
-    boxes = getattr(result, "boxes", None)
-    if boxes is None:
-        return ImageDamageAssessment(filename=filename, width=width, height=height)
-    coordinates, classes, confidences = _list(boxes.xyxyn), _list(boxes.cls), _list(boxes.conf)
-    if not len(coordinates) == len(classes) == len(confidences):
-        raise DetectorOutputError("Detector box/class/confidence counts differ")
-    masks = getattr(result, "masks", None)
-    polygons = list(masks.xyn) if masks is not None else None
-    if polygons is not None and len(polygons) != len(coordinates):
-        raise DetectorOutputError("Detector mask and box counts differ")
+    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result)
     detections = []
     assessment_warnings = []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
@@ -105,32 +162,11 @@ def map_ultralytics_result(
             raise DetectorOutputError(f"Unknown or invalid predicted damage class: {class_id!r}")
         if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not math.isfinite(confidence) or not 0 <= confidence <= 1:
             raise DetectorOutputError("Predicted confidence must be finite and between 0 and 1")
-        if len(box) != 4:
-            raise DetectorOutputError("Detector box must contain four normalized coordinates")
         try:
-            bounding_box = NormalizedBoundingBox(x_min=box[0], y_min=box[1], x_max=box[2], y_max=box[3])
-            polygon = None
-            if polygons is not None:
-                points = _list(polygons[index])
-                if any(not isinstance(point, (list, tuple)) or len(point) != 2 for point in points):
-                    raise DetectorOutputError("Each polygon point must contain x and y")
-                normalized_points = [NormalizedPoint(x=point[0], y=point[1]) for point in points]
-                if len(points) < 3:
-                    assessment_warnings.append(f"Detection {index} has no usable segmentation polygon; bounding box retained.")
-                else:
-                    # Contours of a thin binary mask can retrace their points
-                    # and enclose zero area even with three or more vertices.
-                    # Validate coordinates first: only this known contour
-                    # degeneracy may degrade to a box with a warning.
-                    area_twice = sum(
-                        point.x * normalized_points[(position + 1) % len(normalized_points)].y
-                        - normalized_points[(position + 1) % len(normalized_points)].x * point.y
-                        for position, point in enumerate(normalized_points)
-                    )
-                    if abs(area_twice) <= 1e-12:
-                        assessment_warnings.append(f"Detection {index} has a zero-area segmentation contour; bounding box retained.")
-                    else:
-                        polygon = NormalizedPolygon(points=normalized_points)
+            bounding_box, polygon, warnings = normalized_detection_geometry(
+                box, polygons[index] if polygons is not None else None, index,
+            )
+            assessment_warnings.extend(warnings)
             if confidence >= confidence_threshold:
                 detections.append(VisualDamageDetection(
                     damage_type=mapping[int(class_id)], confidence=confidence,
@@ -139,7 +175,7 @@ def map_ultralytics_result(
                 ))
         except ValidationError as error:
             raise DetectorOutputError("Detector returned invalid normalized damage geometry") from error
-    if masks is None and detections:
+    if polygons is None and detections:
         assessment_warnings.append("Segmentation masks unavailable for these detections; bounding boxes retained.")
     return ImageDamageAssessment(
         filename=filename, width=width, height=height,
@@ -152,6 +188,7 @@ class UltralyticsDamageDetector:
         self.settings = settings or VisionSettings.from_env()
         self._model_factory = model_factory
         self._model = None
+        self._metadata = None
         self._load_lock = Lock()
 
     @property
@@ -160,13 +197,9 @@ class UltralyticsDamageDetector:
 
     @property
     def model_metadata(self) -> VisionModelMetadata:
-        try:
-            library_version = version("ultralytics")
-        except PackageNotFoundError:
-            library_version = None
-        return VisionModelMetadata(
-            identifier=str(self.settings.model_path.resolve()), framework="ultralytics", framework_version=library_version,
-        )
+        if self._metadata is None or self._metadata.version is None:
+            self._metadata = local_model_metadata(self.settings.model_path)
+        return self._metadata
 
     def _load_model(self):
         with self._load_lock:

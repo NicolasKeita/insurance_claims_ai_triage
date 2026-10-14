@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session
 from claims.consistency import ClaimConsistencyReport
 from claims.models import Claim
 from investigation.engine import assess_investigation
-from investigation.policy import INVESTIGATION_POLICY_V2
+from investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.features import TriageFeatures, calculate_vehicle_age, count_consistency_issues
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import AssessmentRepository, ClaimNotFoundError, ClaimRepository
+from persistence.vision_assessments import VisionAssessmentRepository
+from vision.models import ClaimMultimodalVisionAssessment
 
 
 def features_from_stored_claim(claim: Claim, consistency: ClaimConsistencyReport) -> TriageFeatures:
@@ -50,6 +52,37 @@ def assess_stored_claim(
         consistency=consistency, anomaly=anomaly.assessment, features=features,
         history=history, policy=INVESTIGATION_POLICY_V2,
     )
+    repository = AssessmentRepository(session)
+    repository.add_anomaly(claim_id, anomaly)
+    return repository.add_investigation(claim_id, result).result
+
+
+def assess_stored_claim_multimodal(
+    session: Session, claim_id: str, consistency: ClaimConsistencyReport,
+    anomaly_assessor: Callable[[TriageFeatures], RegisteredAnomalyAssessment],
+    visual_assessment: ClaimMultimodalVisionAssessment,
+):
+    """Append computed vision, anomaly and v3 investigation atomically.
+
+    The caller commits. Vision inference is completed outside this SQL unit of
+    work; neither this service nor an agent initiates it implicitly.
+    """
+    claim = ClaimRepository(session).get_by_claim_id(claim_id)
+    if claim is None:
+        raise ClaimNotFoundError(f"Claim {claim_id} does not exist")
+    if visual_assessment.claim_id != claim_id:
+        raise ValueError("Visual assessment belongs to a different claim")
+    if set(visual_assessment.consistency.declared_damage_types) != set(claim.declared_damage):
+        raise ValueError("Visual assessment declaration snapshot differs from the stored claim")
+    history = HistoricalClaimRepository(session).get_profile(claim_id)
+    features = features_from_stored_claim(claim, consistency)
+    anomaly = anomaly_assessor(features)
+    result = assess_investigation(
+        consistency=consistency, anomaly=anomaly.assessment, features=features,
+        history=history, policy=INVESTIGATION_POLICY_V3,
+        visual_assessment=visual_assessment,
+    )
+    VisionAssessmentRepository(session).add(visual_assessment)
     repository = AssessmentRepository(session)
     repository.add_anomaly(claim_id, anomaly)
     return repository.add_investigation(claim_id, result).result

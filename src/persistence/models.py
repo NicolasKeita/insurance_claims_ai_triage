@@ -185,6 +185,23 @@ class InvestigationAssessmentRow(AssessmentMixin, Base):
     signals: Mapped[list[dict]] = mapped_column(JSONB)
 
 
+class VisionAssessmentRow(AssessmentMixin, Base):
+    """Append-only multimodal snapshots; normalized polygons, never raster masks."""
+
+    __tablename__ = "vision_assessments"
+    __table_args__ = (
+        UniqueConstraint("insertion_order"),
+        Index("ix_vision_assessments_claim_latest", "claim_pk", "created_at", "insertion_order"),
+    )
+    insertion_order: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    damage_model_identifier: Mapped[str]
+    damage_model_version: Mapped[str | None]
+    part_model_identifier: Mapped[str]
+    part_model_version: Mapped[str | None]
+    fusion_policy_version: Mapped[str]
+    structured_results: Mapped[dict] = mapped_column(JSONB)
+
+
 class AgentRunRow(IdentityMixin, Base):
     """Immutable audit snapshot; no relationship cascades or business writes."""
     __tablename__ = "agent_runs"

@@ -322,4 +322,5 @@ def test_engine_has_no_triage_workflow_input():
         "features",
         "policy",
         "history",
+        "visual_assessment",
     }
