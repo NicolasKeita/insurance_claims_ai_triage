@@ -184,6 +184,112 @@ def test_base_checkpoint_task_must_be_segmentation(prepared):
     assert not config.output_dir.exists()
 
 
+def interrupted_fixture(config, manifest):
+    directory = config.output_dir / "train/weights"
+    directory.mkdir(parents=True)
+    (directory / "best.pt").write_bytes(b"selected best at epoch 10")
+    (directory / "last.pt").write_bytes(b"resumable state at epoch 12")
+    base = config.output_dir.parent / "original_pretrained.pt"
+    base.write_bytes(b"original pretrained fixture")
+    metadata = {
+        "config": config.payload(), "dataset": copy.deepcopy(dataset_provenance(config.dataset_yaml, manifest)),
+        "confidence_threshold": 0.25, "checkpoint_selection_split": "val",
+        "epochs_completed": 12, "best_epoch": 10, "elapsed_seconds": 123.5,
+        "base_checkpoint": str(base), "base_checkpoint_sha256": file_sha256(base),
+        "best_checkpoint_sha256": file_sha256(directory / "best.pt"),
+        "last_checkpoint_sha256": file_sha256(directory / "last.pt"),
+    }
+    (config.output_dir / "recovery_training_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    return metadata
+
+
+class ResumeStub(OrchestrationStub):
+    def __init__(self, config, metadata):
+        super().__init__()
+        self.config = config
+        self.ckpt = {
+            "epoch": 11, "optimizer": {"fixture": "retained"}, "best_fitness": 1.0,
+            "stopper": {"best_fitness": 1.0, "best_epoch": 8},
+            "train_args": {
+                **{key: getattr(config, key) for key in ("epochs", "imgsz", "batch", "patience", "seed", "workers")},
+                "optimizer": "AdamW", "task": "segment", "split": "val", "val": True, "pretrained": True,
+                "data": str(config.dataset_yaml), "project": str(config.output_dir), "name": "train",
+            },
+        }
+
+    def train(self, **kwargs):
+        self.training_kwargs = kwargs
+        self.trainer = SimpleNamespace(
+            best=self.config.output_dir / "train/weights/best.pt",
+            last=self.config.output_dir / "train/weights/last.pt",
+            start_epoch=12, epochs=100, epoch=12, device="cpu", fitness=0.8,
+            best_fitness=0.0, stopper=SimpleNamespace(best_fitness=0.0, best_epoch=0),
+        )
+        for callback in self.callbacks.get("on_pretrain_routine_end", []):
+            callback(self.trainer)
+        for callback in self.callbacks["on_model_save"]:
+            callback(self.trainer)
+        self.trainer.epoch = 99
+        self.trainer.last.write_bytes(b"final resumed fixture")
+        for callback in self.callbacks["on_model_save"]:
+            callback(self.trainer)
+        return example_metric()
+
+
+def test_resume_retains_original_best_epoch_optimizer_stopper_and_total_budget(prepared):
+    config, manifest = prepared
+    metadata = interrupted_fixture(config, manifest)
+    stub = ResumeStub(config, metadata)
+    loaded = []
+    def factory(path):
+        loaded.append(path)
+        return stub
+    summary = run_training(config, model_factory=factory, environment_provider=lambda: {}, dataset_loader=lambda _: manifest, resume=True)
+    last = str(config.output_dir / "train/weights/last.pt")
+    assert loaded == [last] and stub.training_kwargs["resume"] == last
+    assert stub.training_kwargs["save_dir"] == str(config.output_dir / "train")
+    assert stub.training_kwargs["epochs"] == 100 and summary["epochs_completed"] == 100
+    assert summary["best_epoch"] == 10 and summary["early_stopping_best_epoch"] == 8
+    assert stub.trainer.best_fitness == stub.trainer.stopper.best_fitness == 1.0
+    assert summary["base_checkpoint_sha256"] == metadata["base_checkpoint_sha256"]
+    assert summary["best_checkpoint_sha256"] == metadata["best_checkpoint_sha256"]
+    assert summary["elapsed_seconds_before_resume"] == 123.5 and summary["elapsed_seconds"] >= 123.5
+    assert summary["resumed"] is True and summary["resume_from_epoch"] == 12
+    assert not (config.output_dir / "train2").exists()
+
+
+@pytest.mark.parametrize("change", ["config", "dataset", "threshold", "best", "last", "base", "completed", "evaluated"])
+def test_resume_refuses_changed_or_completed_baseline_before_model_loading(prepared, change):
+    config, manifest = prepared
+    metadata = interrupted_fixture(config, manifest)
+    if change == "config":
+        metadata["config"]["seed"] = 999
+    elif change == "dataset":
+        metadata["dataset"]["annotation_hashes"]["val"] = "f" * 64
+    elif change == "threshold":
+        metadata["confidence_threshold"] = 0.5
+    elif change in ("best", "last"):
+        (config.output_dir / f"train/weights/{change}.pt").write_bytes(b"changed")
+    elif change == "base":
+        Path(metadata["base_checkpoint"]).write_bytes(b"changed")
+    elif change == "completed":
+        (config.output_dir / "training_summary.json").write_text("{}")
+    else:
+        (config.output_dir / "evaluation").mkdir()
+    (config.output_dir / "recovery_training_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="Resume"):
+        run_training(config, model_factory=lambda _: pytest.fail("must not load"), environment_provider=lambda: pytest.fail("must not import"), dataset_loader=lambda _: manifest, resume=True)
+
+
+def test_resume_rejects_stripped_checkpoint_without_optimizer(prepared):
+    config, manifest = prepared
+    stub = ResumeStub(config, interrupted_fixture(config, manifest))
+    stub.ckpt["optimizer"] = None
+    with pytest.raises(ValueError, match="optimizer state"):
+        run_training(config, model_factory=lambda _: stub, environment_provider=lambda: {}, dataset_loader=lambda _: manifest, resume=True)
+    assert stub.training_kwargs is None
+
+
 def test_test_evaluation_uses_only_exact_val_selected_best(prepared):
     config, manifest = prepared
     completed_fixture(config, manifest)

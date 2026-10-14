@@ -113,6 +113,8 @@ $env:DAMAGE_DATASET_YAML = "$env:CARDD_HF_PREPARED_DIR\dataset.yaml"
 $env:DAMAGE_CONFIDENCE_THRESHOLD = "0.25"
 $env:DAMAGE_DEVICE = "0"
 .\.venv-vision\Scripts\python.exe .\scripts\train_damage_segmentation.py
+# Resume the same interrupted run (keep the original config, data and threshold):
+# .\.venv-vision\Scripts\python.exe .\scripts\train_damage_segmentation.py --resume
 .\.venv-vision\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
 .\.venv-vision\Scripts\python.exe .\scripts\check_damage_test_smoke.py --max-images 12
 .\.venv-vision\Scripts\python.exe .\scripts\check_claim_vision.py
@@ -140,6 +142,14 @@ FP/FN analysis or a representative estimate of every failure mode. Correct and
 incorrect segmentation examples also use diagnostic polygon raster IoU, separate
 from framework mask AP. The TEST smoke follows completed evaluation and validates
 checkpoint hash, provenance and the original threshold before inference.
+
+Interrupted runs resume with `train_damage_segmentation.py --resume` using the
+same `train/weights/last.pt`, optimizer/early-stopping state and original total
+epoch budget. `recovery_training_metadata.json` locks config, threshold, dataset
+provenance and checkpoint hashes; it is refreshed after every saved epoch.
+Completed or evaluated runs cannot be resumed. `best.pt` stays selected on VAL
+across the interruption. Native `results.csv` time restarts on resume;
+`training_summary.json` records cumulative compute time and excludes downtime.
 
 `UltralyticsDamageDetector` loads an existing local trained checkpoint lazily,
 once per instance. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` configure inference.
@@ -169,6 +179,16 @@ alias. Standard pytest uses synthetic fixtures/stubs and requires no FiftyOne,
 MongoDB, dataset, weights, GPU or network. Real model tests require
 `RUN_VISION_TESTS=1` plus a local checkpoint and never download/train. The durable
 execution record and actual provenance are in `CODEX_REPORT_STEP_29.md`.
+
+The completed local baseline ran 100 epochs on CUDA and selected epoch 90 on VAL.
+On the frozen 422-image TEST split, mask mAP50 is 66.03% and mAP50-95 is 52.24%.
+Per-class mask mAP50-95 ranges from 9.72% for crack to 93.82% for glass shatter;
+the report contains the full box/mask tables and observed failures. Twelve real
+TEST inference images produced 21 domain detections with polygons, and all saved
+overlays were visually reviewed. Domain polygon overlays use external contours,
+so holes may be filled; framework mask AP uses binary masks. MLflow/Registry are
+deferred, and reference-claim inference remains unavailable because its JPEGs
+are empty. These measurements describe this project's split of the HF mirror.
 
 ## Meaning of the outputs
 

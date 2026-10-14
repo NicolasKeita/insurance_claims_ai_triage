@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import platform
 import sys
@@ -120,12 +121,75 @@ def disable_builtin_mlflow_callbacks(trainer: Any) -> None:
         ]
 
 
+def load_resume_metadata(
+    config: DamageTrainingConfig, manifest: dict[str, Any], threshold: float,
+) -> dict[str, Any]:
+    """Refuse to resume a different, completed, or already evaluated baseline."""
+    for name in ("training_summary.json", "test_metrics.json", "evaluation", "test_smoke"):
+        if (config.output_dir / name).exists():
+            raise ValueError("Resume refused: completed training/evaluation artifacts already exist")
+    path = config.output_dir / "recovery_training_metadata.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"Validated recovery metadata required before resume: {path}")
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    if metadata.get("config") != config.payload():
+        raise ValueError("Resume configuration differs from the interrupted baseline")
+    if metadata.get("dataset") != dataset_provenance(config.dataset_yaml, manifest):
+        raise ValueError("Resume dataset provenance differs from the interrupted baseline")
+    if metadata.get("confidence_threshold") != threshold:
+        raise ValueError("Resume confidence threshold differs from the interrupted baseline")
+    if metadata.get("checkpoint_selection_split", "val") != "val":
+        raise ValueError("Resume requires a VAL-selected baseline")
+    completed, best_epoch = metadata.get("epochs_completed"), metadata.get("best_epoch")
+    if (type(completed) is not int or not 0 < completed < config.epochs
+            or type(best_epoch) is not int or not 0 < best_epoch <= completed):
+        raise ValueError("Resume epochs must identify an incomplete baseline and its selected best epoch")
+    elapsed = metadata.get("elapsed_seconds")
+    if not isinstance(elapsed, (int, float)) or isinstance(elapsed, bool) or not math.isfinite(elapsed) or elapsed < 0:
+        raise ValueError("Resume metadata requires a finite elapsed training duration")
+    for name in ("best", "last"):
+        checkpoint = config.output_dir / f"train/weights/{name}.pt"
+        if not checkpoint.is_file() or file_sha256(checkpoint) != metadata.get(f"{name}_checkpoint_sha256"):
+            raise ValueError(f"Resume {name}.pt SHA-256 differs from validated recovery metadata")
+    base = Path(metadata.get("base_checkpoint", ""))
+    if not base.is_file() or file_sha256(base) != metadata.get("base_checkpoint_sha256"):
+        raise ValueError("Resume original pretrained checkpoint SHA-256 differs from recovery metadata")
+    return metadata
+
+
+def validate_resume_checkpoint(
+    model: Any, config: DamageTrainingConfig, metadata: dict[str, Any], manifest: dict[str, Any],
+) -> dict[str, Any]:
+    """Inspect the loaded local checkpoint without permitting scratch fallback."""
+    checkpoint = getattr(model, "ckpt", None)
+    if (not isinstance(checkpoint, dict) or checkpoint.get("optimizer") is None
+            or checkpoint.get("epoch") != metadata["epochs_completed"] - 1):
+        raise ValueError("last.pt must retain optimizer state and the validated incomplete epoch")
+    args = checkpoint.get("train_args", {})
+    expected = {key: getattr(config, key) for key in (
+        "epochs", "imgsz", "batch", "patience", "seed", "workers",
+    )}
+    expected.update({"task": "segment", "split": "val", "val": True, "pretrained": True})
+    if any(args.get(key) != value for key, value in expected.items()):
+        raise ValueError("last.pt training arguments differ from the configured TRAIN/VAL baseline")
+    if config.optimizer != "auto" and args.get("optimizer") != config.optimizer:
+        raise ValueError("last.pt optimizer differs from the configured baseline")
+    for key, expected_path in (("data", config.dataset_yaml), ("project", config.output_dir)):
+        if Path(args.get(key, "")).resolve() != expected_path.resolve():
+            raise ValueError(f"last.pt {key} path differs from the interrupted baseline")
+    if args.get("name") != "train":
+        raise ValueError("last.pt must belong to the exact train run directory")
+    verify_class_names(getattr(model, "names", None), manifest["category_mapping"])
+    return checkpoint
+
+
 def run_training(
     config: DamageTrainingConfig,
     *,
     model_factory: Callable[[str], Any],
     environment_provider: Callable[[], dict[str, Any]],
     dataset_loader: Callable[[Path], dict[str, Any]] | None = None,
+    resume: bool = False,
 ) -> dict[str, Any]:
     """Train on TRAIN; Ultralytics chooses best/early stopping from VAL only.
 
@@ -136,15 +200,40 @@ def run_training(
         from vision.dataset import load_prepared_dataset
         dataset_loader = load_prepared_dataset
     manifest = dataset_loader(config.dataset_yaml)
-    if config.output_dir.exists():
+    from vision.config import VisionSettings
+    threshold = VisionSettings.from_env().confidence_threshold
+    recovery = load_resume_metadata(config, manifest, threshold) if resume else None
+    if config.output_dir.exists() and not resume:
         raise FileExistsError(f"Run directory already exists: {config.output_dir}. Choose a new version/output_dir.")
     environment = environment_provider()
-    model = model_factory(config.base_model)
+    initial_checkpoint = str(config.output_dir / "train/weights/last.pt") if resume else config.base_model
+    model = model_factory(initial_checkpoint)
     if getattr(model, "task", None) != "segment":
         raise ValueError("Base weights must contain an instance segmentation model (task=segment)")
     model.add_callback("on_pretrain_routine_start", disable_builtin_mlflow_callbacks)
-    config.output_dir.mkdir(parents=True, exist_ok=False)
-    progress: dict[str, Any] = {"best_epoch": None}
+    saved_checkpoint = validate_resume_checkpoint(model, config, recovery, manifest) if recovery else None
+    if not resume:
+        config.output_dir.mkdir(parents=True, exist_ok=False)
+    progress: dict[str, Any] = {"best_epoch": recovery["best_epoch"] if recovery else None}
+    provenance = dataset_provenance(config.dataset_yaml, manifest)
+    previous_elapsed = float(recovery["elapsed_seconds"]) if recovery else 0.0
+    base_checkpoint = Path(recovery["base_checkpoint"] if recovery else getattr(model, "ckpt_path", config.base_model)).resolve()
+    base_checkpoint_sha256 = recovery["base_checkpoint_sha256"] if recovery else (file_sha256(base_checkpoint) if base_checkpoint.is_file() else None)
+    started = time.perf_counter()
+
+    def restore_resume_stopper(trainer: Any) -> None:
+        if trainer.start_epoch != recovery["epochs_completed"] or trainer.epochs != config.epochs:
+            raise RuntimeError("Framework resume did not preserve the expected start epoch and total epoch budget")
+        saved_stopper = saved_checkpoint.get("stopper") or {}
+        trainer.best_fitness = saved_checkpoint["best_fitness"]
+        trainer.stopper.best_fitness = saved_stopper.get("best_fitness", saved_checkpoint["best_fitness"])
+        trainer.stopper.best_epoch = saved_stopper.get("best_epoch", recovery["best_epoch"])
+        trainer.stopper.possible_stop = (
+            recovery["epochs_completed"] - trainer.stopper.best_epoch >= config.patience - 1
+        ) if config.patience else False
+
+    if recovery:
+        model.add_callback("on_pretrain_routine_end", restore_resume_stopper)
 
     def record_checkpoint_progress(trainer: Any) -> None:
         # save_model writes best.pt whenever fitness equals best_fitness,
@@ -159,23 +248,32 @@ def run_training(
             "updated_at": datetime.now(timezone.utc).isoformat(),
         })
         write_json(config.output_dir / "training_progress.json", progress)
+        recovery_state = {
+            "config": config.payload(), "dataset": provenance,
+            "confidence_threshold": threshold, "checkpoint_selection_split": "val",
+            "base_checkpoint": str(base_checkpoint), "base_checkpoint_sha256": base_checkpoint_sha256,
+            "best_checkpoint_sha256": file_sha256(Path(trainer.best)),
+            "last_checkpoint_sha256": file_sha256(Path(trainer.last)),
+            "best_epoch": progress["best_epoch"], "epochs_completed": epoch_completed,
+            "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
+            "resume_count": (recovery.get("resume_count", 0) if recovery else 0) + int(resume),
+        }
+        write_json(config.output_dir / "recovery_training_metadata.json", recovery_state)
 
     model.add_callback("on_model_save", record_checkpoint_progress)
-    base_checkpoint = Path(getattr(model, "ckpt_path", config.base_model)).resolve()
-    base_checkpoint_sha256 = file_sha256(base_checkpoint) if base_checkpoint.is_file() else None
-    from vision.config import VisionSettings
     from vision.evaluation import extract_segmentation_metrics
     from vision.tracking import vision_tracking_run
-    threshold = VisionSettings.from_env().confidence_threshold
-    started = time.perf_counter()
     with vision_tracking_run(config) as tracking:
-        result = model.train(
+        training_arguments = dict(
             data=str(config.dataset_yaml), epochs=config.epochs, imgsz=config.imgsz,
             batch=config.batch, patience=config.patience, seed=config.seed,
             device=config.device, workers=config.workers, optimizer=config.optimizer,
             project=str(config.output_dir), name="train", exist_ok=False,
             pretrained=True, val=True, split="val", save=True, plots=True,
         )
+        if recovery:
+            training_arguments.update({"resume": initial_checkpoint, "save_dir": str(config.output_dir / "train")})
+        result = model.train(**training_arguments)
         trainer = model.trainer
         expected_best = config.output_dir / "train/weights/best.pt"
         actual_best = Path(trainer.best).resolve()
@@ -200,7 +298,7 @@ def run_training(
             "schema_version": 1, "status": "completed", "task": "segment",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "config": config.payload(), "environment": environment,
-            "dataset": dataset_provenance(config.dataset_yaml, manifest),
+            "dataset": provenance,
             "confidence_threshold": threshold,
             "checkpoint_selection_split": "val",
             "training_optimization_split": "train",
@@ -220,7 +318,13 @@ def run_training(
             "best_validation_fitness": float(trainer.best_fitness) if getattr(trainer, "best_fitness", None) is not None else None,
             "stopped_before_requested_epochs": early_stopped,
             "early_stopping_triggered": early_stopped,
-            "elapsed_seconds": time.perf_counter() - started,
+            "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
+            "elapsed_seconds_before_resume": previous_elapsed,
+            "elapsed_seconds_this_execution": time.perf_counter() - started,
+            "elapsed_seconds_method": "Sum of checkpoint-recorded prior duration and this execution; excludes interruption downtime. Native results.csv time restarts for resumed segments.",
+            "resumed": resume,
+            "resume_from_epoch": recovery["epochs_completed"] if recovery else None,
+            "resume_input_checkpoint_sha256": recovery["last_checkpoint_sha256"] if recovery else None,
             "validation_metrics": metrics,
             "reproducibility": "seeded / reproducible configuration; bitwise GPU determinism is not guaranteed",
             "registry": "NOT EXECUTED — custom vision registry packaging deferred; no production alias",
