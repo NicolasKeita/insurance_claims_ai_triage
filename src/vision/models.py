@@ -176,6 +176,8 @@ class DamagePartAssociation(VisionDomainModel):
             raise ValueError("Intersection area cannot exceed either source area")
         containment = self.intersection_area / self.damage_area
         union = self.damage_area + self.part_area - self.intersection_area
+        if union <= 0:
+            raise ValueError("Association union area must be positive")
         if (not math.isclose(self.damage_containment_ratio, containment, rel_tol=1e-9, abs_tol=1e-12)
                 or not math.isclose(self.iou, self.intersection_area / union, rel_tol=1e-9, abs_tol=1e-12)):
             raise ValueError("Association containment and IoU must agree with the preserved areas")
@@ -281,6 +283,11 @@ class ImageVisualAssessment(VisionDomainModel):
                 if (association.part_detection_index >= len(parts.detections)
                         or association.candidate_part != parts.detections[association.part_detection_index]):
                     raise ValueError("Association candidate part differs from its source part detection")
+        # Reproduce deterministic geometry and assignment from stored masks,
+        # without invoking a detector. This also protects JSONB round-trips.
+        from vision.fusion import validate_image_association_snapshot
+
+        validate_image_association_snapshot(self)
         return self
 
     @computed_field

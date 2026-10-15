@@ -45,8 +45,12 @@ def vision_assessment_to_row(
     )
 
 
-def vision_assessment_from_row(row: VisionAssessmentRow) -> StoredVisionAssessment:
+def vision_assessment_from_row(
+    row: VisionAssessmentRow, *, expected_claim_id: str | None = None,
+) -> StoredVisionAssessment:
     result = ClaimMultimodalVisionAssessment.model_validate(row.structured_results)
+    if expected_claim_id is not None and result.claim_id != expected_claim_id:
+        raise ValueError("Vision assessment snapshot belongs to a different claim")
     if (
         row.damage_model_identifier != result.damage_model_metadata.identifier
         or row.damage_model_version != result.damage_model_metadata.version
@@ -69,7 +73,7 @@ class VisionAssessmentRepository:
         row = vision_assessment_to_row(self.claims.require_pk(result.claim_id), result)
         self.session.add(row)
         self.session.flush()
-        return vision_assessment_from_row(row)
+        return vision_assessment_from_row(row, expected_claim_id=result.claim_id)
 
     def list_for_claim(self, claim_id: str, limit: int = 20) -> list[StoredVisionAssessment]:
         if type(limit) is not int or not 1 <= limit <= 100:
@@ -80,7 +84,7 @@ class VisionAssessmentRepository:
             .order_by(VisionAssessmentRow.created_at.desc(), VisionAssessmentRow.insertion_order.desc())
             .limit(limit)
         )
-        return [vision_assessment_from_row(row) for row in rows]
+        return [vision_assessment_from_row(row, expected_claim_id=claim_id) for row in rows]
 
     def latest_for_claim(self, claim_id: str) -> StoredVisionAssessment | None:
         records = self.list_for_claim(claim_id, limit=1)

@@ -9,8 +9,35 @@ from vision.taxonomy import VisualDamageType
 COLORS = dict(zip(VisualDamageType, ["#e65100", "#1565c0", "#6a1b9a", "#00838f", "#ad1457", "#2e7d32"]))
 
 
-def save_annotated_image(source: Path, assessment: ImageDamageAssessment, destination: Path) -> Path:
+def _paint_polygon(target, polygon, color, alpha):
+    """Display the stored mask, including holes and disconnected components."""
     from PIL import Image, ImageColor, ImageDraw
+
+    mask = Image.new("L", target.size)
+    painter = ImageDraw.Draw(mask)
+
+    def points(ring):
+        return [(point.x * (target.width - 1), point.y * (target.height - 1)) for point in ring]
+
+    def component(value):
+        painter.polygon(points(value.points), fill=alpha)
+        for hole in value.holes:
+            painter.polygon(points(hole), fill=0)
+        for child in value.components:
+            component(child)
+
+    component(polygon)
+    tint = Image.new("RGBA", target.size, (*ImageColor.getrgb(color), 0))
+    try:
+        tint.putalpha(mask)
+        target.alpha_composite(tint)
+    finally:
+        tint.close()
+        mask.close()
+
+
+def save_annotated_image(source: Path, assessment: ImageDamageAssessment, destination: Path) -> Path:
+    from PIL import Image, ImageDraw
 
     source, destination = Path(source), Path(destination)
     if source.resolve() == destination.resolve():
@@ -20,11 +47,9 @@ def save_annotated_image(source: Path, assessment: ImageDamageAssessment, destin
         if image.size != (assessment.width, assessment.height):
             raise ValueError("Assessment dimensions differ from the EXIF-oriented source image")
         overlay = Image.new("RGBA", image.size)
-        overlay_draw = ImageDraw.Draw(overlay)
         for detection in assessment.detections:
             if detection.polygon is not None:
-                points = [(point.x * (image.width - 1), point.y * (image.height - 1)) for point in detection.polygon.points]
-                overlay_draw.polygon(points, fill=(*ImageColor.getrgb(COLORS[detection.damage_type]), 75))
+                _paint_polygon(overlay, detection.polygon, COLORS[detection.damage_type], 75)
         rendered = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
         overlay.close()
         try:
@@ -56,7 +81,7 @@ def save_multimodal_annotated_image(
     Part contours are cyan; damage contours use the existing damage palette.
     """
     import textwrap
-    from PIL import Image, ImageColor, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont
 
     source, destination = Path(source), Path(destination)
     if source.resolve() == destination.resolve():
@@ -82,8 +107,9 @@ def save_multimodal_annotated_image(
             for index, detection in enumerate(detections):
                 color = "#00bcd4" if kind == "part" else COLORS[detection.damage_type]
                 if detection.polygon is not None:
-                    points = [(p.x * (image.width - 1), p.y * (image.height - 1)) for p in detection.polygon.points]
-                    painter.polygon(points, fill=(*ImageColor.getrgb(color), 40), outline=color, width=2)
+                    _paint_polygon(overlay, detection.polygon, color, 65)
+                    # Recreate the painter after compositing a polygon overlay.
+                    painter = ImageDraw.Draw(overlay)
                 else:
                     box = detection.bounding_box
                     painter.rectangle((box.x_min * (image.width - 1), box.y_min * (image.height - 1),

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.main import create_app
 from persistence.repositories import ClaimNotFoundError
@@ -44,3 +45,15 @@ def test_stored_vision_api_requires_database_without_loading_models(monkeypatch)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     with TestClient(create_app()) as client:
         assert client.get("/v1/claims/CLAIM-2026-00001/vision/latest").status_code == 503
+
+
+def test_stored_vision_database_failure_is_sanitized_and_never_returns_an_assessment():
+    class UnavailableStore:
+        def latest_for_claim(self, claim_id):
+            raise SQLAlchemyError("private database connection detail")
+
+    with TestClient(create_app(vision_store_loader=lambda _: UnavailableStore())) as client:
+        response = client.get("/v1/claims/CLAIM-2026-00001/vision/latest")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database operation failed"}
+    assert "private" not in response.text

@@ -80,7 +80,7 @@ def map_ultralytics_part_result(
     """No torch or Ultralytics import is needed to map framework-like output."""
     VehiclePartSettings(confidence_threshold=confidence_threshold)
     mapping = part_mapping_from_model_names(result.names)
-    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result)
+    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result, width=width, height=height)
     detections, warnings = [], []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
         if (isinstance(class_id, bool) or not isinstance(class_id, (int, float))
@@ -96,6 +96,8 @@ def map_ultralytics_part_result(
             if polygon is not None:
                 validated_polygon_geometry(polygon)
             warnings.extend(geometry_warnings)
+            if polygons is not None and polygons[index] is None:
+                warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
             if confidence >= confidence_threshold:
                 detections.append(VehiclePartDetection(
                     part_type=mapping[int(class_id)], confidence=confidence,
@@ -163,7 +165,7 @@ class UltralyticsVehiclePartDetector:
         image = load_validated_image(path, self.settings)
         try:
             model = self._load_model()
-            options = {"source": image, "conf": self.confidence_threshold, "verbose": False}
+            options = {"source": image, "conf": self.confidence_threshold, "verbose": False, "retina_masks": True}
             if self.settings.device is not None:
                 options["device"] = self.settings.device
             results = model.predict(**options)

@@ -854,6 +854,24 @@ scratch may be fully within a large bumper with a very small IoU. The versioned
 >=0.5 and containment >=0.6; a containment gap <=0.05 between eligible parts
 stays ambiguous. These thresholds await calibration on VAL.
 
+Both adapters request Ultralytics native image masks (`retina_masks=True`) and
+convert their binary foreground pixel cells into the existing `NormalizedPolygon`
+model. Shapely preserves holes and disconnected components; visualization renders
+them too. This avoids invalid merged `masks.xyn` contours without silently repairing
+polygons or substituting boxes for valid masks. Unexpected mask dimensions fail
+explicitly, protecting the shared EXIF-oriented coordinate space.
+
+An inference-only integration smoke reuses the previous local CarDD demonstration
+photos. It creates one independent, explicitly synthetic diagnostic claim context
+per photo, loads each local checkpoint once, and feeds the same photo to both
+models. No training, statistical evaluation, threshold tuning or database writes
+occur. Real declarations and quotes are unknown; its consistency/signals must be
+read as conditional on its synthetic inputs. Each run gets a new artifact directory.
+
+```powershell
+.\.venv-vision\Scripts\python.exe -X utf8 -u scripts/check_multimodal_integration_smoke.py --device 0 --max-images 12
+```
+
 `object` becomes `VehiclePartType.OTHER` and is excluded from business fusion.
 Only front bumper, hood and front left light map to existing business damage
 types; generic lights, unknown sides and other parts remain unmapped. Quote

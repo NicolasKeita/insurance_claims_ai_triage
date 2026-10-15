@@ -79,7 +79,7 @@ def local_model_metadata(path: Path) -> VisionModelMetadata:
     )
 
 
-def extract_ultralytics_rows(result: Any) -> tuple[list, list, list, list | None]:
+def extract_ultralytics_rows(result: Any, *, width: int, height: int) -> tuple[list, list, list, list | None]:
     """Small shared extraction layer for the two segmentation adapters."""
     boxes = getattr(result, "boxes", None)
     if boxes is None:
@@ -88,7 +88,15 @@ def extract_ultralytics_rows(result: Any) -> tuple[list, list, list, list | None
     if not len(coordinates) == len(classes) == len(confidences):
         raise DetectorOutputError("Detector box/class/confidence counts differ")
     masks = getattr(result, "masks", None)
-    polygons = list(masks.xyn) if masks is not None else None
+    data = getattr(masks, "data", None) if masks is not None else None
+    if data is not None:
+        from vision.masks import BinaryMaskGeometryError, native_mask_polygons
+        try:
+            polygons = native_mask_polygons(data, count=len(coordinates), width=width, height=height)
+        except BinaryMaskGeometryError as error:
+            raise DetectorOutputError(str(error)) from error
+    else:
+        polygons = list(masks.xyn) if masks is not None else None
     if polygons is not None and len(polygons) != len(coordinates):
         raise DetectorOutputError("Detector mask and box counts differ")
     return coordinates, classes, confidences, polygons
@@ -101,6 +109,8 @@ def normalized_detection_geometry(box: Any, contour: Any | None, index: int):
     bounding_box = NormalizedBoundingBox(x_min=box[0], y_min=box[1], x_max=box[2], y_max=box[3])
     if contour is None:
         return bounding_box, None, []
+    if isinstance(contour, NormalizedPolygon):
+        return bounding_box, contour, []
     points = _list(contour)
     if any(not isinstance(point, (list, tuple)) or len(point) != 2 for point in points):
         raise DetectorOutputError("Each polygon point must contain x and y")
@@ -153,7 +163,7 @@ def map_ultralytics_result(
     """Convert framework-like values without importing Ultralytics or torch."""
     VisionSettings(confidence_threshold=confidence_threshold)
     mapping = category_mapping_from_model_names(result.names)
-    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result)
+    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result, width=width, height=height)
     detections = []
     assessment_warnings = []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
@@ -167,6 +177,8 @@ def map_ultralytics_result(
                 box, polygons[index] if polygons is not None else None, index,
             )
             assessment_warnings.extend(warnings)
+            if polygons is not None and polygons[index] is None:
+                assessment_warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
             if confidence >= confidence_threshold:
                 detections.append(VisualDamageDetection(
                     damage_type=mapping[int(class_id)], confidence=confidence,
@@ -229,7 +241,7 @@ class UltralyticsDamageDetector:
         image = load_validated_image(path, self.settings)
         try:
             model = self._load_model()
-            options = {"source": image, "conf": self.confidence_threshold, "verbose": False}
+            options = {"source": image, "conf": self.confidence_threshold, "verbose": False, "retina_masks": True}
             if self.settings.device is not None:
                 options["device"] = self.settings.device
             results = model.predict(**options)

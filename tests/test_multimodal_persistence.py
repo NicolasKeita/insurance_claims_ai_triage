@@ -35,3 +35,10 @@ def test_row_metadata_corruption_cannot_silently_replace_snapshot_metadata():
     row.part_model_version = "different-version"
     with pytest.raises(ValueError, match="metadata differs"):
         vision_assessment_from_row(row)
+
+
+def test_embedded_claim_id_must_match_the_claim_selected_by_the_repository():
+    row = vision_assessment_to_row(uuid4(), make_visual_assessment(claim_id="CLAIM-OTHER"))
+    row.id, row.created_at = uuid4(), datetime.now(timezone.utc)
+    with pytest.raises(ValueError, match="different claim"):
+        vision_assessment_from_row(row, expected_claim_id="CLAIM-2026-00001")

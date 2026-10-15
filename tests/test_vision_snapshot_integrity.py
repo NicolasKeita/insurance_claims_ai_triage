@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from persistence.vision_assessments import vision_assessment_to_row
 from test_multimodal_investigation import make_visual_assessment
 from vision.geometry import PolygonGeometryError, validated_polygon_geometry
-from vision.models import ClaimMultimodalVisionAssessment, NormalizedPolygon
+from vision.models import ClaimMultimodalVisionAssessment, ImageVisualAssessment, NormalizedPolygon
 
 
 @pytest.mark.parametrize("mutation", [
@@ -56,6 +56,68 @@ def test_forged_containment_is_rejected_even_when_primary_reference_is_also_chan
     evidence["containment_ratio"] = 0.7
     with pytest.raises(ValidationError, match="preserved areas"):
         ClaimMultimodalVisionAssessment.model_validate(payload)
+
+
+def test_internally_consistent_forged_areas_cannot_replace_observed_mask_overlap():
+    payload = make_visual_assessment().model_dump(round_trip=True)
+    evidence = payload["images"][0]["evidence"][0]
+    for association in (evidence["associations"][0], evidence["primary_association"]):
+        # These scalars agree with one another, but not with the preserved masks.
+        association.update(intersection_area=0.007, damage_containment_ratio=0.7, iou=0.007 / 0.253)
+    evidence["containment_ratio"] = 0.7
+    with pytest.raises(ValidationError, match="source masks"):
+        ClaimMultimodalVisionAssessment.model_validate(payload)
+
+
+@pytest.mark.parametrize("field,value", [("association_method", "BBOX_FALLBACK"), ("eligible", False)])
+def test_association_method_and_eligibility_cannot_be_forged(field, value):
+    from test_vision_fusion import damage, fused, part
+
+    # Two complete overlapping candidates are deliberately ambiguous.
+    payload = fused([damage()], [part(), part()]).model_dump(round_trip=True)
+    payload["evidence"][0]["associations"][0][field] = value
+    with pytest.raises(ValidationError, match="method or eligibility"):
+        ImageVisualAssessment.model_validate(payload)
+
+
+def test_removing_a_competing_part_cannot_turn_an_ambiguous_observation_into_certainty():
+    from test_vision_fusion import damage, fused, part
+
+    payload = fused([damage()], [part(), part()]).model_dump(round_trip=True)
+    payload["evidence"][0]["associations"].pop()
+    with pytest.raises(ValidationError, match="candidates differ"):
+        ImageVisualAssessment.model_validate(payload)
+
+
+def test_forced_assignment_of_ambiguous_masks_is_rejected():
+    from test_vision_fusion import damage, fused, part
+
+    payload = fused([damage()], [part(), part()]).model_dump(round_trip=True)
+    evidence = payload["evidence"][0]
+    primary = copy.deepcopy(evidence["associations"][0])
+    evidence.update(
+        association_status="assigned", primary_association=primary,
+        vehicle_part="hood", mapped_damage_type="HOOD", part_confidence=0.9, containment_ratio=1,
+    )
+    with pytest.raises(ValidationError, match="ranking and ambiguity"):
+        ImageVisualAssessment.model_validate(payload)
+
+
+def test_lower_containment_primary_cannot_replace_the_clear_best_part():
+    from test_vision_fusion import damage, fused, part, rectangle
+    from vision.taxonomy import VehiclePartType
+
+    payload = fused([damage(rectangle(0.1, 0.1, 0.3, 0.3))], [
+        part(), part(rectangle(0.1, 0.1, 0.26, 0.3), kind=VehiclePartType.FRONT_BUMPER),
+    ]).model_dump(round_trip=True)
+    evidence = payload["evidence"][0]
+    primary = copy.deepcopy(evidence["associations"][1])
+    evidence.update(
+        primary_association=primary, vehicle_part="front_bumper", mapped_damage_type="FRONT_BUMPER",
+        part_confidence=primary["part_confidence"], containment_ratio=primary["damage_containment_ratio"],
+    )
+    with pytest.raises(ValidationError, match="ranking and ambiguity"):
+        ImageVisualAssessment.model_validate(payload)
 
 
 def points(x_min, y_min, x_max, y_max):
