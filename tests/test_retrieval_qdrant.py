@@ -1,32 +1,19 @@
-"""Explicitly opt-in real Qdrant; each test owns a unique derived collection."""
-
-import os
-from uuid import uuid4
+"""Select with ``pytest -m qdrant``; each test owns a unique collection."""
 
 import pytest
-from qdrant_client import QdrantClient
 
 from retrieval.qdrant_store import QdrantClaimStore
 from retrieval.similar_claims import SimilarClaimsIndexer, SimilarClaimsService
 from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
+from qdrant_integration_support import temporary_qdrant_collections
 
 pytestmark = [pytest.mark.integration, pytest.mark.qdrant]
 
 
 @pytest.fixture
 def remote_store():
-    if os.environ.get("RUN_QDRANT_TESTS") != "1" or not os.environ.get("QDRANT_URL"):
-        pytest.skip("Set RUN_QDRANT_TESTS=1 and QDRANT_URL for real Qdrant tests")
-    client = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ.get("QDRANT_API_KEY"), timeout=10)
-    collection = f"test_similar_claims_{uuid4().hex}"
-    store = QdrantClaimStore(client, collection, FakeEmbeddings())
-    try:
-        yield store
-    finally:
-        # Only delete the unique collection this fixture reserved, never app data.
-        if client.collection_exists(collection):
-            client.delete_collection(collection)
-        client.close()
+    with temporary_qdrant_collections("similar_claims") as (client, collections):
+        yield QdrantClaimStore(client, collections[0], FakeEmbeddings())
 
 
 def test_real_qdrant_idempotence_filtering_and_contract(remote_store):

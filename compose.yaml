@@ -1,4 +1,35 @@
 services:
+  postgres-test:
+    image: postgres:18
+    profiles: [test]
+    environment:
+      POSTGRES_DB: insurance_claims_test
+      POSTGRES_USER: claims_test
+      POSTGRES_PASSWORD: claims_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claims_test -d insurance_claims_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+  qdrant-test:
+    image: qdrant/qdrant:v1.19.0
+    profiles: [test]
+    ports:
+      - "127.0.0.1:6335:6333"
+      - "127.0.0.1:6336:6334"
+    tmpfs:
+      - /qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/6333; printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3; read -r status <&3; [[ \"$$status\" == *' 200 '* ]]"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
   postgres:
     image: postgres:18
     environment:

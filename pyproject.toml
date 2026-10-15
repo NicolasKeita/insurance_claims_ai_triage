@@ -41,6 +41,10 @@ cardd-hf = [
 vision = [
     "ultralytics>=8.4.175,<8.5",
     "Pillow>=12,<13",
+    # CPU, CUDA and macOS builds satisfy the same portable version constraints.
+    # Select the wheel backend explicitly during installation, not at pytest startup.
+    "torch>=2.14.1,<2.15",
+    "torchvision>=0.29.1,<0.30",
 ]
 dev = [
     "pytest>=8"
@@ -51,11 +55,13 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "--strict-markers"
 markers = [
-    "integration: real database, service or model integration; configure the specific opt-in prerequisites",
-    "vision: opt-in vision integration requiring RUN_VISION_TESTS=1 and an existing local damage checkpoint (no downloads)",
-    "rag: opt-in retrieval integration requiring RUN_RAG_TESTS=1, Qdrant and a real embedding model",
-    "postgres: integration tests requiring a dedicated TEST_DATABASE_URL",
-    "qdrant: integration tests requiring explicit RUN_QDRANT_TESTS=1 and QDRANT_URL",
+    "unit: fast tests without external services or model checkpoints",
+    "integration: real database, service or model integration",
+    "vision: real inference in the current Python environment with an existing local checkpoint (no downloads)",
+    "rag: retrieval integration using an isolated Qdrant collection and a real embedding model",
+    "postgres: integration using the dedicated PostgreSQL test database",
+    "qdrant: integration using an isolated temporary Qdrant collection",
 ]
 

@@ -1,5 +1,4 @@
 import importlib.util
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -148,15 +147,17 @@ def test_domain_imports_do_not_import_ultralytics_or_torch():
 
 @pytest.mark.integration
 @pytest.mark.vision
-def test_real_detector_opt_in_only_with_existing_local_checkpoint(tmp_path):
-    if os.environ.get("RUN_VISION_TESTS") != "1":
-        pytest.skip("Set RUN_VISION_TESTS=1 for local checkpoint integration; no download")
+def test_real_detector_with_existing_local_checkpoint(tmp_path):
     if importlib.util.find_spec("ultralytics") is None:
-        pytest.fail("RUN_VISION_TESTS=1 requires Ultralytics; use an environment with the vision extra installed")
+        pytest.fail(
+            "Vision integration requires Ultralytics. Run it with "
+            "python -m pytest -m vision from the configured .venv. "
+            "No weights are downloaded."
+        )
     settings = VisionSettings.from_env()
     if not settings.model_path.is_file():
         pytest.fail(
-            f"RUN_VISION_TESTS=1 requires a trained local damage checkpoint: {settings.model_path}. "
+            f"Vision integration requires a trained local damage checkpoint: {settings.model_path}. "
             "Set DAMAGE_MODEL_PATH to existing local weights; no download is performed."
         )
     path = tmp_path / "synthetic-decoding-smoke.png"
@@ -164,3 +165,4 @@ def test_real_detector_opt_in_only_with_existing_local_checkpoint(tmp_path):
     result = UltralyticsDamageDetector(settings).assess_image(path)
     assert (result.width, result.height) == (32, 24)
     assert result.detection_count == len(result.detections)
+    print(f"Real vision inference completed with {sys.executable}")

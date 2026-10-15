@@ -1,11 +1,8 @@
-"""Opt-in real Qdrant + Sentence Transformer retrieval, never Ollama."""
+"""Select with ``pytest -m rag``: real Qdrant and a cached embedding model."""
 
 from dataclasses import replace
-import os
-from uuid import uuid4
 
 import pytest
-from qdrant_client import QdrantClient
 
 from knowledge.config import ROOT, KnowledgeConfig
 from knowledge.evaluation import evaluate_retrieval, load_benchmark
@@ -14,20 +11,32 @@ from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.qdrant_store import PAYLOAD_INDEXES, QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
+from integration_support import get_test_qdrant_url
+from qdrant_integration_support import temporary_qdrant_collections
 
 pytestmark = [pytest.mark.integration, pytest.mark.rag]
 
 
-def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path):
-    if os.environ.get("RUN_RAG_TESTS") != "1" or not os.environ.get("QDRANT_URL"):
-        pytest.skip("Set RUN_RAG_TESTS=1 and QDRANT_URL for real retrieval integration")
-    suffix = uuid4().hex
-    config = replace(KnowledgeConfig.from_env(), policy_collection=f"test_rag_policy_{suffix}",
-                     procedure_collection=f"test_rag_procedure_{suffix}")
-    client = QdrantClient(url=config.qdrant_url, api_key=os.environ.get("QDRANT_API_KEY"), timeout=10)
-    embeddings = SentenceTransformerEmbeddingProvider(config.embedding_model, asymmetric=True)
-    store = QdrantKnowledgeStore(client, embeddings, config)
-    try:
+def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path, monkeypatch):
+    # Never trigger a Hub request, even when other tests imported Transformers first.
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
+    with temporary_qdrant_collections("rag_policy", "rag_procedure") as (client, collections):
+        # Fixed, tiny synthetic corpus only; app connection/collection overrides are ignored.
+        config = replace(KnowledgeConfig(), qdrant_url=get_test_qdrant_url(),
+                         policy_collection=collections[0], procedure_collection=collections[1],
+                         knowledge_dir=ROOT / "data" / "knowledge")
+        embeddings = SentenceTransformerEmbeddingProvider(config.embedding_model, asymmetric=True,
+                                                           local_files_only=True)
+        try:
+            assert embeddings.dimension > 0
+        except Exception as error:
+            pytest.fail(
+                f"RAG requires the locally cached embedding model {config.embedding_model!r}. "
+                "No model is downloaded by pytest; preload it explicitly before running 'pytest -m rag'. "
+                f"Original error: {type(error).__name__}: {error}", pytrace=False,
+            )
+        store = QdrantKnowledgeStore(client, embeddings, config)
         first = KnowledgeIndexer(store).index_all(tmp_path / "manifest.json")
         KnowledgeIndexer(store).index_all(tmp_path / "manifest.json")
         for kind, entry in zip(Kind, first["collections"], strict=True):
@@ -42,9 +51,3 @@ def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path):
         report = evaluate_retrieval(retriever, load_benchmark(ROOT / "data/evaluation/rag_retrieval_v1.json"))
         assert report["evaluated_cases"] == 13
         assert all(0 <= report[k] <= 1 for k in ("recall_at_1", "recall_at_3", "recall_at_5", "mrr"))
-    finally:
-        # Only this test's random, reserved collections may be cleaned up.
-        for kind in Kind:
-            if client.collection_exists(config.collection(kind)):
-                client.delete_collection(config.collection(kind))
-        client.close()

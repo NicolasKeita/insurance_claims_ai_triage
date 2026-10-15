@@ -4,24 +4,18 @@ Every run owns a randomly named schema in an explicitly dedicated *_test
 database. Cleanup never targets public, development or another run's schema.
 """
 
-import os
 from datetime import datetime, timezone
 from decimal import Decimal
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
-from alembic import command
-from alembic.autogenerate import compare_metadata
-from alembic.config import Config
-from alembic.migration import MigrationContext
-from sqlalchemy import create_engine, func, inspect, select, text
+from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from persistence.database import require_test_database
+from integration_support import isolated_postgres_schema, migrate_test_schema
 from persistence.models import (
-    Base, ClaimRow, CustomerRow, DeclaredDamageRow, DocumentRow, PolicyRow,
+    ClaimRow, CustomerRow, DeclaredDamageRow, DocumentRow, PolicyRow,
     TriageAssessmentRow,
 )
 from persistence.repositories import (
@@ -36,33 +30,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 @pytest.fixture(scope="module")
 def postgres_engine():
-    value = os.environ.get("TEST_DATABASE_URL")
-    if not value:
-        pytest.skip("TEST_DATABASE_URL is not set")
-    config = require_test_database(value)
-    schema = f"persistence_test_{uuid4().hex}"
-    admin = create_engine(config.url, hide_parameters=True)
-    with admin.begin() as connection:
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    engine = create_engine(config.url, hide_parameters=True,
-                           connect_args={"options": f"-csearch_path={schema}"})
-    try:
-        cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-        with engine.begin() as connection:
-            assert inspect(connection).get_table_names() == []
-            cfg.attributes["connection"] = connection
-            command.upgrade(cfg, "head")
-            assert set(Base.metadata.tables) <= set(inspect(connection).get_table_names())
-            command.downgrade(cfg, "base")
-            assert inspect(connection).get_table_names() == ["alembic_version"]
-            command.upgrade(cfg, "head")
-            assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+    with isolated_postgres_schema() as engine:
+        migrate_test_schema(engine, verify_downgrade=True)
         yield engine
-    finally:
-        engine.dispose()
-        with admin.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        admin.dispose()
 
 
 @pytest.fixture

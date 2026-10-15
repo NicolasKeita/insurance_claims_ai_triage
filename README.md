@@ -2,6 +2,80 @@
 
 This project extracts claim documents, compares the available evidence, builds structured `TriageFeatures`, and serves three separate assessments: operational triage, statistical anomaly detection, and deterministic investigation signals.
 
+## Automated test infrastructure
+
+From an activated `.venv`, `pytest` runs **all unit and integration tests**.
+Pytest is the test interface; no shell runner or custom `--all` option is needed.
+Each normal run prints a short table of available suites once.
+
+```powershell
+# When needed, start the test containers yourself before running integrations:
+docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test
+pytest
+pytest -m unit
+pytest -m postgres
+pytest -m qdrant
+pytest -m rag
+pytest -m vision
+pytest --markers
+```
+
+`postgres-test` uses PostgreSQL 18, `insurance_claims_test`, dedicated user
+`claims_test` (local test password `claims_test`), loopback port **5434**, and
+tmpfs storage. `qdrant-test` uses loopback ports **6335/6336** and tmpfs. Both
+belong to the Compose `test` profile. The application services and their volumes
+are separate. Pytest only inspects existing services; it never starts Docker,
+containers, PostgreSQL, Qdrant, MLflow or Ollama, and never installs dependencies.
+Missing Docker, a stopped engine/container, an unhealthy container or a refused
+connection produces an explicit diagnostic with the appropriate manual command.
+
+Defaults are centralized in `tests/integration_support.py`. CI may override
+`TEST_DATABASE_URL`, `TEST_QDRANT_URL` and `TEST_QDRANT_API_KEY`; application
+`QDRANT_URL` does not select the test server. PostgreSQL URLs must identify an
+authorized `*_test` database and pass the safety checks before any DDL. Every
+run owns a random schema, runs the existing Alembic migrations and cleans only
+that schema. Transactions roll back between tests. Qdrant uses reserved UUID
+collections and cleans only those collections. An explicitly selected missing
+service, invalid connection, missing model or checkpoint fails the suite.
+
+Markers are `unit`, `integration`, `postgres`, `qdrant`, `rag` and `vision`.
+`pytest -m postgres` and `pytest -m qdrant` include the PostgreSQL/Qdrant/API
+integration and therefore need both test services. For PostgreSQL alone use `pytest -m 'postgres and not qdrant'`;
+for Qdrant alone use `pytest -m 'qdrant and not postgres'`;
+`pytest -m 'postgres or qdrant'` covers all database/service boundary tests.
+Without `-m`, all tests are selected. Use
+`pytest --collect-only -q -m integration` to inspect the integrations.
+Prerequisites are checked after selection: `unit` requires no Docker, and `vision`
+requires neither PostgreSQL nor Qdrant. External CI connection overrides are
+checked directly without requiring a local Docker installation.
+
+Use one **`.venv`** with `.[dev,vision]` for the application, RAG, agents, pytest
+and YOLO. The real vision case executes directly in this interpreter, with no
+delegation, child pytest or `VISION_PYTHON` setting. On this NVIDIA workstation
+`.venv` uses torch **2.14.1+cu132**, torchvision **0.29.1+cu132** and Ultralytics
+**8.4.176**. CPU-only Windows/Linux and macOS remain supported; CUDA is optional.
+See [installation instructions](docs/INSTALLATION.md) for explicit CPU/CUDA wheel
+selection on a new machine. Pytest never changes the environment.
+
+Pytest does not download models. RAG uses the three
+small synthetic documents under `data/knowledge`, the 13-case retrieval benchmark
+and the cached `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` model.
+If needed, populate this cache deliberately before testing:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
+```
+
+Vision uses the existing local damage checkpoint; it needs no dataset and never
+downloads weights. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` remain optional overrides.
+Use normal pytest reporting, for example `pytest --junitxml=artifacts/pytest.xml`.
+The vision case appears once in the same pytest/JUnit result. `--help`,
+`--markers` and `--collect-only` do not display the suite
+panel or check service prerequisites. See the `Final pytest developer experience`
+section of `CODEX_REPORT_TEST_INFRASTRUCTURE.md` for validation and failure probes.
+
+To stop only the test services: `docker compose --profile test stop postgres-test qdrant-test`.
+
 ## Computer Vision: CarDD HF mirror damage segmentation
 
 The development source is **CarDD HF mirror (`harpreetsahota/CarDD`)**, a
@@ -106,23 +180,22 @@ promise. Check CUDA in the actual training interpreter, since the global Python
 and the application's virtualenv may use different torch builds.
 
 ```powershell
-# .venv-vision is a separate environment with CUDA-enabled PyTorch.
-# The local run uses --system-site-packages from the verified CUDA interpreter.
-.\.venv-vision\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+# Use the same .venv for the application, CUDA vision and pytest.
+.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 $env:DAMAGE_DATASET_YAML = "$env:CARDD_HF_PREPARED_DIR\dataset.yaml"
 $env:DAMAGE_CONFIDENCE_THRESHOLD = "0.25"
 $env:DAMAGE_DEVICE = "0"
-.\.venv-vision\Scripts\python.exe .\scripts\train_damage_segmentation.py
+.\.venv\Scripts\python.exe .\scripts\train_damage_segmentation.py
 # Resume the same interrupted run (keep the original config, data and threshold):
-# .\.venv-vision\Scripts\python.exe .\scripts\train_damage_segmentation.py --resume
-.\.venv-vision\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
-.\.venv-vision\Scripts\python.exe .\scripts\check_damage_test_smoke.py --max-images 12
-.\.venv-vision\Scripts\python.exe .\scripts\check_claim_vision.py
+# .\.venv\Scripts\python.exe .\scripts\train_damage_segmentation.py --resume
+.\.venv\Scripts\python.exe .\scripts\evaluate_damage_segmentation.py
+.\.venv\Scripts\python.exe .\scripts\check_damage_test_smoke.py --max-images 12
+.\.venv\Scripts\python.exe .\scripts\check_claim_vision.py
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
 Use `--device cpu` explicitly on an interpreter without CUDA. Check the training
-interpreter's CUDA build before starting; `.venv` remains the CPU application/test environment.
+interpreter's CUDA build before starting; the single `.venv` may use CPU or CUDA wheels.
 TRAIN optimizes, VAL selects the best checkpoint and early stopping, and TEST
 remains frozen for final evaluation. TEST never selects the checkpoint,
 hyperparameters or threshold. `DAMAGE_CONFIDENCE_THRESHOLD` defaults to the
@@ -175,28 +248,24 @@ source revision, frozen split, seed/config/device/versions and measured metrics,
 with JSON/CSV/TOML artifact allowlisting and optional checkpoint upload.
 Raw photographs and error images are excluded; built-in image logging callbacks
 are removed. Vision Registry packaging remains deferred, with no production
-alias. Standard pytest uses synthetic fixtures/stubs and requires no FiftyOne,
-MongoDB, dataset, weights, GPU or network. Real model tests require
-`RUN_VISION_TESTS=1` plus a local checkpoint and never download/train. The durable
+alias. `pytest -m unit` selects synthetic unit fixtures/stubs and requires no FiftyOne,
+MongoDB, dataset, weights, GPU or network. Real model tests are selected with
+`-m vision`, require a local checkpoint and never download/train. The durable
 execution record and actual provenance are in `CODEX_REPORT_STEP_29.md`.
 
-Run the existing local damage checkpoint integration explicitly on CPU:
+Run the existing local damage checkpoint integration from the application environment:
 
 ```powershell
-$env:RUN_VISION_TESTS = '1'
-$env:DAMAGE_MODEL_PATH = "$PWD/artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
-$env:DAMAGE_DEVICE = 'cpu'
-.\.venv\Scripts\python.exe -m pytest -rs -m vision
-Remove-Item Env:RUN_VISION_TESTS,Env:DAMAGE_MODEL_PATH,Env:DAMAGE_DEVICE -ErrorAction SilentlyContinue
+pytest -rs -m vision
 ```
 
-This decoding/inference smoke needs no dataset or GPU. Once opted in, missing
-Ultralytics or local weights fail the test instead of silently skipping it.
+This decoding/inference smoke needs no dataset; CPU is also supported. Once selected,
+missing Ultralytics or local weights fail the test explicitly.
 The `integration` marker groups the real PostgreSQL, Qdrant, RAG and vision
-tests; their specific opt-in variables still apply. Use `pytest -m 'not integration'`
+tests. Use `pytest -m 'not integration'`
 for the lightweight suite, or `pytest --collect-only -q -m integration` to list
-the integrations. See `CODEX_TEST_SKIP_AUDIT.md` for the per-test skip inventory
-and commands, including the optional CarDD/two-checkpoint CUDA smoke.
+the integrations. `CODEX_TEST_SKIP_AUDIT.md` preserves the earlier skip audit;
+the current automatic configuration is described in `CODEX_REPORT_TEST_INFRASTRUCTURE.md`.
 
 The completed local baseline ran 100 epochs on CUDA and selected epoch 90 on VAL.
 On the frozen 422-image TEST split, mask mAP50 is 66.03% and mAP50-95 is 52.24%.
@@ -272,7 +341,7 @@ $env:DATABASE_URL = "postgresql+psycopg://claims:claims@localhost:5433/insurance
 python -m alembic upgrade head
 python .\scripts\import_reference_claim.py
 python .\scripts\check_claim_history.py
-python -m pytest
+python -m pytest -m unit
 ```
 
 The host port defaults to **5433** to coexist with the installed native
@@ -341,19 +410,17 @@ in `_test`, reject the configured development database and create/drop only
 their own random schema. They verify an empty-schema migration cycle
 `upgrade head -> downgrade base -> upgrade head`, ORM/schema agreement,
 round trips, reuse, duplicate rejection, append-only history, latest and
-rollback. With no `TEST_DATABASE_URL`, they skip and normal pytest runs
-without PostgreSQL. Do not point the test URL at an existing business database.
+rollback. `pytest -m unit` selects unit tests without connecting to PostgreSQL.
+Selecting the PostgreSQL marker uses the dedicated service automatically;
+connection or configuration failures fail explicitly.
 
 ```powershell
-docker compose exec -T postgres createdb -U claims insurance_claims_test
-$env:TEST_DATABASE_URL = "postgresql+psycopg://claims:claims@localhost:5433/insurance_claims_test"
+docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test
 python -m pytest -m postgres
-Remove-Item Env:TEST_DATABASE_URL
-docker compose down
 ```
 
-If the test database already exists, skip `createdb`. Adapt `-U` if you changed
-the Compose user. Normal shutdown keeps the named volume; do not add `-v`.
+The test database is initialized automatically on port 5434 and uses ephemeral
+storage. No database is created inside the application PostgreSQL service.
 Append-only is an application convention, not a database permission/trigger
 restriction against administrative SQL. No semantic search, embeddings, RAG,
 similar-claim lookup or additional model is introduced.
@@ -452,9 +519,8 @@ images are created. For the supplied reference, the profile is 6 previous
 claims, windows 3/4/5, interval 2 days, total/average/max EUR 2100/350/600, and
 2 latest anomaly flags. Real additional history can change these counts.
 
-Run standard tests without setting `TEST_DATABASE_URL`; run `pytest -m postgres`
-with the dedicated test database URL from the PostgreSQL section, replacing
-`localhost` with `127.0.0.1` if IPv6 loopback stalls. Integration tests cover
+Run unit tests with `pytest -m unit`; select `pytest -m postgres` after manually starting
+the dedicated test services described above. Integration tests cover
 temporal/customer isolation, exact boundaries, currencies, latest-state ties,
 two-query behavior, fixture conflicts/idempotence, API atomic rollback and
 evidence preservation after history changes. `CODEX_REPORT_STEP_25.md` records
@@ -471,7 +537,7 @@ The configurable Sentence Transformer defaults to
 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (French/English),
 with symmetric L2-normalized embeddings and COSINE distance. Model construction
 and downloading happen only on explicit indexing or a first valid search;
-API import, lifespan startup and standard tests do not load it. One provider
+API import, lifespan startup and unit tests do not load it. One provider
 and service are cached per API lifespan, with injectable test services.
 
 `claim_retrieval_v1` uses stable labels for type, collision, location, vehicle,
@@ -551,19 +617,10 @@ fixtures leave damages empty rather than inventing new enum values.
 Tests without infrastructure or model downloads:
 
 ```powershell
-Remove-Item Env:TEST_DATABASE_URL -ErrorAction SilentlyContinue
-Remove-Item Env:RUN_QDRANT_TESTS -ErrorAction SilentlyContinue
-$env:HF_HUB_OFFLINE = '1'
-$env:TRANSFORMERS_OFFLINE = '1'
-python -m pytest
-# Remove offline flags before a first real model download.
-Remove-Item Env:HF_HUB_OFFLINE,Env:TRANSFORMERS_OFFLINE -ErrorAction SilentlyContinue
-# Opt-in real Qdrant; unique test collections are cleaned up.
-$env:RUN_QDRANT_TESTS = '1'
-$env:QDRANT_URL = 'http://127.0.0.1:6333'
-python -m pytest -m qdrant
-# For combined PostgreSQL/Qdrant tests, also configure the dedicated *_test DB:
-$env:TEST_DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims_test'
+python -m pytest -m unit
+# Select real test services; unique test collections are cleaned up.
+docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test
+python -m pytest -m 'qdrant and not postgres'
 python -m pytest -m 'postgres or qdrant'
 ```
 
@@ -597,7 +654,7 @@ may yield equivalent query/document encoding. Similar Claims keeps symmetric
 `encode()` and its existing collection contract. Dimensions are discovered.
 Changing model, dimension, chunking version or size requires a new collection
 version or an explicit rebuild; incompatible/unmanaged indexes are rejected.
-Model loading stays lazy; standard tests use fake providers and in-memory Qdrant.
+Model loading stays lazy; unit tests use fake providers and in-memory Qdrant.
 
 Search applies source type, optional product/language/source ID, and optional `as_of_date`.
 Validity uses inclusive start and exclusive end: `effective_from <= date <
@@ -701,17 +758,10 @@ synthetic benchmark compares configurations and cannot establish production
 quality; pytest imposes no semantic quality threshold.
 
 ```powershell
-Remove-Item Env:TEST_DATABASE_URL,Env:RUN_QDRANT_TESTS,Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
-$env:HF_HUB_OFFLINE = '1'
-$env:TRANSFORMERS_OFFLINE = '1'
-python -m pytest
+python -m pytest -m unit
 # Real retrieval integration (cached model, no Ollama); unique test collections:
-$env:RUN_RAG_TESTS = '1'
-$env:QDRANT_URL = 'http://127.0.0.1:6333'
+docker compose --profile test up -d --no-deps --wait qdrant-test
 python -m pytest -m rag
-Remove-Item Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
-# Remove offline flags if a chosen model has not yet been downloaded.
-Remove-Item Env:HF_HUB_OFFLINE,Env:TRANSFORMERS_OFFLINE -ErrorAction SilentlyContinue
 ```
 
 ## Advisory claims agent (STEP28)
@@ -825,8 +875,9 @@ Invoke-RestMethod "http://127.0.0.1:8000/v1/agent/runs/$($run.run_id)"
 The smoke script defaults to `CLAIM-2026-00001`, prints tools, iterations, evidence
 IDs, recommendation and uncertainties, and saves the terminal result under
 `artifacts/agent/claims_agent_smoke.json`. `--debug` prints the structured action
-trace. Standard pytest uses fake planners/finalizers/tools and needs no external
-services. PostgreSQL tests remain opt-in through `TEST_DATABASE_URL`.
+trace. `pytest -m unit` uses fake planners/finalizers/tools and needs no external
+services. PostgreSQL integrations are selected with `-m postgres` and use the
+dedicated test database automatically.
 Small local models may plan imperfectly, and recommendations depend on evidence
 quality/availability. This V1 has no long-term conversational memory or
 quantitative agent benchmark. `CODEX_REPORT_STEP_28.md` records actual validation.
@@ -837,7 +888,7 @@ The independent Carparts-Seg model starts from COCO `yolo26n-seg.pt`. It shares
 the step29 image loader, normalized geometry, Ultralytics extraction helpers and
 training/evaluation orchestration. Preparation downloads only the official
 archive when explicitly requested, checks every supplied split and writes
-`artifacts/vision/carparts_dataset_manifest.json`. Imports and standard pytest
+`artifacts/vision/carparts_dataset_manifest.json`. Imports and unit tests
 never download images or weights.
 
 Run the explicit baseline from a CUDA-capable interpreter. The same interpreter
@@ -847,15 +898,15 @@ training. A requested GPU with unavailable CUDA fails; there is no CPU fallback.
 changing the baseline from TEST results. Both best and last checkpoints are kept.
 
 ```powershell
-Set-Location 'C:\Users\nicol\Documents\insurance_claims_ai_triage'
-.\.venv-vision\Scripts\python.exe scripts/prepare_carparts_dataset.py
-.\.venv-vision\Scripts\python.exe scripts/inspect_carparts_dataset.py
-.\.venv-vision\Scripts\python.exe -u scripts/train_vehicle_part_segmentation.py
+# From the repository root:
+.\.venv\Scripts\python.exe scripts/prepare_carparts_dataset.py
+.\.venv\Scripts\python.exe scripts/inspect_carparts_dataset.py
+.\.venv\Scripts\python.exe -u scripts/train_vehicle_part_segmentation.py
 # Run final TEST once, after completed training:
-.\.venv-vision\Scripts\python.exe scripts/evaluate_vehicle_part_segmentation.py
+.\.venv\Scripts\python.exe scripts/evaluate_vehicle_part_segmentation.py
 $env:DAMAGE_DEVICE = '0'
 $env:PART_DEVICE = '0'
-.\.venv-vision\Scripts\python.exe scripts/check_multimodal_vision.py
+.\.venv\Scripts\python.exe scripts/check_multimodal_vision.py
 ```
 
 The part experiment is `insurance-claims-vision-parts`, with metadata, VAL/TEST
@@ -888,7 +939,7 @@ occur. Real declarations and quotes are unknown; its consistency/signals must be
 read as conditional on its synthetic inputs. Each run gets a new artifact directory.
 
 ```powershell
-.\.venv-vision\Scripts\python.exe -X utf8 -u scripts/check_multimodal_integration_smoke.py --device 0 --max-images 12
+.\.venv\Scripts\python.exe -X utf8 -u scripts/check_multimodal_integration_smoke.py --device 0 --max-images 12
 ```
 
 `object` becomes `VehiclePartType.OTHER` and is excluded from business fusion.

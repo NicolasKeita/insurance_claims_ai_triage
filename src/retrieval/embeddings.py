@@ -21,10 +21,12 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     normalized = True
 
-    def __init__(self, model_name: str, *, asymmetric: bool = False):
+    def __init__(self, model_name: str, *, asymmetric: bool = False,
+                 local_files_only: bool = False):
         self.model_name = model_name
         # Existing claim-to-claim indexes retain their symmetric encode contract.
         self.asymmetric = asymmetric
+        self.local_files_only = local_files_only
         self._model = None
         self._lock = Lock()
 
@@ -32,7 +34,8 @@ class SentenceTransformerEmbeddingProvider:
         with self._lock:
             if self._model is None:
                 from sentence_transformers import SentenceTransformer
-                self._model = SentenceTransformer(self.model_name)
+                options = {"local_files_only": True} if self.local_files_only else {}
+                self._model = SentenceTransformer(self.model_name, **options)
             return self._model
 
     @property
