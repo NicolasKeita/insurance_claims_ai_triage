@@ -180,6 +180,24 @@ MongoDB, dataset, weights, GPU or network. Real model tests require
 `RUN_VISION_TESTS=1` plus a local checkpoint and never download/train. The durable
 execution record and actual provenance are in `CODEX_REPORT_STEP_29.md`.
 
+Run the existing local damage checkpoint integration explicitly on CPU:
+
+```powershell
+$env:RUN_VISION_TESTS = '1'
+$env:DAMAGE_MODEL_PATH = "$PWD/artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
+$env:DAMAGE_DEVICE = 'cpu'
+.\.venv\Scripts\python.exe -m pytest -rs -m vision
+Remove-Item Env:RUN_VISION_TESTS,Env:DAMAGE_MODEL_PATH,Env:DAMAGE_DEVICE -ErrorAction SilentlyContinue
+```
+
+This decoding/inference smoke needs no dataset or GPU. Once opted in, missing
+Ultralytics or local weights fail the test instead of silently skipping it.
+The `integration` marker groups the real PostgreSQL, Qdrant, RAG and vision
+tests; their specific opt-in variables still apply. Use `pytest -m 'not integration'`
+for the lightweight suite, or `pytest --collect-only -q -m integration` to list
+the integrations. See `CODEX_TEST_SKIP_AUDIT.md` for the per-test skip inventory
+and commands, including the optional CarDD/two-checkpoint CUDA smoke.
+
 The completed local baseline ran 100 epochs on CUDA and selected epoch 90 on VAL.
 On the frozen 422-image TEST split, mask mAP50 is 66.03% and mAP50-95 is 52.24%.
 Per-class mask mAP50-95 ranges from 9.72% for crack to 93.82% for glass shatter;
@@ -689,6 +707,7 @@ $env:TRANSFORMERS_OFFLINE = '1'
 python -m pytest
 # Real retrieval integration (cached model, no Ollama); unique test collections:
 $env:RUN_RAG_TESTS = '1'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
 python -m pytest -m rag
 Remove-Item Env:RUN_RAG_TESTS -ErrorAction SilentlyContinue
 # Remove offline flags if a chosen model has not yet been downloaded.

@@ -17,7 +17,7 @@ from scripts.seed_similar_claims import demo_claims, seed
 from test_persistence_postgres import factory, postgres_engine, reference_claim
 from test_retrieval_qdrant import remote_store
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 def test_repository_bulk_reads_two_queries_per_batch(factory, reference_claim):

@@ -19,7 +19,7 @@ from test_investigation import make_consistency
 from test_persistence import make_anomaly, make_investigation, reference_claim
 from test_persistence_postgres import factory, postgres_engine
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 def add_claim(session, reference, suffix, days, amount="100", currency="EUR", customer=None):

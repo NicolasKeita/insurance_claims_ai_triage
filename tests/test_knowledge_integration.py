@@ -15,7 +15,7 @@ from knowledge.qdrant_store import PAYLOAD_INDEXES, QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
-pytestmark = pytest.mark.rag
+pytestmark = [pytest.mark.integration, pytest.mark.rag]
 
 
 def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path):

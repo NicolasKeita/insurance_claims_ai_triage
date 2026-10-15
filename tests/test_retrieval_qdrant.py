@@ -10,7 +10,7 @@ from retrieval.qdrant_store import QdrantClaimStore
 from retrieval.similar_claims import SimilarClaimsIndexer, SimilarClaimsService
 from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
 
-pytestmark = pytest.mark.qdrant
+pytestmark = [pytest.mark.integration, pytest.mark.qdrant]
 
 
 @pytest.fixture

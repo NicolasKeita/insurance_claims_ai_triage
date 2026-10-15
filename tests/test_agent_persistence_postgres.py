@@ -16,7 +16,7 @@ from test_agent_persistence import add_policy_evidence, make_agent_run
 from test_persistence import reference_claim
 from test_persistence_postgres import factory, postgres_engine
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 def test_agent_runs_coexist_json_round_trip_and_latest_timestamp_tie(factory, reference_claim):

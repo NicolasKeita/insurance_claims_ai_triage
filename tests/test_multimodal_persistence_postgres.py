@@ -15,7 +15,7 @@ from test_multimodal_investigation import make_visual_assessment
 from test_persistence import reference_claim
 from test_persistence_postgres import factory, postgres_engine
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 def test_vision_append_round_trip_and_latest_timestamp_tie(factory, reference_claim):

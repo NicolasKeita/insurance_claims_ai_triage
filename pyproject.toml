@@ -50,7 +50,9 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 markers = [
+    "integration: real database, service or model integration; configure the specific opt-in prerequisites",
     "vision: opt-in vision integration requiring RUN_VISION_TESTS=1 and an existing local damage checkpoint (no downloads)",
     "rag: opt-in retrieval integration requiring RUN_RAG_TESTS=1, Qdrant and a real embedding model",
     "postgres: integration tests requiring a dedicated TEST_DATABASE_URL",

@@ -31,7 +31,7 @@ from persistence.repositories import (
 from persistence.service import PersistenceService
 from test_persistence import reference_claim, make_anomaly, make_investigation, make_triage
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 @pytest.fixture(scope="module")

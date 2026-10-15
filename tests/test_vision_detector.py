@@ -146,15 +146,19 @@ def test_domain_imports_do_not_import_ultralytics_or_torch():
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.integration
 @pytest.mark.vision
 def test_real_detector_opt_in_only_with_existing_local_checkpoint(tmp_path):
     if os.environ.get("RUN_VISION_TESTS") != "1":
         pytest.skip("Set RUN_VISION_TESTS=1 for local checkpoint integration; no download")
     if importlib.util.find_spec("ultralytics") is None:
-        pytest.skip("Ultralytics is not installed")
+        pytest.fail("RUN_VISION_TESTS=1 requires Ultralytics; use an environment with the vision extra installed")
     settings = VisionSettings.from_env()
     if not settings.model_path.is_file():
-        pytest.skip("Trained local damage checkpoint is unavailable")
+        pytest.fail(
+            f"RUN_VISION_TESTS=1 requires a trained local damage checkpoint: {settings.model_path}. "
+            "Set DAMAGE_MODEL_PATH to existing local weights; no download is performed."
+        )
     path = tmp_path / "synthetic-decoding-smoke.png"
     Image.new("RGB", (32, 24), "white").save(path)
     result = UltralyticsDamageDetector(settings).assess_image(path)
