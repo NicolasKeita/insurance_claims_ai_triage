@@ -25,11 +25,7 @@ def test_extract_structured_garage_quote():
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.REPAIR_QUOTE
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.REPAIR_QUOTE)
 
     text_extraction = extract_pdf_text(asset)
 
@@ -46,18 +42,11 @@ def test_extract_structured_garage_quote():
     assert quote.parts[0].description == "Front bumper"
     assert quote.parts[0].price.amount == Decimal("780")
 
-    hood = next(
-        item
-        for item in quote.parts
-        if item.description == "Hood"
-    )
+    hood = next(item for item in quote.parts if item.description == "Hood")
 
     assert hood.price.amount == Decimal("840")
 
-    assert (
-        quote.source.document_type
-        == DocumentType.REPAIR_QUOTE
-    )
+    assert quote.source.document_type == DocumentType.REPAIR_QUOTE
     assert quote.source.filename == "garage_quote.pdf"
     assert quote.source.page == 1
 
@@ -69,11 +58,7 @@ def test_inconsistent_quote_total_is_rejected():
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.REPAIR_QUOTE
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.REPAIR_QUOTE)
 
     bad_text = """
 GARAGE QUOTE
@@ -105,11 +90,7 @@ def test_extract_structured_claim_form():
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.CLAIM_FORM
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.CLAIM_FORM)
 
     text_extraction = extract_pdf_text(asset)
 
@@ -137,11 +118,7 @@ def test_extract_structured_accident_report():
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.ACCIDENT_REPORT
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.ACCIDENT_REPORT)
 
     text_extraction = extract_pdf_text(asset)
 

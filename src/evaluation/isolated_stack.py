@@ -40,8 +40,9 @@ def isolated_postgres(database_url) -> Iterator[IsolatedPostgresStack]:
     """Migrate a fresh schema in an explicitly validated ``*_test`` database."""
     config = require_test_database(database_url)
     schema = f"evaluation_e2e_{uuid4().hex}"
-    admin = create_engine(config.url, hide_parameters=True,
-                          connect_args={"connect_timeout": 5, "options": "-csearch_path=pg_catalog"})
+    admin = create_engine(
+        config.url, hide_parameters=True, connect_args={"connect_timeout": 5, "options": "-csearch_path=pg_catalog"}
+    )
     engine, created = None, False
     try:
         with admin.begin() as connection:
@@ -50,8 +51,9 @@ def isolated_postgres(database_url) -> Iterator[IsolatedPostgresStack]:
                 raise RuntimeError("Evaluation setup refused: PostgreSQL database differs from the validated test URL")
             connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         created = True
-        engine = create_engine(config.url, hide_parameters=True,
-                               connect_args={"connect_timeout": 5, "options": f"-csearch_path={schema}"})
+        engine = create_engine(
+            config.url, hide_parameters=True, connect_args={"connect_timeout": 5, "options": f"-csearch_path={schema}"}
+        )
         migration = Config(str(ROOT / "alembic.ini"))
         migration.set_main_option("script_location", str(ROOT / "migrations"))
         with engine.begin() as connection:
@@ -87,8 +89,7 @@ def seed_case(factory, case: ClaimCase | Claim, *, triage=None, anomaly=None, in
         raise ValueError(f"Controlled demo claim ID collision: {claim.claim_id}")
     saved = {}
     if any(value is not None for value in (triage, anomaly, investigation)):
-        saved = service.save_assessments(claim.claim_id, triage=triage, anomaly=anomaly,
-                                         investigation=investigation)
+        saved = service.save_assessments(claim.claim_id, triage=triage, anomaly=anomaly, investigation=investigation)
     if vision is not None:
         if vision.claim_id != claim.claim_id:
             raise ValueError("Visual assessment belongs to a different controlled claim")
@@ -106,15 +107,21 @@ def seed_history(factory, current: ClaimCase | Claim, fixtures):
     """
     current = current.claim if isinstance(current, ClaimCase) else current
     if any(fixture.get("is_anomalous", False) for fixture in fixtures):
-        raise ValueError("Real evaluation cannot seed fake historical anomaly outputs; supply real assessments separately")
+        raise ValueError(
+            "Real evaluation cannot seed fake historical anomaly outputs; supply real assessments separately"
+        )
     claims = []
     for index, fixture in enumerate(fixtures):
         payload = current.model_dump(mode="json")
         payload["claim_id"] = fixture.get("claim_id", f"{current.claim_id}-HISTORY-{index}")
-        payload["incident"]["date"] = (current.incident.date - timedelta(days=fixture.get("days_before", 10))).isoformat()
+        payload["incident"]["date"] = (
+            current.incident.date - timedelta(days=fixture.get("days_before", 10))
+        ).isoformat()
         payload["customer"]["customer_id"] = fixture.get("customer_id", current.customer.customer_id)
-        payload["repair_estimate"] = {"amount": str(fixture.get("amount", 1000)),
-                                      "currency": fixture.get("currency", current.repair_estimate.currency)}
+        payload["repair_estimate"] = {
+            "amount": str(fixture.get("amount", 1000)),
+            "currency": fixture.get("currency", current.repair_estimate.currency),
+        }
         claim = Claim.model_validate(payload)
         seed_case(factory, claim)
         claims.append(claim)

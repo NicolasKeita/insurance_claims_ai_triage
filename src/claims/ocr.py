@@ -1,8 +1,7 @@
 from typing import Protocol
 
-from PIL import Image
 import pytesseract
-
+from PIL import Image
 from pytesseract import (
     TesseractError,
     TesseractNotFoundError,
@@ -13,11 +12,12 @@ class OcrEngine(Protocol):
     def extract_text(
         self,
         image: Image.Image,
-    ) -> str:
-        ...
+    ) -> str: ...
+
 
 class OcrError(Exception):
     pass
+
 
 class TesseractOcrEngine:
     def __init__(
@@ -40,16 +40,10 @@ class TesseractOcrEngine:
             ).strip()
 
         except TesseractNotFoundError as error:
-            raise OcrError(
-                "Tesseract executable was not found"
-            ) from error
+            raise OcrError("Tesseract executable was not found") from error
 
         except TesseractError as error:
-            raise OcrError(
-                f"Tesseract OCR failed: {error}"
-            ) from error
+            raise OcrError(f"Tesseract OCR failed: {error}") from error
 
         except RuntimeError as error:
-            raise OcrError(
-                "Tesseract OCR timed out"
-            ) from error
+            raise OcrError("Tesseract OCR timed out") from error

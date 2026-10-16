@@ -2,7 +2,6 @@
 
 import pytest
 
-
 INTEGRATION_MARKERS = ("postgres", "qdrant", "rag", "vision")
 
 
@@ -29,8 +28,7 @@ def pytest_collection_finish(session):
     from integration_prerequisites import PrerequisiteError, check_selected_prerequisites
 
     markers = {
-        name for item in session.items for name in INTEGRATION_MARKERS
-        if item.get_closest_marker(name) is not None
+        name for item in session.items for name in INTEGRATION_MARKERS if item.get_closest_marker(name) is not None
     }
     try:
         check_selected_prerequisites(markers, session.config.rootpath)

@@ -1,13 +1,21 @@
 from agent.models import (
-    AgentPlanStep, AgentRecommendation, EvidenceItem, EvidenceSourceType,
-    ObservationStatus, ToolObservation,
+    AgentPlanStep,
+    AgentRecommendation,
+    EvidenceItem,
+    EvidenceSourceType,
+    ObservationStatus,
+    ToolObservation,
 )
 from persistence.repositories import ClaimNotFoundError
 
 
 def make_evidence(evidence_id="claim:CLAIM-2026-00001", *, summary="Stored claim facts."):
-    return EvidenceItem(evidence_id=evidence_id, source_type=EvidenceSourceType.CLAIM_DATA,
-                        source_reference="CLAIM-2026-00001", summary=summary)
+    return EvidenceItem(
+        evidence_id=evidence_id,
+        source_type=EvidenceSourceType.CLAIM_DATA,
+        source_reference="CLAIM-2026-00001",
+        summary=summary,
+    )
 
 
 def make_recommendation(ids=None):
@@ -16,7 +24,9 @@ def make_recommendation(ids=None):
         case_summary="Available claim facts require human review.",
         recommended_next_action="REQUEST_ADDITIONAL_INFORMATION",
         rationale=[{"statement": "Review the recorded claim details.", "evidence_ids": ids}] if ids else [],
-        evidence_ids=ids, uncertainties=["Repair details require human confirmation."])
+        evidence_ids=ids,
+        uncertainties=["Repair details require human confirmation."],
+    )
 
 
 def make_step(action, arguments=None):
@@ -58,8 +68,12 @@ class FakeAgentTools:
         evidence = make_evidence(f"{step.action.value.lower()}:{claim_id}")
         if step.action.value == "GET_CLAIM":
             evidence = make_evidence(f"claim:{claim_id}")
-        return ToolObservation(tool_name=step.tool_name, status=ObservationStatus.OK,
-                               data={"fact": "from stored data"}, evidence=[evidence])
+        return ToolObservation(
+            tool_name=step.tool_name,
+            status=ObservationStatus.OK,
+            data={"fact": "from stored data"},
+            evidence=[evidence],
+        )
 
 
 class FakeRunStore:

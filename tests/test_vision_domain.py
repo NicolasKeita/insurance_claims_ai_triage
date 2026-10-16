@@ -11,8 +11,12 @@ from vision.config import VisionSettings
 from vision.detector import FakeDamageDetector
 from vision.images import ImageValidationError, load_validated_image
 from vision.models import (
-    NO_DETECTION_SUMMARY, ImageDamageAssessment, NormalizedBoundingBox,
-    NormalizedPoint, NormalizedPolygon, VisualDamageDetection,
+    NO_DETECTION_SUMMARY,
+    ImageDamageAssessment,
+    NormalizedBoundingBox,
+    NormalizedPoint,
+    NormalizedPolygon,
+    VisualDamageDetection,
 )
 from vision.service import ClaimVisionService
 from vision.taxonomy import VisualDamageType, map_category_name
@@ -21,17 +25,26 @@ from vision.visualization import save_annotated_image
 
 def detection(kind=VisualDamageType.DENT, confidence=0.8):
     return VisualDamageDetection(
-        damage_type=kind, confidence=confidence,
+        damage_type=kind,
+        confidence=confidence,
         bounding_box=NormalizedBoundingBox(x_min=0.1, y_min=0.2, x_max=0.8, y_max=0.9),
-        polygon=NormalizedPolygon(points=[NormalizedPoint(x=0.1, y=0.2), NormalizedPoint(x=0.8, y=0.2), NormalizedPoint(x=0.8, y=0.9)]),
+        polygon=NormalizedPolygon(
+            points=[NormalizedPoint(x=0.1, y=0.2), NormalizedPoint(x=0.8, y=0.2), NormalizedPoint(x=0.8, y=0.9)]
+        ),
     )
 
 
-@pytest.mark.parametrize("name,expected", [
-    ("dent", VisualDamageType.DENT), ("Scratch", VisualDamageType.SCRATCH),
-    ("crack", VisualDamageType.CRACK), ("glass shatter", VisualDamageType.GLASS_SHATTER),
-    ("lamp_broken", VisualDamageType.LAMP_BROKEN), ("tire-flat", VisualDamageType.TIRE_FLAT),
-])
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("dent", VisualDamageType.DENT),
+        ("Scratch", VisualDamageType.SCRATCH),
+        ("crack", VisualDamageType.CRACK),
+        ("glass shatter", VisualDamageType.GLASS_SHATTER),
+        ("lamp_broken", VisualDamageType.LAMP_BROKEN),
+        ("tire-flat", VisualDamageType.TIRE_FLAT),
+    ],
+)
 def test_damage_mapping_uses_names_not_framework_ids(name, expected):
     assert map_category_name(name) == expected
 
@@ -43,10 +56,16 @@ def test_unknown_names_and_vehicle_parts_are_rejected(name):
     assert VisualDamageType.LAMP_BROKEN.value != DamageType.LEFT_HEADLIGHT.value
 
 
-@pytest.mark.parametrize("changes", [
-    {"x_min": -0.1}, {"x_max": 1.1}, {"y_min": float("nan")},
-    {"x_min": 0.9, "x_max": 0.2}, {"y_min": 0.5, "y_max": 0.5},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"x_min": -0.1},
+        {"x_max": 1.1},
+        {"y_min": float("nan")},
+        {"x_min": 0.9, "x_max": 0.2},
+        {"y_min": 0.5, "y_max": 0.5},
+    ],
+)
 def test_invalid_boxes_fail(changes):
     fields = {"x_min": 0.1, "y_min": 0.2, "x_max": 0.8, "y_max": 0.9}
     with pytest.raises(ValidationError):
@@ -92,7 +111,9 @@ def test_claim_service_keeps_per_image_observations_and_deduplicates_types(tmp_p
     image_dir.mkdir()
     for filename in ["front.png", "left.png", "undeclared.png"]:
         Image.new("RGB", (16, 12), "white").save(image_dir / filename)
-    fake = FakeDamageDetector({"front.png": [detection()], "left.png": [detection(), detection(VisualDamageType.SCRATCH)]})
+    fake = FakeDamageDetector(
+        {"front.png": [detection()], "left.png": [detection(), detection(VisualDamageType.SCRATCH)]}
+    )
     result = ClaimVisionService(fake).assess_claim(ClaimCase(claim=claim, root_dir=tmp_path))
     assert [path.name for path in fake.calls] == ["front.png", "left.png"]
     assert [image.detection_count for image in result.images] == [1, 2]
@@ -107,7 +128,9 @@ def test_service_handles_empty_images_and_rejects_escaping_asset(tmp_path):
     result = service.assess_claim(ClaimCase(claim=claim.model_copy(update={"images": []}), root_dir=tmp_path))
     assert result.images == [] and result.aggregate_damage_types == []
     with pytest.raises(ImageValidationError, match="outside"):
-        service.assess_claim(ClaimCase(claim=claim.model_copy(update={"images": ["../outside.png"]}), root_dir=tmp_path))
+        service.assess_claim(
+            ClaimCase(claim=claim.model_copy(update={"images": ["../outside.png"]}), root_dir=tmp_path)
+        )
 
 
 def test_image_exif_orientation_and_size_validation(tmp_path):

@@ -35,5 +35,7 @@ def install_vision_routes(app, *, store_loader=None):
         if record is None:
             raise HTTPException(404, "No stored visual assessment is available")
         return StoredVisionAssessmentResponse(
-            assessment_id=record.id, created_at=record.created_at, result=record.result,
+            assessment_id=record.id,
+            created_at=record.created_at,
+            result=record.result,
         )

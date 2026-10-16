@@ -97,8 +97,10 @@ class EndToEndEvaluationReport(EvaluationModel):
     results: list[ScenarioEvaluationResult] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     preflight: list[dict] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=lambda: [
-        "The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.",
-        "Synthetic policies/procedures and synthetic training data for some ML components.",
-        "CarDD HF mirror custom test split; possible CV domain shift; small local LLM limitations.",
-    ])
+    limitations: list[str] = Field(
+        default_factory=lambda: [
+            "The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.",
+            "Synthetic policies/procedures and synthetic training data for some ML components.",
+            "CarDD HF mirror custom test split; possible CV domain shift; small local LLM limitations.",
+        ]
+    )

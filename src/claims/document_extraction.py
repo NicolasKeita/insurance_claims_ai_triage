@@ -1,7 +1,8 @@
 import re
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
+from claims.document_ingestion import PdfTextExtraction
 from claims.document_models import (
     AccidentReportExtraction,
     ClaimFormExtraction,
@@ -10,17 +11,16 @@ from claims.document_models import (
     MoneyAmount,
     QuoteLineItem,
 )
-
 from claims.enums import (
     CollisionType,
     DamageType,
     DocumentType,
 )
 
-from claims.document_ingestion import PdfTextExtraction
 
 class DocumentExtractionError(Exception):
     pass
+
 
 MONEY_LINE_PATTERN = re.compile(
     r"^(?P<label>[^:]+):\s*"
@@ -34,42 +34,31 @@ DAMAGE_LABEL_MAP = {
     "hood": DamageType.HOOD,
 }
 
+
 def _find_prefixed_value(
     lines: list[str],
     prefix: str,
 ) -> str:
     for line in lines:
         if line.startswith(prefix):
-            value = line[len(prefix):].strip()
+            value = line[len(prefix) :].strip()
 
             if value:
                 return value
 
-    raise DocumentExtractionError(
-        f"Missing field: {prefix}"
-    )
+    raise DocumentExtractionError(f"Missing field: {prefix}")
+
 
 def extract_garage_quote(
     extraction: PdfTextExtraction,
 ) -> GarageQuoteExtraction:
-    if (
-        extraction.asset.type
-        != DocumentType.REPAIR_QUOTE
-    ):
-        raise DocumentExtractionError(
-            "Expected a repair quote document"
-        )
-    
+    if extraction.asset.type != DocumentType.REPAIR_QUOTE:
+        raise DocumentExtractionError("Expected a repair quote document")
+
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Repair quote contains no extractable text"
-        )
-    
-    lines = [
-        line.strip()
-        for line in extraction.text.splitlines()
-        if line.strip()
-    ]
+        raise DocumentExtractionError("Repair quote contains no extractable text")
+
+    lines = [line.strip() for line in extraction.text.splitlines() if line.strip()]
 
     garage = _find_prefixed_value(
         lines,
@@ -93,9 +82,7 @@ def extract_garage_quote(
 
         label = match.group("label").strip()
 
-        amount = Decimal(
-            match.group("amount").replace(",", ".")
-        )
+        amount = Decimal(match.group("amount").replace(",", "."))
 
         currency = match.group("currency")
 
@@ -118,39 +105,25 @@ def extract_garage_quote(
             )
 
     if labor is None:
-        raise DocumentExtractionError(
-            "Missing labor amount"
-        )
+        raise DocumentExtractionError("Missing labor amount")
 
     if total is None:
-        raise DocumentExtractionError(
-            "Missing total amount"
-        )
-    currencies = {
-        item.price.currency
-        for item in parts
-    }
+        raise DocumentExtractionError("Missing total amount")
+    currencies = {item.price.currency for item in parts}
 
     currencies.add(labor.currency)
     currencies.add(total.currency)
 
     if len(currencies) != 1:
-        raise DocumentExtractionError(
-            "Quote contains inconsistent currencies"
-        )
+        raise DocumentExtractionError("Quote contains inconsistent currencies")
     calculated_total = sum(
-        (
-            item.price.amount
-            for item in parts
-        ),
+        (item.price.amount for item in parts),
         Decimal("0"),
     )
 
     calculated_total += labor.amount
     if calculated_total != total.amount:
-        raise DocumentExtractionError(
-            "Quote total does not match line items"
-        )
+        raise DocumentExtractionError("Quote total does not match line items")
     return GarageQuoteExtraction(
         garage=garage,
         claim_id=claim_id,
@@ -164,6 +137,7 @@ def extract_garage_quote(
         ),
     )
 
+
 def normalize_damage(
     value: str,
 ) -> DamageType:
@@ -172,13 +146,13 @@ def normalize_damage(
     try:
         return DAMAGE_LABEL_MAP[normalized]
     except KeyError as error:
-        raise DocumentExtractionError(
-            f"Unknown damage type: {value}"
-        ) from error
+        raise DocumentExtractionError(f"Unknown damage type: {value}") from error
+
 
 COLLISION_TYPE_MAP = {
     "front collision": CollisionType.FRONT_COLLISION,
 }
+
 
 def normalize_collision_type(
     value: str,
@@ -188,9 +162,8 @@ def normalize_collision_type(
     try:
         return COLLISION_TYPE_MAP[normalized]
     except KeyError as error:
-        raise DocumentExtractionError(
-            f"Unknown collision type: {value}"
-        ) from error
+        raise DocumentExtractionError(f"Unknown collision type: {value}") from error
+
 
 def parse_yes_no(value: str) -> bool:
     normalized = value.strip().lower()
@@ -201,9 +174,8 @@ def parse_yes_no(value: str) -> bool:
     if normalized == "no":
         return False
 
-    raise DocumentExtractionError(
-        f"Expected Yes/No value, got: {value}"
-    )
+    raise DocumentExtractionError(f"Expected Yes/No value, got: {value}")
+
 
 def parse_document_date(value: str):
     try:
@@ -213,9 +185,8 @@ def parse_document_date(value: str):
         ).date()
 
     except ValueError as error:
-        raise DocumentExtractionError(
-            f"Invalid document date: {value}"
-        ) from error
+        raise DocumentExtractionError(f"Invalid document date: {value}") from error
+
 
 def _find_section(
     lines: list[str],
@@ -225,13 +196,11 @@ def _find_section(
     try:
         start_index = lines.index(start)
     except ValueError as error:
-        raise DocumentExtractionError(
-            f"Missing section: {start}"
-        ) from error
+        raise DocumentExtractionError(f"Missing section: {start}") from error
 
     values = []
 
-    for line in lines[start_index + 1:]:
+    for line in lines[start_index + 1 :]:
         if line.startswith(stop_prefixes):
             break
 
@@ -239,24 +208,17 @@ def _find_section(
 
     return values
 
+
 def extract_claim_form(
     extraction: PdfTextExtraction,
 ) -> ClaimFormExtraction:
     if extraction.asset.type != DocumentType.CLAIM_FORM:
-        raise DocumentExtractionError(
-            "Expected a claim form document"
-        )
+        raise DocumentExtractionError("Expected a claim form document")
 
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Claim form contains no extractable text"
-        )
+        raise DocumentExtractionError("Claim form contains no extractable text")
 
-    lines = [
-        line.strip()
-        for line in extraction.text.splitlines()
-        if line.strip()
-    ]
+    lines = [line.strip() for line in extraction.text.splitlines() if line.strip()]
     claim_id = _find_prefixed_value(
         lines,
         "Claim ID:",
@@ -278,14 +240,10 @@ def extract_claim_form(
         "Vehicle:",
     )
 
-    vehicle_parts = vehicle.split(
-        maxsplit=1
-    )
+    vehicle_parts = vehicle.split(maxsplit=1)
 
     if len(vehicle_parts) != 2:
-        raise DocumentExtractionError(
-            f"Unable to parse vehicle: {vehicle}"
-        )
+        raise DocumentExtractionError(f"Unable to parse vehicle: {vehicle}")
 
     vehicle_make, vehicle_model = vehicle_parts
 
@@ -312,15 +270,10 @@ def extract_claim_form(
     damage_lines = _find_section(
         lines,
         "Declared damage:",
-        (
-            "Injuries declared:",
-        ),
+        ("Injuries declared:",),
     )
 
-    declared_damage = tuple(
-        normalize_damage(value)
-        for value in damage_lines
-    )
+    declared_damage = tuple(normalize_damage(value) for value in damage_lines)
     return ClaimFormExtraction(
         claim_id=claim_id,
         incident_date=incident_date,
@@ -338,27 +291,17 @@ def extract_claim_form(
         ),
     )
 
+
 def extract_accident_report(
     extraction: PdfTextExtraction,
 ) -> AccidentReportExtraction:
-    if (
-        extraction.asset.type
-        != DocumentType.ACCIDENT_REPORT
-    ):
-        raise DocumentExtractionError(
-            "Expected an accident report document"
-        )
+    if extraction.asset.type != DocumentType.ACCIDENT_REPORT:
+        raise DocumentExtractionError("Expected an accident report document")
 
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Accident report contains no extractable text"
-        )
+        raise DocumentExtractionError("Accident report contains no extractable text")
 
-    lines = [
-        line.strip()
-        for line in extraction.text.splitlines()
-        if line.strip()
-    ]
+    lines = [line.strip() for line in extraction.text.splitlines() if line.strip()]
 
     claim_id = _find_prefixed_value(
         lines,
@@ -385,23 +328,15 @@ def extract_accident_report(
     )
 
     try:
-        vehicle_index = lines.index(
-            "Vehicle:"
-        )
+        vehicle_index = lines.index("Vehicle:")
         vehicle = lines[vehicle_index + 1]
     except (ValueError, IndexError) as error:
-        raise DocumentExtractionError(
-            "Missing vehicle information"
-        ) from error
+        raise DocumentExtractionError("Missing vehicle information") from error
 
-    vehicle_parts = vehicle.split(
-        maxsplit=1
-    )
+    vehicle_parts = vehicle.split(maxsplit=1)
 
     if len(vehicle_parts) != 2:
-        raise DocumentExtractionError(
-            f"Unable to parse vehicle: {vehicle}"
-        )
+        raise DocumentExtractionError(f"Unable to parse vehicle: {vehicle}")
 
     vehicle_make, vehicle_model = vehicle_parts
 
@@ -414,10 +349,7 @@ def extract_accident_report(
         ),
     )
 
-    reported_damage = tuple(
-        normalize_damage(value)
-        for value in damage_lines
-    )
+    reported_damage = tuple(normalize_damage(value) for value in damage_lines)
 
     passengers = int(
         _find_prefixed_value(

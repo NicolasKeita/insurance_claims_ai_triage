@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
+from test_multimodal_investigation import make_visual_assessment
 
 from persistence.vision_assessments import (
-    vision_assessment_from_row, vision_assessment_to_row,
+    vision_assessment_from_row,
+    vision_assessment_to_row,
 )
-from test_multimodal_investigation import make_visual_assessment
 
 
 def test_vision_snapshot_round_trip_omits_computed_geometry_duplicates():

@@ -7,7 +7,10 @@ from knowledge.evaluation import evaluate_retrieval, load_benchmark, section_met
 
 
 def test_metrics_known_ranks_and_duplicate_sections():
-    results = [SimpleNamespace(source_id=s, section=t) for s, t in [("wrong", "A"), ("correct", "A"), ("correct", "A"), ("correct", "B")]]
+    results = [
+        SimpleNamespace(source_id=s, section=t)
+        for s, t in [("wrong", "A"), ("correct", "A"), ("correct", "A"), ("correct", "B")]
+    ]
     metrics = section_metrics(results, "correct", ["A", "B"])
     assert metrics == {"recall_at_1": 0, "recall_at_3": 0.5, "recall_at_5": 1, "mrr": 0.5}
     assert section_metrics([], "correct", ["A"])["mrr"] == 0

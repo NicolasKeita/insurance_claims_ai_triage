@@ -77,9 +77,7 @@ def find_latest_anomaly_candidate_source(client: MlflowClient) -> AnomalyCandida
     raise RuntimeError("No tracked anomaly candidate model found")
 
 
-def register_anomaly_candidate(
-    *, client: MlflowClient, source: AnomalyCandidateSource
-):
+def register_anomaly_candidate(*, client: MlflowClient, source: AnomalyCandidateSource):
     """Register a logged PyFunc model and update the candidate alias."""
     return register_model_version_with_alias(
         client=client,

@@ -1,12 +1,13 @@
 import json
 
 import pytest
+from knowledge_fakes import FakeStructuredLlm
 
 from knowledge.config import ROOT
-from knowledge.models import GroundingError, KnowledgeSourceType as Kind, RetrievedKnowledgeChunk
+from knowledge.models import GroundingError, RetrievedKnowledgeChunk
+from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.rag import KnowledgeRagService
 from knowledge.sources import KnowledgeCatalog
-from knowledge_fakes import FakeStructuredLlm
 
 
 def retrieved():
@@ -29,7 +30,9 @@ class FakeRetriever:
 
 def test_citations_resolved_from_retrieval_and_context_is_bounded():
     chunk = retrieved()
-    llm = FakeStructuredLlm({"answer": "Demo answer.", "cited_chunk_ids": [chunk.chunk_id, chunk.chunk_id], "insufficient_evidence": False})
+    llm = FakeStructuredLlm(
+        {"answer": "Demo answer.", "cited_chunk_ids": [chunk.chunk_id, chunk.chunk_id], "insufficient_evidence": False}
+    )
     retriever = FakeRetriever([chunk])
     answer = KnowledgeRagService(retriever, llm).answer("test", Kind.POLICY, product="AUTO_BASIC")
     assert len(answer.citations) == 1
@@ -45,13 +48,19 @@ def test_citations_resolved_from_retrieval_and_context_is_bounded():
 
 @pytest.mark.parametrize("insufficient", [False, True])
 def test_unknown_citation_rejected_even_when_insufficient(insufficient):
-    llm = FakeStructuredLlm({"answer": "Bad citation", "cited_chunk_ids": ["invented"], "insufficient_evidence": insufficient})
+    llm = FakeStructuredLlm(
+        {"answer": "Bad citation", "cited_chunk_ids": ["invented"], "insufficient_evidence": insufficient}
+    )
     with pytest.raises(GroundingError, match="absent"):
         KnowledgeRagService(FakeRetriever(), llm).answer("test", Kind.POLICY)
 
 
 def test_uncited_answer_rejected_and_insufficient_accepted():
-    output = {"answer": "Excerpts do not establish volcanic ash coverage.", "cited_chunk_ids": [], "insufficient_evidence": True}
+    output = {
+        "answer": "Excerpts do not establish volcanic ash coverage.",
+        "cited_chunk_ids": [],
+        "insufficient_evidence": True,
+    }
     answer = KnowledgeRagService(FakeRetriever(), FakeStructuredLlm(output)).answer("volcanic ash?", Kind.POLICY)
     assert answer.insufficient_evidence and answer.citations == []
     output["insufficient_evidence"] = False
@@ -61,16 +70,22 @@ def test_uncited_answer_rejected_and_insufficient_accepted():
 
 def test_inline_uuid_reference_cannot_bypass_structured_citation_validation():
     chunk = retrieved()
-    output = {"answer": "Unverified inline reference [00000000-0000-0000-0000-000000000000].",
-              "cited_chunk_ids": [chunk.chunk_id], "insufficient_evidence": False}
+    output = {
+        "answer": "Unverified inline reference [00000000-0000-0000-0000-000000000000].",
+        "cited_chunk_ids": [chunk.chunk_id],
+        "insufficient_evidence": False,
+    }
     with pytest.raises(GroundingError, match="absent"):
         KnowledgeRagService(FakeRetriever([chunk]), FakeStructuredLlm(output)).answer("test", Kind.POLICY)
 
 
 def test_valid_inline_reference_is_resolved_and_marker_removed():
     chunk = retrieved()
-    output = {"answer": "Evidence does not establish coverage [chunk_id: " + chunk.chunk_id + "].",
-              "cited_chunk_ids": [], "insufficient_evidence": True}
+    output = {
+        "answer": "Evidence does not establish coverage [chunk_id: " + chunk.chunk_id + "].",
+        "cited_chunk_ids": [],
+        "insufficient_evidence": True,
+    }
     answer = KnowledgeRagService(FakeRetriever([chunk]), FakeStructuredLlm(output)).answer("test", Kind.POLICY)
     assert answer.answer == "Evidence does not establish coverage."
     assert answer.citations[0].chunk_id == chunk.chunk_id

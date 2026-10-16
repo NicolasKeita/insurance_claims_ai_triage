@@ -54,10 +54,12 @@ class KnowledgeSearchInput(StrictModel):
 
 class AgentPlanStep(StrictModel):
     action: AgentAction
-    reason: str = Field(min_length=1, max_length=300,
-                        description="Short justification for the selected action, not private reasoning.")
+    reason: str = Field(
+        min_length=1, max_length=300, description="Short justification for the selected action, not private reasoning."
+    )
     arguments: EmptyToolInput | SimilarClaimsInput | KnowledgeSearchInput = Field(
-        description="Required for every action: {} for GET/FINISH, limit for similar, query and limit for search.")
+        description="Required for every action: {} for GET/FINISH, limit for similar, query and limit for search."
+    )
 
     def validated_arguments(self):
         schema = EmptyToolInput
@@ -128,11 +130,13 @@ class RecommendationRationale(StrictModel):
 class AgentRecommendation(StrictModel):
     case_summary: str = Field(min_length=1, max_length=3000)
     recommended_next_action: RecommendedNextAction
-    rationale: list[RecommendationRationale] = Field(max_length=12,
-        description="Required structured rationale; every factual statement cites collected evidence.")
+    rationale: list[RecommendationRationale] = Field(
+        max_length=12, description="Required structured rationale; every factual statement cites collected evidence."
+    )
     uncertainties: list[str] = Field(max_length=20, description="Required list; empty only if no uncertainties.")
-    evidence_ids: list[str] = Field(max_length=40,
-        description="Required union of exact collected IDs supporting rationale.")
+    evidence_ids: list[str] = Field(
+        max_length=40, description="Required union of exact collected IDs supporting rationale."
+    )
     human_review_required: Literal[True] = True
     # Historical audit reads must remain valid after a future version bump.
     # The graph enforces the current versions on every newly generated answer.

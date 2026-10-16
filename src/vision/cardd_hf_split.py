@@ -35,7 +35,9 @@ SUPPORTED_SPLIT_ALGORITHMS = {
 
 
 def _digest(value: Any) -> str:
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
 
 
 def _parameters(ratios: dict[str, float] | None, seed: int) -> dict[str, float]:
@@ -60,12 +62,14 @@ def _counts(total: int, ratios: dict[str, float], *, nonempty: bool = False) -> 
     raw = {name: total * ratios[name] for name in SPLITS}
     counts = {name: math.floor(raw[name]) for name in SPLITS}
     order = sorted(SPLITS, key=lambda name: (-(raw[name] - counts[name]), SPLITS.index(name)))
-    for name in order[:total - sum(counts.values())]:
+    for name in order[: total - sum(counts.values())]:
         counts[name] += 1
     if nonempty and total >= len(SPLITS):
         for name in SPLITS:
             if not counts[name]:
-                donor = max(SPLITS, key=lambda candidate: (counts[candidate], ratios[candidate], -SPLITS.index(candidate)))
+                donor = max(
+                    SPLITS, key=lambda candidate: (counts[candidate], ratios[candidate], -SPLITS.index(candidate))
+                )
                 counts[donor] -= 1
                 counts[name] = 1
     return counts
@@ -87,7 +91,11 @@ def _source_context(dataset: HfDamageDataset) -> tuple[dict[str, Any], list[_Gro
     if dataset.revision is not None and (not isinstance(dataset.revision, str) or not dataset.revision.strip()):
         raise DatasetValidationError("HF mirror revision must be a nonempty string or unavailable (null)")
     classes = tuple(dataset.classes)
-    if not classes or len(set(classes)) != len(classes) or any(not isinstance(name, str) or not name.strip() for name in classes):
+    if (
+        not classes
+        or len(set(classes)) != len(classes)
+        or any(not isinstance(name, str) or not name.strip() for name in classes)
+    ):
         raise DatasetValidationError("HF mirror classes must be unique, nonempty labels")
     samples = sorted(dataset.samples, key=lambda sample: sample.sample_id)
     if len(samples) < 3:
@@ -113,12 +121,19 @@ def _source_context(dataset: HfDamageDataset) -> tuple[dict[str, Any], list[_Gro
         if not isinstance(sample_id, str) or not sample_id.strip() or sample_id in seen_ids:
             raise DatasetValidationError("HF mirror has an empty or duplicate sample ID")
         seen_ids.add(sample_id)
-        if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in (sample.width, sample.height)):
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in (sample.width, sample.height)
+        ):
             raise DatasetValidationError(f"HF mirror sample {sample_id}: invalid dimensions")
         path = Path(sample.filepath).expanduser().resolve()
         if not path.is_file():
             raise DatasetValidationError(f"HF mirror sample {sample_id}: image file is missing")
-        if not isinstance(sample.image_sha256, str) or len(sample.image_sha256) != 64 or any(c not in "0123456789abcdef" for c in sample.image_sha256):
+        if (
+            not isinstance(sample.image_sha256, str)
+            or len(sample.image_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in sample.image_sha256)
+        ):
             raise DatasetValidationError(f"HF mirror sample {sample_id}: invalid image SHA256")
         if annotation_hash(path) != sample.image_sha256:
             raise DatasetValidationError(f"HF mirror sample {sample_id}: image content changed after inspection")
@@ -128,17 +143,30 @@ def _source_context(dataset: HfDamageDataset) -> tuple[dict[str, Any], list[_Gro
             if instance.label not in classes:
                 raise DatasetValidationError(f"HF mirror sample {sample_id}: annotation uses an unknown class")
             labels.add(instance.label)
-            annotations.append({"label": instance.label, "polygons": instance.polygons,
-                                "annotation_field": getattr(instance, "annotation_field", None),
-                                "source_kind": getattr(instance, "source_kind", None)})
+            annotations.append(
+                {
+                    "label": instance.label,
+                    "polygons": instance.polygons,
+                    "annotation_field": getattr(instance, "annotation_field", None),
+                    "source_kind": getattr(instance, "source_kind", None),
+                }
+            )
         try:
             annotation_fingerprint = _digest(annotations)
         except (ValueError, TypeError) as exc:
             raise DatasetValidationError(f"HF mirror sample {sample_id}: annotations cannot be fingerprinted") from exc
-        rows.append({"sample_id": sample_id, "file_name": path.name, "image_sha256": sample.image_sha256,
-                     "width": sample.width, "height": sample.height,
-                     "annotation_sha256": annotation_fingerprint, "annotation_count": len(annotations),
-                     "annotations_per_category": dict(sorted(Counter(item["label"] for item in annotations).items()))})
+        rows.append(
+            {
+                "sample_id": sample_id,
+                "file_name": path.name,
+                "image_sha256": sample.image_sha256,
+                "width": sample.width,
+                "height": sample.height,
+                "annotation_sha256": annotation_fingerprint,
+                "annotation_count": len(annotations),
+                "annotations_per_category": dict(sorted(Counter(item["label"] for item in annotations).items())),
+            }
+        )
         sample_labels[sample_id] = labels
         paths[str(path).casefold()].append(index)
         hashes[sample.image_sha256].append(index)
@@ -153,20 +181,34 @@ def _source_context(dataset: HfDamageDataset) -> tuple[dict[str, Any], list[_Gro
     for ids in sorted(members.values()):
         counts = Counter(label for sample_id in ids for label in sample_labels[sample_id])
         groups.append(_Group(tuple(ids), {label: counts[label] for label in classes if counts[label]}))
-    category_mapping = [{"category_id": index + 1, "name": name, "yolo_class_id": index} for index, name in enumerate(classes)]
-    context = {"source_name": f"CarDD HF mirror ({dataset.repository})", "source_repo": dataset.repository,
-               "source_revision": dataset.revision, "source_format": getattr(dataset, "source_format", "FiftyOneDataset"),
-               "sample_count": len(samples), "official_splits_used": False,
-               "annotation_fields": list(dataset.annotation_fields), "field_schema": dict(dataset.field_schema),
-               "category_mapping": category_mapping, "samples": rows,
-               "annotation_fingerprint": _digest([{key: value for key, value in row.items() if key != "file_name"} for row in rows]),
-               "duplicate_grouping": {"policy": "same_resolved_filepath_or_identical_image_sha256_together",
-                                      "group_count": len(groups), "duplicate_group_count": sum(group.size > 1 for group in groups),
-                                      "samples_in_duplicate_groups": sum(group.size for group in groups if group.size > 1),
-                                      "duplicate_filepath_groups": sum(len(indices) > 1 for indices in paths.values()),
-                                      "duplicate_image_sha256_groups": sum(len(indices) > 1 for indices in hashes.values()),
-                                      "duplicate_filename_groups": sum(len(indices) > 1 for indices in names.values()),
-                                      "groups": [list(group.ids) for group in groups if group.size > 1]}}
+    category_mapping = [
+        {"category_id": index + 1, "name": name, "yolo_class_id": index} for index, name in enumerate(classes)
+    ]
+    context = {
+        "source_name": f"CarDD HF mirror ({dataset.repository})",
+        "source_repo": dataset.repository,
+        "source_revision": dataset.revision,
+        "source_format": getattr(dataset, "source_format", "FiftyOneDataset"),
+        "sample_count": len(samples),
+        "official_splits_used": False,
+        "annotation_fields": list(dataset.annotation_fields),
+        "field_schema": dict(dataset.field_schema),
+        "category_mapping": category_mapping,
+        "samples": rows,
+        "annotation_fingerprint": _digest(
+            [{key: value for key, value in row.items() if key != "file_name"} for row in rows]
+        ),
+        "duplicate_grouping": {
+            "policy": "same_resolved_filepath_or_identical_image_sha256_together",
+            "group_count": len(groups),
+            "duplicate_group_count": sum(group.size > 1 for group in groups),
+            "samples_in_duplicate_groups": sum(group.size for group in groups if group.size > 1),
+            "duplicate_filepath_groups": sum(len(indices) > 1 for indices in paths.values()),
+            "duplicate_image_sha256_groups": sum(len(indices) > 1 for indices in hashes.values()),
+            "duplicate_filename_groups": sum(len(indices) > 1 for indices in names.values()),
+            "groups": [list(group.ids) for group in groups if group.size > 1],
+        },
+    }
     context["source_fingerprint"] = _digest(context)
     return context, groups
 
@@ -199,7 +241,9 @@ def _packing_exists(sizes: tuple[int, ...], capacities: tuple[int, ...], singles
     else:
         return True
     if len(sizes) > 100:
-        raise DatasetValidationError("Duplicate image groups require complex packing; cannot safely preserve exact split sizes. Use a new reviewed split version or remove duplicate samples explicitly.")
+        raise DatasetValidationError(
+            "Duplicate image groups require complex packing; cannot safely preserve exact split sizes. Use a new reviewed split version or remove duplicate samples explicitly."
+        )
     visited = 0
 
     @lru_cache(maxsize=50000)
@@ -207,7 +251,9 @@ def _packing_exists(sizes: tuple[int, ...], capacities: tuple[int, ...], singles
         nonlocal visited
         visited += 1
         if visited > 50000:
-            raise DatasetValidationError("Duplicate image grouping exceeded safe split search limits; no manifest was created")
+            raise DatasetValidationError(
+                "Duplicate image grouping exceeded safe split search limits; no manifest was created"
+            )
         if index == len(sizes):
             return True
         previous = None
@@ -224,8 +270,13 @@ def _packing_exists(sizes: tuple[int, ...], capacities: tuple[int, ...], singles
     return search(0, capacities)
 
 
-def _balance_groups(groups: list[_Group], assignments: dict[str, list[str]], classes: list[str],
-                    desired: dict[str, dict[str, int]], tie_keys: dict[tuple[str, ...], str]) -> dict[str, list[str]]:
+def _balance_groups(
+    groups: list[_Group],
+    assignments: dict[str, list[str]],
+    classes: list[str],
+    desired: dict[str, dict[str, int]],
+    tie_keys: dict[tuple[str, ...], str],
+) -> dict[str, list[str]]:
     """Improve all label distributions with deterministic equal-size swaps.
 
     Rare-label-first allocation can leave a common co-occurring class heavily
@@ -247,7 +298,9 @@ def _balance_groups(groups: list[_Group], assignments: dict[str, list[str]], cla
         actual[name] = [old + count for old, count in zip(actual[name], vector)]
     totals = [sum(actual[name][index] for name in SPLITS) for index in range(len(classes))]
     weights = [1 / max(total, 1) for total in totals]
-    residual = {name: [actual[name][index] - desired[label][name] for index, label in enumerate(classes)] for name in SPLITS}
+    residual = {
+        name: [actual[name][index] - desired[label][name] for index, label in enumerate(classes)] for name in SPLITS
+    }
     # At six multilabel classes, singleton incidence has at most 64 patterns.
     # Duplicate groups contribute their actual image-count vectors separately.
     pattern_pairs = []
@@ -271,7 +324,15 @@ def _balance_groups(groups: list[_Group], assignments: dict[str, list[str]], cla
                 gain = -2 * (sum(scaled * value for scaled, value in zip(weighted, difference)) + quadratic)
                 if gain <= 1e-12:
                     continue
-                key = (-gain, SPLITS.index(left), SPLITS.index(right), buckets[left][first][0][0], buckets[right][second][0][0], first, second)
+                key = (
+                    -gain,
+                    SPLITS.index(left),
+                    SPLITS.index(right),
+                    buckets[left][first][0][0],
+                    buckets[right][second][0][0],
+                    first,
+                    second,
+                )
                 if best_key is None or key < best_key:
                     best_key = key
                     best = (left, right, first, second, delta)
@@ -284,11 +345,20 @@ def _balance_groups(groups: list[_Group], assignments: dict[str, list[str]], cla
         heapq.heappush(buckets[left][second], second_group)
         residual[left] = [value + change for value, change in zip(residual[left], delta)]
         residual[right] = [value - change for value, change in zip(residual[right], delta)]
-    return {name: sorted(sample_id for values in buckets[name].values() for _, _, group in values for sample_id in group.ids) for name in SPLITS}
+    return {
+        name: sorted(
+            sample_id for values in buckets[name].values() for _, _, group in values for sample_id in group.ids
+        )
+        for name in SPLITS
+    }
 
 
-def _assign(groups: list[_Group], classes: list[str], targets: dict[str, int], ratios: dict[str, float], seed: int) -> dict[str, list[str]]:
-    total_per_class = Counter(label for group in groups for label, count in group.image_counts.items() for _ in range(count))
+def _assign(
+    groups: list[_Group], classes: list[str], targets: dict[str, int], ratios: dict[str, float], seed: int
+) -> dict[str, list[str]]:
+    total_per_class = Counter(
+        label for group in groups for label, count in group.image_counts.items() for _ in range(count)
+    )
     desired = {label: _counts(total_per_class[label], ratios, nonempty=True) for label in classes}
     actual = {name: Counter() for name in SPLITS}
     capacity = dict(targets)
@@ -296,10 +366,19 @@ def _assign(groups: list[_Group], classes: list[str], targets: dict[str, int], r
     # Compute seeded tie keys once; repeated hashing would dominate a real run.
     tie_keys = {group.ids: _digest([seed, group.ids]) for group in groups}
     tie = lambda group: tie_keys[group.ids]
-    duplicates = sorted((group for group in groups if group.size > 1), key=lambda group: (-group.size, min((total_per_class[label] for label in group.image_counts), default=0), tie(group)))
+    duplicates = sorted(
+        (group for group in groups if group.size > 1),
+        key=lambda group: (
+            -group.size,
+            min((total_per_class[label] for label in group.image_counts), default=0),
+            tie(group),
+        ),
+    )
     singles = [group for group in groups if group.size == 1]
     if not _packing_exists(tuple(group.size for group in duplicates), tuple(targets.values()), len(singles)):
-        raise DatasetValidationError("Duplicate image groups cannot fit the requested exact train/val/test sizes without data leakage")
+        raise DatasetValidationError(
+            "Duplicate image groups cannot fit the requested exact train/val/test sizes without data leakage"
+        )
 
     def put(group: _Group, primary: str | None, remaining_duplicate_sizes: tuple[int, ...] = ()) -> None:
         candidates = []
@@ -310,8 +389,22 @@ def _assign(groups: list[_Group], classes: list[str], targets: dict[str, int], r
             if remaining_duplicate_sizes and not _packing_exists(remaining_duplicate_sizes, after, len(singles)):
                 continue
             primary_deficit = desired[primary][name] - actual[name][primary] if primary else 0
-            other_deficit = sum((desired[label][name] - actual[name][label]) / max(total_per_class[label], 1) for label in group.image_counts)
-            candidates.append(((primary_deficit, other_deficit, capacity[name] / max(targets[name], 1), capacity[name], -SPLITS.index(name)), name))
+            other_deficit = sum(
+                (desired[label][name] - actual[name][label]) / max(total_per_class[label], 1)
+                for label in group.image_counts
+            )
+            candidates.append(
+                (
+                    (
+                        primary_deficit,
+                        other_deficit,
+                        capacity[name] / max(targets[name], 1),
+                        capacity[name],
+                        -SPLITS.index(name),
+                    ),
+                    name,
+                )
+            )
         if not candidates:
             raise DatasetValidationError("Duplicate groups prevent a leakage-free split with the requested sizes")
         name = max(candidates)[1]
@@ -320,11 +413,15 @@ def _assign(groups: list[_Group], classes: list[str], targets: dict[str, int], r
         actual[name].update(group.image_counts)
 
     for index, group in enumerate(duplicates):
-        primary = min(group.image_counts, key=lambda label: (total_per_class[label], label)) if group.image_counts else None
-        put(group, primary, tuple(item.size for item in duplicates[index + 1:]))
+        primary = (
+            min(group.image_counts, key=lambda label: (total_per_class[label], label)) if group.image_counts else None
+        )
+        put(group, primary, tuple(item.size for item in duplicates[index + 1 :]))
     remaining = {group.ids[0]: group for group in singles}
     while remaining:
-        label_groups = {label: [group for group in remaining.values() if label in group.image_counts] for label in classes}
+        label_groups = {
+            label: [group for group in remaining.values() if label in group.image_counts] for label in classes
+        }
         nonempty = [label for label in classes if label_groups[label]]
         if nonempty:
             primary = min(nonempty, key=lambda label: (len(label_groups[label]), label))
@@ -345,26 +442,47 @@ def _split_metadata(context: dict[str, Any], assignments: dict[str, list[str]], 
     split_counts, hashes = {}, {}
     for name in SPLITS:
         samples = [rows[sample_id] for sample_id in assignments[name]]
-        instances = Counter(label for row in samples for label, count in row["annotations_per_category"].items() for _ in range(count))
+        instances = Counter(
+            label for row in samples for label, count in row["annotations_per_category"].items() for _ in range(count)
+        )
         images = Counter(label for row in samples for label in row["annotations_per_category"])
-        split_counts[name] = {"image_count": len(samples), "annotation_count": sum(row["annotation_count"] for row in samples),
-                              "annotations_per_category": {label: instances[label] for label in classes},
-                              "images_per_category": {label: images[label] for label in classes},
-                              "images_without_annotations": sum(row["annotation_count"] == 0 for row in samples)}
+        split_counts[name] = {
+            "image_count": len(samples),
+            "annotation_count": sum(row["annotation_count"] for row in samples),
+            "annotations_per_category": {label: instances[label] for label in classes},
+            "images_per_category": {label: images[label] for label in classes},
+            "images_without_annotations": sum(row["annotation_count"] == 0 for row in samples),
+        }
         hashes[name] = _digest([{key: value for key, value in row.items() if key != "file_name"} for row in samples])
     warnings = []
     for label in classes:
         independent = sum(label in group.image_counts for group in groups)
         if independent < len(SPLITS):
-            warnings.append(f"Class {label!r} has only {independent} independent image groups; representation in all three splits is impossible.")
+            warnings.append(
+                f"Class {label!r} has only {independent} independent image groups; representation in all three splits is impossible."
+            )
         elif any(not split_counts[name]["images_per_category"][label] for name in SPLITS):
-            warnings.append(f"Class {label!r} is absent from at least one split: multilabel overlap, duplicate grouping and exact capacities prevented full coverage.")
-    return {"splits": split_counts, "class_distribution": {name: {"images": split_counts[name]["images_per_category"], "instances": split_counts[name]["annotations_per_category"]} for name in SPLITS},
-            "annotation_hashes": hashes, "warnings": warnings,
-            "split_overlap_check": "passed: sample IDs, resolved filepaths and image SHA256 are disjoint across splits"}
+            warnings.append(
+                f"Class {label!r} is absent from at least one split: multilabel overlap, duplicate grouping and exact capacities prevented full coverage."
+            )
+    return {
+        "splits": split_counts,
+        "class_distribution": {
+            name: {
+                "images": split_counts[name]["images_per_category"],
+                "instances": split_counts[name]["annotations_per_category"],
+            }
+            for name in SPLITS
+        },
+        "annotation_hashes": hashes,
+        "warnings": warnings,
+        "split_overlap_check": "passed: sample IDs, resolved filepaths and image SHA256 are disjoint across splits",
+    }
 
 
-def validate_cardd_hf_split(dataset: HfDamageDataset, manifest: dict[str, Any], *, ratios: dict[str, float] | None = None, seed: int = 42) -> dict[str, Any]:
+def validate_cardd_hf_split(
+    dataset: HfDamageDataset, manifest: dict[str, Any], *, ratios: dict[str, float] | None = None, seed: int = 42
+) -> dict[str, Any]:
     """Validate frozen assignments against current source, annotations and content.
 
     A mismatch is an error; this function never repairs or regenerates a split.
@@ -378,18 +496,31 @@ def validate_cardd_hf_split(dataset: HfDamageDataset, manifest: dict[str, Any], 
     algorithm = SUPPORTED_SPLIT_ALGORITHMS.get(version) if isinstance(version, str) else None
     if algorithm is None or manifest.get("algorithm") != algorithm:
         raise DatasetValidationError("Frozen HF split manifest has an unsupported version or inconsistent algorithm")
-    expected = dict(context, split_version=version, algorithm=algorithm, seed=seed, ratios=ratios,
-                    target_counts=_counts(context["sample_count"], ratios, nonempty=True),
-                    test_split_policy="frozen held-out: never used for training, checkpoint selection or threshold tuning")
+    expected = dict(
+        context,
+        split_version=version,
+        algorithm=algorithm,
+        seed=seed,
+        ratios=ratios,
+        target_counts=_counts(context["sample_count"], ratios, nonempty=True),
+        test_split_policy="frozen held-out: never used for training, checkpoint selection or threshold tuning",
+    )
     if not isinstance(manifest, dict) or any(manifest.get(key) != value for key, value in expected.items()):
-        raise DatasetValidationError("Frozen HF split manifest is inconsistent with the source revision, samples, annotations, taxonomy or requested parameters. Do not overwrite or regenerate this version; review the change and use a new split version.")
+        raise DatasetValidationError(
+            "Frozen HF split manifest is inconsistent with the source revision, samples, annotations, taxonomy or requested parameters. Do not overwrite or regenerate this version; review the change and use a new split version."
+        )
     assignments = manifest.get("sample_ids")
     if not isinstance(assignments, dict) or set(assignments) != set(SPLITS):
         raise DatasetValidationError("Frozen HF split sample_ids must define exactly train, val and test")
     seen, split_for_id = set(), {}
     for name in SPLITS:
         ids = assignments[name]
-        if not isinstance(ids, list) or any(not isinstance(item, str) for item in ids) or len(set(ids)) != len(ids) or seen.intersection(ids):
+        if (
+            not isinstance(ids, list)
+            or any(not isinstance(item, str) for item in ids)
+            or len(set(ids)) != len(ids)
+            or seen.intersection(ids)
+        ):
             raise DatasetValidationError("Frozen HF split leakage: duplicate or invalid sample IDs")
         if len(ids) != expected["target_counts"][name]:
             raise DatasetValidationError("Frozen HF split image counts disagree with requested ratios")
@@ -399,18 +530,36 @@ def validate_cardd_hf_split(dataset: HfDamageDataset, manifest: dict[str, Any], 
         raise DatasetValidationError("Frozen HF split contains unknown or missing source samples")
     for group in groups:
         if len({split_for_id[sample_id] for sample_id in group.ids}) != 1:
-            raise DatasetValidationError("Frozen HF split leakage: identical image content or filepath appears in multiple splits")
+            raise DatasetValidationError(
+                "Frozen HF split leakage: identical image content or filepath appears in multiple splits"
+            )
     metadata = _split_metadata(context, assignments, groups)
     if any(manifest.get(key) != value for key, value in metadata.items()):
-        raise DatasetValidationError("Frozen HF split class distribution or annotation hashes disagree with assigned samples")
-    fingerprint = _digest({"source_fingerprint": context["source_fingerprint"], "sample_ids": assignments,
-                           "split_version": version, "algorithm": algorithm, "seed": seed, "ratios": ratios})
+        raise DatasetValidationError(
+            "Frozen HF split class distribution or annotation hashes disagree with assigned samples"
+        )
+    fingerprint = _digest(
+        {
+            "source_fingerprint": context["source_fingerprint"],
+            "sample_ids": assignments,
+            "split_version": version,
+            "algorithm": algorithm,
+            "seed": seed,
+            "ratios": ratios,
+        }
+    )
     if manifest.get("dataset_fingerprint") != fingerprint:
         raise DatasetValidationError("Frozen HF split dataset fingerprint is inconsistent")
     return manifest
 
 
-def create_or_load_cardd_hf_split(dataset: HfDamageDataset, manifest_path: Path | str = DEFAULT_SPLIT_MANIFEST_PATH, *, ratios: dict[str, float] | None = None, seed: int = 42) -> dict[str, Any]:
+def create_or_load_cardd_hf_split(
+    dataset: HfDamageDataset,
+    manifest_path: Path | str = DEFAULT_SPLIT_MANIFEST_PATH,
+    *,
+    ratios: dict[str, float] | None = None,
+    seed: int = 42,
+) -> dict[str, Any]:
     """Create once, otherwise reuse and validate the same frozen manifest."""
     ratios = _parameters(ratios, seed)
     path = Path(manifest_path).expanduser().resolve()
@@ -418,17 +567,34 @@ def create_or_load_cardd_hf_split(dataset: HfDamageDataset, manifest_path: Path 
         try:
             manifest = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise DatasetValidationError(f"Cannot read frozen HF split manifest; it will not be regenerated: {path}") from exc
+            raise DatasetValidationError(
+                f"Cannot read frozen HF split manifest; it will not be regenerated: {path}"
+            ) from exc
         return validate_cardd_hf_split(dataset, manifest, ratios=ratios, seed=seed)
     context, groups = _source_context(dataset)
     targets = _counts(context["sample_count"], ratios, nonempty=True)
     assignments = _assign(groups, [item["name"] for item in context["category_mapping"]], targets, ratios, seed)
-    manifest = dict(context, split_version=SPLIT_VERSION, algorithm=ALGORITHM, seed=seed, ratios=ratios,
-                    target_counts=targets, sample_ids=assignments,
-                    test_split_policy="frozen held-out: never used for training, checkpoint selection or threshold tuning")
+    manifest = dict(
+        context,
+        split_version=SPLIT_VERSION,
+        algorithm=ALGORITHM,
+        seed=seed,
+        ratios=ratios,
+        target_counts=targets,
+        sample_ids=assignments,
+        test_split_policy="frozen held-out: never used for training, checkpoint selection or threshold tuning",
+    )
     manifest.update(_split_metadata(context, assignments, groups))
-    manifest["dataset_fingerprint"] = _digest({"source_fingerprint": context["source_fingerprint"], "sample_ids": assignments,
-                                              "split_version": SPLIT_VERSION, "algorithm": ALGORITHM, "seed": seed, "ratios": ratios})
+    manifest["dataset_fingerprint"] = _digest(
+        {
+            "source_fingerprint": context["source_fingerprint"],
+            "sample_ids": assignments,
+            "split_version": SPLIT_VERSION,
+            "algorithm": ALGORITHM,
+            "seed": seed,
+            "ratios": ratios,
+        }
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         # Exclusive creation also prevents two concurrent jobs replacing a split.

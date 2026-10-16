@@ -39,8 +39,7 @@ class RegisteredTriagePredictor:
         probability_values = self.model.predict_proba(frame)[0]
         classes = self.model.named_steps["classifier"].classes_
         probabilities = {
-            str(label): float(probability)
-            for label, probability in zip(classes, probability_values, strict=True)
+            str(label): float(probability) for label, probability in zip(classes, probability_values, strict=True)
         }
         workflow = TriageWorkflow(str(prediction))
         return TriagePrediction(
@@ -55,9 +54,7 @@ class RegisteredTriagePredictor:
 
 def load_candidate_predictor() -> RegisteredTriagePredictor:
     client = MlflowClient()
-    version = client.get_model_version_by_alias(
-        REGISTERED_MODEL_NAME, CANDIDATE_ALIAS
-    )
+    version = client.get_model_version_by_alias(REGISTERED_MODEL_NAME, CANDIDATE_ALIAS)
     model_uri = f"models:/{REGISTERED_MODEL_NAME}@{CANDIDATE_ALIAS}"
     model = mlflow.sklearn.load_model(model_uri)
     return RegisteredTriagePredictor(

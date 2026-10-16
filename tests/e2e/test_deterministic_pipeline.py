@@ -15,17 +15,27 @@ def golden_run():
     return {scenario.scenario_id: scenario for scenario in scenarios}, report
 
 
-@pytest.mark.parametrize("scenario_id", [
-    "simple_coherent_claim", "additional_quote_damage", "missing_documents",
-    "recent_claim_history", "statistically_unusual_claim", "policy_answerable",
-    "policy_insufficient_evidence", "agent_missing_tool_data",
-    "visual_additional_damage", "visual_non_detection",
-])
+@pytest.mark.parametrize(
+    "scenario_id",
+    [
+        "simple_coherent_claim",
+        "additional_quote_damage",
+        "missing_documents",
+        "recent_claim_history",
+        "statistically_unusual_claim",
+        "policy_answerable",
+        "policy_insufficient_evidence",
+        "agent_missing_tool_data",
+        "visual_additional_damage",
+        "visual_non_detection",
+    ],
+)
 def test_golden_scenario_satisfies_all_mandatory_expectations(golden_run, scenario_id):
     _, report = golden_run
     result = next(result for result in report.results if result.scenario_id == scenario_id)
-    failures = [check.model_dump(mode="json") for check in result.assertions
-                if check.mandatory and check.status != "PASS"]
+    failures = [
+        check.model_dump(mode="json") for check in result.assertions if check.mandatory and check.status != "PASS"
+    ]
     assert result.status == "PASS", {"scenario": scenario_id, "errors": result.errors, "assertions": failures}
     assert not failures
 
@@ -107,21 +117,27 @@ def test_a_malformed_final_schema_fails_without_a_forbidden_action(golden_run):
     assert "schema:agent" in failures_for(scenario, observation)
 
 
-@pytest.mark.parametrize("field, wrong_taxonomy", [
-    ("visual_damage_type", "FRONT_BUMPER"),
-    ("vehicle_part", "SCRATCH"),
-    ("mapped_damage_type", "SCRATCH"),
-])
+@pytest.mark.parametrize(
+    "field, wrong_taxonomy",
+    [
+        ("visual_damage_type", "FRONT_BUMPER"),
+        ("vehicle_part", "SCRATCH"),
+        ("mapped_damage_type", "SCRATCH"),
+    ],
+)
 def test_visual_morphology_vehicle_parts_and_business_damage_remain_separate(golden_run, field, wrong_taxonomy):
     scenario, observation = observation_for(golden_run, "visual_additional_damage")
     observation.vision["images"][0]["evidence"][0][field] = wrong_taxonomy
     assert "schema:vision" in failures_for(scenario, observation)
 
 
-@pytest.mark.parametrize("source, expected_failure", [
-    ("documents", "provenance:documents"),
-    ("anomaly", "provenance:anomaly_model"),
-])
+@pytest.mark.parametrize(
+    "source, expected_failure",
+    [
+        ("documents", "provenance:documents"),
+        ("anomaly", "provenance:anomaly_model"),
+    ],
+)
 def test_missing_provenance_fails(golden_run, source, expected_failure):
     scenario, observation = observation_for(golden_run, "additional_quote_damage")
     if source == "documents":

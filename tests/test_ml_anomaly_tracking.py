@@ -132,9 +132,7 @@ def test_round_trip_detects_score_change():
 
     examples = pd.DataFrame([dict.fromkeys(ANOMALY_FEATURE_COLUMNS, 0)])
     assert np.isclose(
-        verify_anomaly_model_round_trip(Detector(), Model(0.4), examples)[
-            "anomaly_score"
-        ].iloc[0],
+        verify_anomaly_model_round_trip(Detector(), Model(0.4), examples)["anomaly_score"].iloc[0],
         0.4,
     )
     with pytest.raises(RuntimeError, match="anomaly_score changed"):

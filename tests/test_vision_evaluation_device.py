@@ -13,10 +13,19 @@ def evaluation_fixture(tmp_path, monkeypatch):
     monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     monkeypatch.setenv("DAMAGE_CONFIDENCE_THRESHOLD", "0.25")
     config = DamageTrainingConfig(
-        version="device-fixture", epochs=100, imgsz=640, batch=8,
-        patience=20, seed=42, device="0", workers=0, optimizer="auto",
-        base_model="yolo26n-seg.pt", dataset_yaml=tmp_path / "dataset.yaml",
-        output_dir=tmp_path / "run", experiment_name="device-fixture",
+        version="device-fixture",
+        epochs=100,
+        imgsz=640,
+        batch=8,
+        patience=20,
+        seed=42,
+        device="0",
+        workers=0,
+        optimizer="auto",
+        base_model="yolo26n-seg.pt",
+        dataset_yaml=tmp_path / "dataset.yaml",
+        output_dir=tmp_path / "run",
+        experiment_name="device-fixture",
     )
     config.output_dir.mkdir()
     manifest = {
@@ -24,7 +33,8 @@ def evaluation_fixture(tmp_path, monkeypatch):
         "splits": {"test": {"image_count": 1, "annotation_count": 1}},
     }
     summary = {
-        "confidence_threshold": 0.25, "best_checkpoint_sha256": "fixture-only",
+        "confidence_threshold": 0.25,
+        "best_checkpoint_sha256": "fixture-only",
         "dataset": manifest,
     }
     monkeypatch.setattr(
@@ -56,9 +66,11 @@ class DeviceValidationStub:
 
 def evaluate_fixture(config, manifest, model):
     return run_evaluation(
-        config, model_factory=lambda _: model,
+        config,
+        model_factory=lambda _: model,
         environment_provider=lambda: {"cuda_available": True},
-        dataset_loader=lambda _: manifest, max_error_examples=0,
+        dataset_loader=lambda _: manifest,
+        max_error_examples=0,
     )
 
 

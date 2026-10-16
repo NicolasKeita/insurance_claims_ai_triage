@@ -5,16 +5,20 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
-
-from persistence.agent_runs import AgentRunAlreadyExistsError, AgentRunStore
-from persistence.models import (
-    AgentRunRow, AnomalyAssessmentRow, ClaimRow, InvestigationAssessmentRow, TriageAssessmentRow,
-)
-from persistence.repositories import ClaimNotFoundError
-from persistence.service import PersistenceService
 from test_agent_persistence import add_policy_evidence, make_agent_run
 from test_persistence import reference_claim
 from test_persistence_postgres import factory, postgres_engine
+
+from persistence.agent_runs import AgentRunAlreadyExistsError, AgentRunStore
+from persistence.models import (
+    AgentRunRow,
+    AnomalyAssessmentRow,
+    ClaimRow,
+    InvestigationAssessmentRow,
+    TriageAssessmentRow,
+)
+from persistence.repositories import ClaimNotFoundError
+from persistence.service import PersistenceService
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
@@ -84,10 +88,13 @@ def test_agent_unknown_claim_raises_existing_domain_error(factory):
         store.latest_for_claim("missing")
 
 
-@pytest.mark.parametrize("statement", [
-    "UPDATE agent_runs SET objective = 'changed' WHERE run_id = :run_id",
-    "DELETE FROM agent_runs WHERE run_id = :run_id",
-])
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE agent_runs SET objective = 'changed' WHERE run_id = :run_id",
+        "DELETE FROM agent_runs WHERE run_id = :run_id",
+    ],
+)
 def test_agent_database_trigger_forbids_update_and_delete(factory, reference_claim, statement):
     PersistenceService(factory).import_claim(reference_claim)
     source = make_agent_run(reference_claim.claim_id)

@@ -9,10 +9,18 @@ from pydantic import ValidationError
 from vision.fusion_config import DEFAULT_FUSION_POLICY, VisionFusionPolicy
 from vision.geometry import PolygonGeometryError, validated_polygon_geometry
 from vision.models import (
-    AssociationMethod, AssociationStatus, DamagePartAssociation,
-    ImageDamageAssessment, ImagePartAssessment, ImageVisualAssessment,
-    NormalizedBoundingBox, NormalizedPolygon, VehiclePartDetection,
-    VisualDamageDetection, VisualDamageEvidence, VisionModelMetadata,
+    AssociationMethod,
+    AssociationStatus,
+    DamagePartAssociation,
+    ImageDamageAssessment,
+    ImagePartAssessment,
+    ImageVisualAssessment,
+    NormalizedBoundingBox,
+    NormalizedPolygon,
+    VehiclePartDetection,
+    VisionModelMetadata,
+    VisualDamageDetection,
+    VisualDamageEvidence,
 )
 from vision.taxonomy import VehiclePartType, map_vehicle_part_to_damage
 
@@ -76,9 +84,12 @@ def calculate_overlap(damage: VisualDamageDetection, part: VehiclePartDetection)
     intersection = max(0.0, min(intersection, damage_area, part_area))
     union = damage_area + part_area - intersection
     return GeometryOverlap(
-        intersection_area=intersection, damage_area=damage_area, part_area=part_area,
+        intersection_area=intersection,
+        damage_area=damage_area,
+        part_area=part_area,
         damage_containment_ratio=min(1.0, round(intersection / damage_area, 15)),
-        iou=min(1.0, intersection / union), association_method=method,
+        iou=min(1.0, intersection / union),
+        association_method=method,
     )
 
 
@@ -93,8 +104,10 @@ def _validate_same_image(damage: ImageDamageAssessment, parts: ImagePartAssessme
 
 
 def damage_part_candidates(
-    damage: VisualDamageDetection, damage_index: int,
-    parts: list[VehiclePartDetection], policy: VisionFusionPolicy,
+    damage: VisualDamageDetection,
+    damage_index: int,
+    parts: list[VehiclePartDetection],
+    policy: VisionFusionPolicy,
 ) -> list[DamagePartAssociation]:
     """Preserve every positive-overlap business candidate in score order."""
     if damage.polygon is not None:
@@ -106,25 +119,32 @@ def damage_part_candidates(
         overlap = calculate_overlap(damage, part)
         if overlap.intersection_area == 0:
             continue
-        candidates.append(DamagePartAssociation(
-            damage_detection_index=damage_index, part_detection_index=part_index,
-            candidate_part=part, damage_confidence=damage.confidence,
-            part_confidence=part.confidence,
-            intersection_area=overlap.intersection_area,
-            damage_area=overlap.damage_area, part_area=overlap.part_area,
-            damage_containment_ratio=overlap.damage_containment_ratio, iou=overlap.iou,
-            association_method=overlap.association_method,
-            eligible=(
-                damage.confidence >= policy.min_damage_confidence
-                and part.confidence >= policy.min_part_confidence
-                and overlap.damage_containment_ratio >= policy.min_damage_containment
-            ),
-        ))
+        candidates.append(
+            DamagePartAssociation(
+                damage_detection_index=damage_index,
+                part_detection_index=part_index,
+                candidate_part=part,
+                damage_confidence=damage.confidence,
+                part_confidence=part.confidence,
+                intersection_area=overlap.intersection_area,
+                damage_area=overlap.damage_area,
+                part_area=overlap.part_area,
+                damage_containment_ratio=overlap.damage_containment_ratio,
+                iou=overlap.iou,
+                association_method=overlap.association_method,
+                eligible=(
+                    damage.confidence >= policy.min_damage_confidence
+                    and part.confidence >= policy.min_part_confidence
+                    and overlap.damage_containment_ratio >= policy.min_damage_containment
+                ),
+            )
+        )
     return sorted(candidates, key=lambda item: (-item.damage_containment_ratio, item.part_detection_index))
 
 
 def select_primary_association(
-    candidates: list[DamagePartAssociation], policy: VisionFusionPolicy,
+    candidates: list[DamagePartAssociation],
+    policy: VisionFusionPolicy,
 ) -> tuple[AssociationStatus, DamagePartAssociation | None]:
     eligible = sorted(
         (candidate for candidate in candidates if candidate.eligible),
@@ -132,8 +152,11 @@ def select_primary_association(
     )
     if not eligible:
         return AssociationStatus.UNASSIGNED, None
-    if (len(eligible) > 1 and
-            round(eligible[0].damage_containment_ratio - eligible[1].damage_containment_ratio, 15) <= policy.ambiguity_margin):
+    if (
+        len(eligible) > 1
+        and round(eligible[0].damage_containment_ratio - eligible[1].damage_containment_ratio, 15)
+        <= policy.ambiguity_margin
+    ):
         return AssociationStatus.AMBIGUOUS, None
     return AssociationStatus.ASSIGNED, eligible[0]
 
@@ -145,8 +168,10 @@ def validate_image_association_snapshot(image: ImageVisualAssessment):
             _validated_polygon(part.polygon)
     for item in image.evidence:
         expected = damage_part_candidates(
-            item.damage_detection, item.damage_detection_index,
-            image.part_assessment.detections, item.fusion_policy,
+            item.damage_detection,
+            item.damage_detection_index,
+            image.part_assessment.detections,
+            item.fusion_policy,
         )
         expected_by_index = {candidate.part_detection_index: candidate for candidate in expected}
         actual_by_index = {candidate.part_detection_index: candidate for candidate in item.associations}
@@ -154,22 +179,27 @@ def validate_image_association_snapshot(image: ImageVisualAssessment):
             raise ValueError("Preserved association candidates differ from positive overlaps of the source masks")
         for index, candidate in actual_by_index.items():
             observed = expected_by_index[index]
-            if candidate.association_method is not observed.association_method or candidate.eligible != observed.eligible:
+            if (
+                candidate.association_method is not observed.association_method
+                or candidate.eligible != observed.eligible
+            ):
                 raise ValueError("Association method or eligibility differs from its masks and fusion policy")
             for metric in ("intersection_area", "damage_area", "part_area", "damage_containment_ratio", "iou"):
                 if not math.isclose(getattr(candidate, metric), getattr(observed, metric), rel_tol=1e-9, abs_tol=1e-12):
                     raise ValueError(f"Association {metric} differs from the preserved source masks")
         status, primary = select_primary_association(expected, item.fusion_policy)
         primary_index = item.primary_association.part_detection_index if item.primary_association is not None else None
-        if (item.association_status is not status
-                or primary_index != (primary.part_detection_index if primary is not None else None)):
+        if item.association_status is not status or primary_index != (
+            primary.part_detection_index if primary is not None else None
+        ):
             raise ValueError("Association status or primary part differs from containment ranking and ambiguity policy")
 
 
 def fuse_image_assessments(
     damage_assessment: ImageDamageAssessment,
     part_assessment: ImagePartAssessment,
-    *, damage_model_metadata: VisionModelMetadata,
+    *,
+    damage_model_metadata: VisionModelMetadata,
     policy: VisionFusionPolicy | None = None,
 ) -> ImageVisualAssessment:
     _validate_same_image(damage_assessment, part_assessment)
@@ -181,20 +211,28 @@ def fuse_image_assessments(
     for damage_index, damage in enumerate(damage_assessment.detections):
         candidates = damage_part_candidates(damage, damage_index, part_assessment.detections, policy)
         status, primary = select_primary_association(candidates, policy)
-        evidence.append(VisualDamageEvidence(
-            filename=damage_assessment.filename,
-            asset_reference=damage_assessment.asset_reference or part_assessment.asset_reference,
-            damage_detection_index=damage_index,
-            visual_damage_type=damage.damage_type, damage_confidence=damage.confidence,
-            vehicle_part=primary.candidate_part.part_type if primary else None,
-            part_confidence=primary.part_confidence if primary else None,
-            containment_ratio=primary.damage_containment_ratio if primary else None,
-            mapped_damage_type=map_vehicle_part_to_damage(primary.candidate_part.part_type) if primary else None,
-            association_status=status, damage_detection=damage,
-            primary_association=primary, associations=candidates,
-            damage_model_metadata=damage_model_metadata,
-            part_model_metadata=part_assessment.model_metadata, fusion_policy=policy,
-        ))
+        evidence.append(
+            VisualDamageEvidence(
+                filename=damage_assessment.filename,
+                asset_reference=damage_assessment.asset_reference or part_assessment.asset_reference,
+                damage_detection_index=damage_index,
+                visual_damage_type=damage.damage_type,
+                damage_confidence=damage.confidence,
+                vehicle_part=primary.candidate_part.part_type if primary else None,
+                part_confidence=primary.part_confidence if primary else None,
+                containment_ratio=primary.damage_containment_ratio if primary else None,
+                mapped_damage_type=map_vehicle_part_to_damage(primary.candidate_part.part_type) if primary else None,
+                association_status=status,
+                damage_detection=damage,
+                primary_association=primary,
+                associations=candidates,
+                damage_model_metadata=damage_model_metadata,
+                part_model_metadata=part_assessment.model_metadata,
+                fusion_policy=policy,
+            )
+        )
     return ImageVisualAssessment(
-        damage_assessment=damage_assessment, part_assessment=part_assessment, evidence=evidence,
+        damage_assessment=damage_assessment,
+        part_assessment=part_assessment,
+        evidence=evidence,
     )

@@ -2,17 +2,17 @@
 
 from fastapi import HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import SQLAlchemyError
 
 from agent.factory import create_claims_agent_service
 from agent.models import AgentRunResult
-from persistence.agent_runs import AgentRunStore
 from agent.service import AgentRunError
 from api.knowledge import load_stored_claim
 from claims.llm import LlmError
 from knowledge.factory import create_knowledge_retriever
-from retrieval.similar_claims import create_similar_claims_service
+from persistence.agent_runs import AgentRunStore
 from persistence.repositories import ClaimNotFoundError
-from sqlalchemy.exc import SQLAlchemyError
+from retrieval.similar_claims import create_similar_claims_service
 
 
 class ClaimAgentReviewRequest(BaseModel):
@@ -21,8 +21,13 @@ class ClaimAgentReviewRequest(BaseModel):
 
 
 def install_agent_routes(
-    app, *, service_loader=None, claim_loader=None, run_store_loader=None,
-    similar_service_loader=None, knowledge_retriever_loader=None,
+    app,
+    *,
+    service_loader=None,
+    claim_loader=None,
+    run_store_loader=None,
+    similar_service_loader=None,
+    knowledge_retriever_loader=None,
 ):
     def ensure_claim(request, claim_id):
         factory = request.app.state.session_factory
@@ -35,17 +40,13 @@ def install_agent_routes(
         with request.app.state.model_lock:
             if request.app.state.similar_service is None:
                 factory = request.app.state.session_factory
-                request.app.state.similar_service = (
-                    (similar_service_loader or create_similar_claims_service)(factory)
-                )
+                request.app.state.similar_service = (similar_service_loader or create_similar_claims_service)(factory)
             return request.app.state.similar_service
 
     def knowledge_retriever(request):
         with request.app.state.model_lock:
             if request.app.state.knowledge_retriever is None:
-                request.app.state.knowledge_retriever = (
-                    (knowledge_retriever_loader or create_knowledge_retriever)()
-                )
+                request.app.state.knowledge_retriever = (knowledge_retriever_loader or create_knowledge_retriever)()
             return request.app.state.knowledge_retriever
 
     def agent_service(request):
@@ -74,7 +75,9 @@ def install_agent_routes(
 
     @app.post("/v1/claims/{claim_id}/agent/review", response_model=AgentRunResult)
     def review(
-        claim_id: str, request: Request, payload: ClaimAgentReviewRequest | None = None,
+        claim_id: str,
+        request: Request,
+        payload: ClaimAgentReviewRequest | None = None,
     ):
         ensure_claim(request, claim_id)
         service = agent_service(request)
@@ -94,7 +97,9 @@ def install_agent_routes(
 
     @app.get("/v1/claims/{claim_id}/agent/runs", response_model=list[AgentRunResult])
     def claim_runs(
-        claim_id: str, request: Request, limit: int = Query(default=20, ge=1, le=100),
+        claim_id: str,
+        request: Request,
+        limit: int = Query(default=20, ge=1, le=100),
     ):
         ensure_claim(request, claim_id)
         return run_store(request).list_for_claim(claim_id, limit=limit)

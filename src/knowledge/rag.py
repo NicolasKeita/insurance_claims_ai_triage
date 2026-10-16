@@ -24,21 +24,46 @@ class KnowledgeRagService:
     def __init__(self, retriever, llm: StructuredLlm):
         self.retriever, self.llm = retriever, llm
 
-    def answer(self, question, source_type, *, product=None, language=None, source_id=None, as_of_date=None,
-               retrieval_limit=5) -> GroundedAnswer:
-        chunks = self.retriever.search(question, source_type, product=product, language=language, source_id=source_id,
-                                       as_of_date=as_of_date, limit=retrieval_limit)
+    def answer(
+        self, question, source_type, *, product=None, language=None, source_id=None, as_of_date=None, retrieval_limit=5
+    ) -> GroundedAnswer:
+        chunks = self.retriever.search(
+            question,
+            source_type,
+            product=product,
+            language=language,
+            source_id=source_id,
+            as_of_date=as_of_date,
+            limit=retrieval_limit,
+        )
         return self.answer_from_chunks(question, chunks)
 
     def answer_from_chunks(self, question, chunks) -> GroundedAnswer:
         """Use an already retrieved context (smoke test can display this exact context)."""
         if not chunks:
-            return GroundedAnswer(answer="No applicable source excerpts were retrieved for this question.",
-                                  citations=[], insufficient_evidence=True)
-        context = [{"chunk_id": c.chunk_id, "source_id": c.source_id, "source_version": c.source_version,
-                    "title": c.title, "section": c.section, "text": c.text} for c in chunks]
-        prompt = RAG_SYSTEM_PROMPT + "\n\nINPUT DATA:\n" + json.dumps(
-            {"question": question, "retrieved_sources": context}, ensure_ascii=False,
+            return GroundedAnswer(
+                answer="No applicable source excerpts were retrieved for this question.",
+                citations=[],
+                insufficient_evidence=True,
+            )
+        context = [
+            {
+                "chunk_id": c.chunk_id,
+                "source_id": c.source_id,
+                "source_version": c.source_version,
+                "title": c.title,
+                "section": c.section,
+                "text": c.text,
+            }
+            for c in chunks
+        ]
+        prompt = (
+            RAG_SYSTEM_PROMPT
+            + "\n\nINPUT DATA:\n"
+            + json.dumps(
+                {"question": question, "retrieved_sources": context},
+                ensure_ascii=False,
+            )
         )
         output = self.llm.generate(prompt=prompt, response_model=GroundedLlmOutput)
         by_id = {c.chunk_id: c for c in chunks}
@@ -56,16 +81,26 @@ class KnowledgeRagService:
         answer_text = output.answer
         for chunk_id in inline_ids:
             escaped = re.escape(chunk_id)
-            answer_text = re.sub(r"\[\s*(?:chunk_id\s*:\s*)?" + escaped + r"\s*\]|" + escaped,
-                                 "", answer_text)
+            answer_text = re.sub(r"\[\s*(?:chunk_id\s*:\s*)?" + escaped + r"\s*\]|" + escaped, "", answer_text)
         answer_text = re.sub(r" +([.,;:])", r"\1", answer_text).strip()
         if not answer_text:
             raise GroundingError("LLM answer contains only citation IDs")
-        citations = [KnowledgeCitation(
-            chunk_id=by_id[i].chunk_id, source_id=by_id[i].source_id,
-            source_version=by_id[i].source_version, title=by_id[i].title, section=by_id[i].section,
-        ) for i in cited_ids]
-        logger.info("knowledge_answer retrieved=%s cited=%s insufficient_evidence=%s",
-                    list(by_id), [c.chunk_id for c in citations], output.insufficient_evidence)
-        return GroundedAnswer(answer=answer_text, citations=citations,
-                              insufficient_evidence=output.insufficient_evidence)
+        citations = [
+            KnowledgeCitation(
+                chunk_id=by_id[i].chunk_id,
+                source_id=by_id[i].source_id,
+                source_version=by_id[i].source_version,
+                title=by_id[i].title,
+                section=by_id[i].section,
+            )
+            for i in cited_ids
+        ]
+        logger.info(
+            "knowledge_answer retrieved=%s cited=%s insufficient_evidence=%s",
+            list(by_id),
+            [c.chunk_id for c in citations],
+            output.insufficient_evidence,
+        )
+        return GroundedAnswer(
+            answer=answer_text, citations=citations, insufficient_evidence=output.insufficient_evidence
+        )

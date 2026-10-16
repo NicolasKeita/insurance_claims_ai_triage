@@ -2,18 +2,21 @@
 
 import os
 
-from claims.llm import LlmError, OllamaStructuredLlm
 from agent.config import AGENT_LLM_CONTEXT_WINDOW
-
-from persistence.agent_runs import AgentRunStore
 from agent.planner import AGENT_SYSTEM_PROMPT, StructuredAgentFinalizer, StructuredAgentPlanner
 from agent.service import ClaimsAgentService
 from agent.tools import ReadOnlyAgentTools
+from claims.llm import LlmError, OllamaStructuredLlm
+from persistence.agent_runs import AgentRunStore
 
 
 def create_claims_agent_service(
-    factory, *, similar_service=None, knowledge_retriever=None,
-    similar_service_loader=None, knowledge_retriever_loader=None,
+    factory,
+    *,
+    similar_service=None,
+    knowledge_retriever=None,
+    similar_service_loader=None,
+    knowledge_retriever_loader=None,
 ):
     """Construct once; retrieval components are loaded only when a tool needs them.
 
@@ -48,6 +51,9 @@ def create_claims_agent_service(
         knowledge_retriever_loader=knowledge_retriever_loader,
     )
     return ClaimsAgentService(
-        tools, StructuredAgentPlanner(llm), StructuredAgentFinalizer(llm),
-        run_store=AgentRunStore(factory), llm_model=model,
+        tools,
+        StructuredAgentPlanner(llm),
+        StructuredAgentFinalizer(llm),
+        run_store=AgentRunStore(factory),
+        llm_model=model,
     )

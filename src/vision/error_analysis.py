@@ -27,8 +27,11 @@ def box_iou(first: tuple[float, ...], second: tuple[float, ...]) -> float:
 
 
 def analyze_instances(
-    predictions: list[ErrorInstance], truth: list[ErrorInstance], *,
-    confidence_threshold: float, matching_iou: float = 0.5,
+    predictions: list[ErrorInstance],
+    truth: list[ErrorInstance],
+    *,
+    confidence_threshold: float,
+    matching_iou: float = 0.5,
     image_size: tuple[int, int] | None = None,
     include_part_errors: bool = False,
 ) -> dict[str, Any]:
@@ -38,10 +41,15 @@ def analyze_instances(
     mask AP matching. Optional mask IoU rasterizes the prepared YOLO polygons at
     source image resolution, so it is also separate from framework AP matching.
     """
-    accepted = [index for index, pred in enumerate(predictions) if pred.confidence is not None and pred.confidence >= confidence_threshold]
+    accepted = [
+        index
+        for index, pred in enumerate(predictions)
+        if pred.confidence is not None and pred.confidence >= confidence_threshold
+    ]
     candidates = [
         (box_iou(predictions[pred].box, target.box), pred, target_index)
-        for pred in accepted for target_index, target in enumerate(truth)
+        for pred in accepted
+        for target_index, target in enumerate(truth)
         if predictions[pred].class_id == target.class_id
     ]
     matched_pred, matched_truth, matches = set(), set(), []
@@ -78,7 +86,11 @@ def analyze_instances(
         "segmentation_errors": segmentation_errors,
         "false_positives": false_positives,
         "false_negatives": [index for index in range(len(truth)) if index not in matched_truth],
-        "low_confidence": [index for index, pred in enumerate(predictions) if pred.confidence is not None and pred.confidence < confidence_threshold],
+        "low_confidence": [
+            index
+            for index, pred in enumerate(predictions)
+            if pred.confidence is not None and pred.confidence < confidence_threshold
+        ],
         "localization_errors": [
             {"prediction_index": pred, "truth_index": target, "box_iou": overlap}
             for overlap, pred, target in candidates
@@ -87,10 +99,17 @@ def analyze_instances(
     }
     if include_part_errors:
         result["wrong_parts"] = [
-            {"prediction_index": pred, "truth_index": target, "box_iou": box_iou(predictions[pred].box, truth[target].box),
-             "predicted_class_id": predictions[pred].class_id, "truth_class_id": truth[target].class_id}
-            for pred in false_positives for target in result["false_negatives"]
-            if predictions[pred].class_id != truth[target].class_id and box_iou(predictions[pred].box, truth[target].box) >= matching_iou
+            {
+                "prediction_index": pred,
+                "truth_index": target,
+                "box_iou": box_iou(predictions[pred].box, truth[target].box),
+                "predicted_class_id": predictions[pred].class_id,
+                "truth_class_id": truth[target].class_id,
+            }
+            for pred in false_positives
+            for target in result["false_negatives"]
+            if predictions[pred].class_id != truth[target].class_id
+            and box_iou(predictions[pred].box, truth[target].box) >= matching_iou
         ]
         result["incomplete_masks"] = incomplete_masks
     return result
@@ -131,8 +150,10 @@ def polygon_mask_overlap(
             intersection_count = sum(intersection.histogram()[1:])
             union_count = sum(union.histogram()[1:])
             truth_count = sum(masks[1].histogram()[1:])
-            return {"iou": intersection_count / union_count if union_count else 0.0,
-                    "truth_coverage": intersection_count / truth_count if truth_count else 0.0}
+            return {
+                "iou": intersection_count / union_count if union_count else 0.0,
+                "truth_coverage": intersection_count / truth_count if truth_count else 0.0,
+            }
         finally:
             intersection.close()
             union.close()
@@ -174,15 +195,22 @@ def _prediction_instances(result: Any) -> list[ErrorInstance]:
     return instances
 
 
-def _annotate(path: Path, output: Path, predictions: list[ErrorInstance], truth: list[ErrorInstance], names: dict[int, str]) -> None:
+def _annotate(
+    path: Path, output: Path, predictions: list[ErrorInstance], truth: list[ErrorInstance], names: dict[int, str]
+) -> None:
     from PIL import Image, ImageDraw
+
     with Image.open(path) as original:
         image = original.convert("RGB")
     draw = ImageDraw.Draw(image)
     for kind, instances, color in (("GT", truth, "lime"), ("pred", predictions, "orange")):
         for instance in instances:
-            box = (instance.box[0] * image.width, instance.box[1] * image.height,
-                   instance.box[2] * image.width, instance.box[3] * image.height)
+            box = (
+                instance.box[0] * image.width,
+                instance.box[1] * image.height,
+                instance.box[2] * image.width,
+                instance.box[3] * image.height,
+            )
             draw.rectangle(box, outline=color, width=2)
             if len(instance.polygon) >= 3:
                 points = [(x * image.width, y * image.height) for x, y in instance.polygon]
@@ -195,8 +223,13 @@ def _annotate(path: Path, output: Path, predictions: list[ErrorInstance], truth:
 
 
 def save_error_examples(
-    model: Any, config: DamageTrainingConfig, manifest: dict[str, Any],
-    confidence_threshold: float, *, max_examples: int = 8, max_images: int = 100,
+    model: Any,
+    config: DamageTrainingConfig,
+    manifest: dict[str, Any],
+    confidence_threshold: float,
+    *,
+    max_examples: int = 8,
+    max_images: int = 100,
     include_part_errors: bool = False,
 ) -> dict[str, Any]:
     directory = config.output_dir / "error_examples"
@@ -204,9 +237,25 @@ def save_error_examples(
     root = config.dataset_yaml.parent
     names = {item["yolo_class_id"]: item["name"] for item in manifest["category_mapping"]}
     images = sorted(manifest["prepared_files"]["test"], key=lambda entry: entry["image"])[:max_images]
-    kinds = ("good_predictions", "false_positives", "false_negatives", "low_confidence", "localization_errors", "segmentation_errors")
+    kinds = (
+        "good_predictions",
+        "false_positives",
+        "false_negatives",
+        "low_confidence",
+        "localization_errors",
+        "segmentation_errors",
+    )
     if include_part_errors:
-        kinds = ("good_predictions", "wrong_parts", "incomplete_masks", "false_positives", "false_negatives", "low_confidence", "localization_errors", "segmentation_errors")
+        kinds = (
+            "good_predictions",
+            "wrong_parts",
+            "incomplete_masks",
+            "false_positives",
+            "false_negatives",
+            "low_confidence",
+            "localization_errors",
+            "segmentation_errors",
+        )
     totals = dict.fromkeys(kinds, 0)
     selected_per_kind = dict.fromkeys(kinds, 0)
     selected = []
@@ -214,40 +263,65 @@ def save_error_examples(
     for entry in images:
         image_path = root / entry["image"]
         predictions = model.predict(
-            source=str(image_path), conf=floor, imgsz=config.imgsz,
-            device=config.device, verbose=False, save=False,
+            source=str(image_path),
+            conf=floor,
+            imgsz=config.imgsz,
+            device=config.device,
+            verbose=False,
+            save=False,
         )
         detected = _prediction_instances(predictions[0])
         truth = _label_instances(root / entry["label"])
         from PIL import Image
+
         with Image.open(image_path) as original:
             image_size = original.size
-        events = analyze_instances(detected, truth, confidence_threshold=confidence_threshold, image_size=image_size,
-                                   include_part_errors=include_part_errors)
+        events = analyze_instances(
+            detected,
+            truth,
+            confidence_threshold=confidence_threshold,
+            image_size=image_size,
+            include_part_errors=include_part_errors,
+        )
         for kind in kinds:
             totals[kind] += len(events[kind])
-        eligible = [kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))]
+        eligible = [
+            kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))
+        ]
         if eligible and len(selected) < max_examples:
             # One overlay per selected image can show several observed events.
             kind = eligible[0]
             annotated_name = f"{len(selected) + 1:03d}_{kind}_{image_path.stem}.jpg"
             _annotate(image_path, directory / annotated_name, detected, truth, names)
-            selected.append({
-                "filename": entry["image"], "kind": kind, "kinds": [key for key in kinds if events[key]],
-                "annotated_filename": annotated_name,
-                "predictions": [asdict(value) for value in detected],
-                "ground_truth": [asdict(value) for value in truth], "events": events,
-            })
+            selected.append(
+                {
+                    "filename": entry["image"],
+                    "kind": kind,
+                    "kinds": [key for key in kinds if events[key]],
+                    "annotated_filename": annotated_name,
+                    "predictions": [asdict(value) for value in detected],
+                    "ground_truth": [asdict(value) for value in truth],
+                    "events": events,
+                }
+            )
             # Other event kinds remain recorded, but each quota selects a
             # distinct image instead of one busy image exhausting all quotas.
             selected_per_kind[kind] += 1
     metadata = {
-        "split": "test", "images_inspected": len(images), "maximum_images": max_images,
+        "split": "test",
+        "images_inspected": len(images),
+        "maximum_images": max_images,
         "selection": "first filename-sorted test images; bounded diagnostic sample, not a representative estimate",
-        "confidence_threshold": confidence_threshold, "diagnostic_candidate_threshold": floor,
-        "matching_box_iou": 0.5, "diagnostic_polygon_mask_iou": 0.5,
-        "incomplete_mask_definition": "Same-class box match with source-resolution polygon intersection/truth mask area <0.8; fixed diagnostic criterion, not TEST-tuned." if include_part_errors else None,
-        "wrong_part_definition": "Unmatched prediction/GT pair of different classes with box IoU >=0.5; plausible classification confusion, not causal proof." if include_part_errors else None,
+        "confidence_threshold": confidence_threshold,
+        "diagnostic_candidate_threshold": floor,
+        "matching_box_iou": 0.5,
+        "diagnostic_polygon_mask_iou": 0.5,
+        "incomplete_mask_definition": "Same-class box match with source-resolution polygon intersection/truth mask area <0.8; fixed diagnostic criterion, not TEST-tuned."
+        if include_part_errors
+        else None,
+        "wrong_part_definition": "Unmatched prediction/GT pair of different classes with box IoU >=0.5; plausible classification confusion, not causal proof."
+        if include_part_errors
+        else None,
         "counts_in_inspected_sample": totals,
         "good_prediction_definition": "Same-class one-to-one box IoU >=0.5 and source-resolution rasterized polygon mask IoU >=0.5; other damage in the same image may still be missed.",
         "limitations": "Greedy same-class box IoU FP/FN approximation, not exact mask FP/FN or AP. Segmentation errors are box matches with prepared-polygon raster IoU <0.5; rasterization and bridge/hole boundaries differ from framework masks. Localization errors use unmatched box IoU [0.1,0.5). Low-confidence predictions below candidate threshold are unavailable. No threshold tuning on TEST.",

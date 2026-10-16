@@ -35,7 +35,15 @@ def test_training_provenance_keeps_custom_split_scope_and_actual_source_fields(t
     yaml.write_text('{"path":"."}', encoding="utf-8")
     (tmp_path / "cardd_dataset_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     result = dataset_provenance(yaml, manifest)
-    for key in ("source_repository", "source_revision", "actual_sample_count", "annotation_fields",
-                "official_splits_used", "split_version", "split_manifest_sha256", "metrics_scope"):
+    for key in (
+        "source_repository",
+        "source_revision",
+        "actual_sample_count",
+        "annotation_fields",
+        "official_splits_used",
+        "split_version",
+        "split_manifest_sha256",
+        "metrics_scope",
+    ):
         assert result[key] == manifest[key]
     assert len(result["prepared_manifest_sha256"]) == 64

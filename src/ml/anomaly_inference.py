@@ -60,9 +60,7 @@ def load_candidate_anomaly_predictor() -> RegisteredAnomalyPredictor:
         REGISTERED_ANOMALY_MODEL_NAME,
         ANOMALY_CANDIDATE_ALIAS,
     )
-    model_uri = (
-        f"models:/{REGISTERED_ANOMALY_MODEL_NAME}@{ANOMALY_CANDIDATE_ALIAS}"
-    )
+    model_uri = f"models:/{REGISTERED_ANOMALY_MODEL_NAME}@{ANOMALY_CANDIDATE_ALIAS}"
     model = mlflow.pyfunc.load_model(model_uri)
     return RegisteredAnomalyPredictor(
         model=model,

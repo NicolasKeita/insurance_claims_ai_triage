@@ -1,5 +1,5 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from api.main import create_app
 from persistence.repositories import ClaimNotFoundError
@@ -19,8 +19,9 @@ def test_similar_service_cached_and_unknown_404():
             if claim_id == "missing":
                 raise ClaimNotFoundError("Claim missing does not exist")
             calls.append((claim_id, limit))
-            return SimilarClaimsResponse(claim_id=claim_id, representation_version=CLAIM_RETRIEVAL_REPRESENTATION_VERSION,
-                                         results=[])
+            return SimilarClaimsResponse(
+                claim_id=claim_id, representation_version=CLAIM_RETRIEVAL_REPRESENTATION_VERSION, results=[]
+            )
 
     loaded = []
 
@@ -32,7 +33,11 @@ def test_similar_service_cached_and_unknown_404():
         for limit in (1, 5, 20):
             response = client.get(f"/v1/claims/demo/similar?limit={limit}")
             assert response.status_code == 200
-            assert response.json() == {"claim_id": "demo", "representation_version": "claim_retrieval_v1", "results": []}
+            assert response.json() == {
+                "claim_id": "demo",
+                "representation_version": "claim_retrieval_v1",
+                "results": [],
+            }
         assert client.get("/v1/claims/missing/similar").status_code == 404
     assert len(loaded) == 1
     assert calls == [("demo", 1), ("demo", 5), ("demo", 20)]

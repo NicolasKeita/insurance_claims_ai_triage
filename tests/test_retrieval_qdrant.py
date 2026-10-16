@@ -1,11 +1,11 @@
 """Select with ``pytest -m qdrant``; each test owns a unique collection."""
 
 import pytest
+from qdrant_integration_support import temporary_qdrant_collections
+from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
 
 from retrieval.qdrant_store import QdrantClaimStore
 from retrieval.similar_claims import SimilarClaimsIndexer, SimilarClaimsService
-from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
-from qdrant_integration_support import temporary_qdrant_collections
 
 pytestmark = [pytest.mark.integration, pytest.mark.qdrant]
 

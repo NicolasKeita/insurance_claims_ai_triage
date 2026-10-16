@@ -20,12 +20,14 @@ class FakeEmbeddings:
         for text in texts:
             fields = dict(line.split(": ", 1) for line in text.splitlines())
             collision = fields["collision_type"]
-            vector = np.array([
-                float(collision == "FRONT_COLLISION"),
-                float(collision == "PARKING_DAMAGE"),
-                float(collision == "SIDE_COLLISION"),
-                float(fields["repair_estimate_amount"]) / 10000 + 0.1,
-            ])
+            vector = np.array(
+                [
+                    float(collision == "FRONT_COLLISION"),
+                    float(collision == "PARKING_DAMAGE"),
+                    float(collision == "SIDE_COLLISION"),
+                    float(fields["repair_estimate_amount"]) / 10000 + 0.1,
+                ]
+            )
             vectors.append((vector / np.linalg.norm(vector)).tolist())
         return vectors
 
@@ -37,9 +39,21 @@ def claim(number=1, *, days=0, amount="3160", collision="FRONT_COLLISION", claim
     from datetime import timedelta
 
     return StoredRetrievalClaim(
-        UUID(int=number), f"DEMO-TEST-{number}", date(2026, 9, 20) - timedelta(days=days),
-        ClaimRetrievalFacts(claim_type, collision, "Bordeaux", "Renault", "Clio", 2021,
-                            ("LEFT_HEADLIGHT", "FRONT_BUMPER"), False, Decimal(amount), "EUR"),
+        UUID(int=number),
+        f"DEMO-TEST-{number}",
+        date(2026, 9, 20) - timedelta(days=days),
+        ClaimRetrievalFacts(
+            claim_type,
+            collision,
+            "Bordeaux",
+            "Renault",
+            "Clio",
+            2021,
+            ("LEFT_HEADLIGHT", "FRONT_BUMPER"),
+            False,
+            Decimal(amount),
+            "EUR",
+        ),
     )
 
 
@@ -61,4 +75,4 @@ class FakeRepository:
     def iter_batches(self, batch_size):
         ordered = sorted(self.claims.values(), key=lambda c: c.point_id)
         for start in range(0, len(ordered), batch_size):
-            yield ordered[start:start + batch_size]
+            yield ordered[start : start + batch_size]

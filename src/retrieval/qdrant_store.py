@@ -10,7 +10,10 @@ from qdrant_client import QdrantClient, models
 
 from retrieval.embeddings import EmbeddingProvider
 from retrieval.models import (
-    ClaimRetrievalDocument, IndexCompatibilityError, RetrievalHit, RetrievalUnavailableError,
+    ClaimRetrievalDocument,
+    IndexCompatibilityError,
+    RetrievalHit,
+    RetrievalUnavailableError,
 )
 from retrieval.representation import CLAIM_RETRIEVAL_REPRESENTATION_VERSION
 
@@ -51,10 +54,12 @@ class QdrantClaimStore:
         info = self.client.get_collection(self.collection)
         vectors = info.config.params.vectors
         contract = self.contract()
-        if (not isinstance(vectors, models.VectorParams)
-                or vectors.size != contract["embedding_dimension"]
-                or vectors.distance != models.Distance.COSINE
-                or (info.config.metadata or {}).get("claim_retrieval") != contract):
+        if (
+            not isinstance(vectors, models.VectorParams)
+            or vectors.size != contract["embedding_dimension"]
+            or vectors.distance != models.Distance.COSINE
+            or (info.config.metadata or {}).get("claim_retrieval") != contract
+        ):
             raise IndexCompatibilityError(
                 f"Collection {self.collection} has an incompatible embedding contract; "
                 "use a new collection/version and reindex, or explicitly --recreate the derived index"
@@ -72,15 +77,18 @@ class QdrantClaimStore:
                 self.client.create_collection(
                     self.collection,
                     vectors_config=models.VectorParams(
-                        size=contract["embedding_dimension"], distance=models.Distance.COSINE,
+                        size=contract["embedding_dimension"],
+                        distance=models.Distance.COSINE,
                     ),
                     metadata={"claim_retrieval": contract},
                 )
             self._validate()
             # Create indexes only once (Qdrant local mode has no payload indexes).
             info = self.client.get_collection(self.collection)
-            local = (self.client.init_options.get("location") == ":memory:"
-                     or self.client.init_options.get("path") is not None)
+            local = (
+                self.client.init_options.get("location") == ":memory:"
+                or self.client.init_options.get("path") is not None
+            )
             if not local:
                 for field, schema in (
                     ("incident_date_ordinal", models.PayloadSchemaType.INTEGER),
@@ -99,9 +107,11 @@ class QdrantClaimStore:
 
     def _vectors(self, vectors, count):
         values = np.asarray(vectors, dtype=np.float32)
-        if (values.shape != (count, self.embeddings.dimension)
-                or not np.isfinite(values).all()
-                or not np.allclose(np.linalg.norm(values, axis=1), 1.0, atol=1e-4)):
+        if (
+            values.shape != (count, self.embeddings.dimension)
+            or not np.isfinite(values).all()
+            or not np.allclose(np.linalg.norm(values, axis=1), 1.0, atol=1e-4)
+        ):
             raise ValueError("Expected finite, L2-normalized embeddings with the configured dimension")
         return values.tolist()
 
@@ -111,32 +121,44 @@ class QdrantClaimStore:
         vectors = self._vectors(vectors, len(documents))
         if any(d.representation_version != CLAIM_RETRIEVAL_REPRESENTATION_VERSION for d in documents):
             raise ValueError("Document representation version does not match this index")
-        points = [models.PointStruct(
-            id=str(document.point_id), vector=vector,
-            payload={
-                "claim_id": document.claim_id, "claim_type": document.claim_type,
-                "incident_date": document.incident_date.isoformat(),
-                "incident_date_ordinal": document.incident_date.toordinal(),
-                "representation_version": document.representation_version,
-            },
-        ) for document, vector in zip(documents, vectors, strict=True)]
+        points = [
+            models.PointStruct(
+                id=str(document.point_id),
+                vector=vector,
+                payload={
+                    "claim_id": document.claim_id,
+                    "claim_type": document.claim_type,
+                    "incident_date": document.incident_date.isoformat(),
+                    "incident_date_ordinal": document.incident_date.toordinal(),
+                    "representation_version": document.representation_version,
+                },
+            )
+            for document, vector in zip(documents, vectors, strict=True)
+        ]
         with self._operation():
             self.client.upsert(self.collection, points=points, wait=True)
 
-    def query(self, vector: list[float], before: date, claim_type: str | None,
-              limit: int, offset: int = 0) -> RetrievalPage:
+    def query(
+        self, vector: list[float], before: date, claim_type: str | None, limit: int, offset: int = 0
+    ) -> RetrievalPage:
         vector = self._vectors([vector], 1)[0]
         conditions = [
             models.FieldCondition(key="incident_date_ordinal", range=models.Range(lt=before.toordinal())),
-            models.FieldCondition(key="representation_version", match=models.MatchValue(
-                value=CLAIM_RETRIEVAL_REPRESENTATION_VERSION)),
+            models.FieldCondition(
+                key="representation_version", match=models.MatchValue(value=CLAIM_RETRIEVAL_REPRESENTATION_VERSION)
+            ),
         ]
         if claim_type is not None:
             conditions.append(models.FieldCondition(key="claim_type", match=models.MatchValue(value=claim_type)))
         with self._operation():
             points = self.client.query_points(
-                self.collection, query=vector, query_filter=models.Filter(must=conditions),
-                limit=limit, offset=offset, with_payload=False, with_vectors=False,
+                self.collection,
+                query=vector,
+                query_filter=models.Filter(must=conditions),
+                limit=limit,
+                offset=offset,
+                with_payload=False,
+                with_vectors=False,
             ).points
         hits = []
         for point in points:

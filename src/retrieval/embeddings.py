@@ -21,8 +21,7 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     normalized = True
 
-    def __init__(self, model_name: str, *, asymmetric: bool = False,
-                 local_files_only: bool = False):
+    def __init__(self, model_name: str, *, asymmetric: bool = False, local_files_only: bool = False):
         self.model_name = model_name
         # Existing claim-to-claim indexes retain their symmetric encode contract.
         self.asymmetric = asymmetric
@@ -34,6 +33,7 @@ class SentenceTransformerEmbeddingProvider:
         with self._lock:
             if self._model is None:
                 from sentence_transformers import SentenceTransformer
+
                 options = {"local_files_only": True} if self.local_files_only else {}
                 self._model = SentenceTransformer(self.model_name, **options)
             return self._model
@@ -51,7 +51,9 @@ class SentenceTransformerEmbeddingProvider:
         model = self._load()
         encoder = getattr(model, method, None) if self.asymmetric else None
         vectors = (encoder if callable(encoder) else model.encode)(
-            texts, normalize_embeddings=True, convert_to_numpy=True,
+            texts,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
             show_progress_bar=False,
         )
         return np.asarray(vectors, dtype=np.float32).tolist()

@@ -1,8 +1,8 @@
+import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Self
-import os
 from threading import Lock
+from typing import Self
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -10,18 +10,15 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from api.agent import install_agent_routes
+from api.knowledge import install_knowledge_routes
+from api.vision import install_vision_routes
 from claims.consistency import ClaimConsistencyReport
 from investigation.engine import assess_investigation
+from investigation.history import HistoricalClaimProfile
 from investigation.models import InvestigationAssessment
 from investigation.policy import DEFAULT_INVESTIGATION_POLICY
-from investigation.history import HistoricalClaimProfile
 from investigation.service import assess_stored_claim
-from persistence.database import DatabaseConfig, create_database_engine, create_session_factory
-from persistence.history import HistoricalClaimRepository
-from persistence.repositories import ClaimNotFoundError
-from retrieval.config import DEFAULT_LIMIT, MAX_LIMIT
-from retrieval.models import RetrievalUnavailableError, SimilarClaimsResponse
-from retrieval.similar_claims import create_similar_claims_service
 from ml.anomaly_inference import (
     RegisteredAnomalyAssessment,
     RegisteredAnomalyPredictor,
@@ -34,9 +31,12 @@ from ml.inference import (
     TriagePrediction,
     load_candidate_predictor,
 )
-from api.knowledge import install_knowledge_routes
-from api.agent import install_agent_routes
-from api.vision import install_vision_routes
+from persistence.database import DatabaseConfig, create_database_engine, create_session_factory
+from persistence.history import HistoricalClaimRepository
+from persistence.repositories import ClaimNotFoundError
+from retrieval.config import DEFAULT_LIMIT, MAX_LIMIT
+from retrieval.models import RetrievalUnavailableError, SimilarClaimsResponse
+from retrieval.similar_claims import create_similar_claims_service
 
 PredictorLoader = Callable[[], RegisteredTriagePredictor]
 AnomalyPredictorLoader = Callable[[], RegisteredAnomalyPredictor]
@@ -54,15 +54,9 @@ class StructuredEvidenceRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_consistency_counts(self) -> Self:
-        if self.features.additional_damage_count != len(
-            self.consistency.additional_quote_damage
-        ):
-            raise ValueError(
-                "additional_damage_count must match additional_quote_damage"
-            )
-        if self.features.consistency_issue_count != count_consistency_issues(
-            self.consistency
-        ):
+        if self.features.additional_damage_count != len(self.consistency.additional_quote_damage):
+            raise ValueError("additional_damage_count must match additional_quote_damage")
+        if self.features.consistency_issue_count != count_consistency_issues(self.consistency):
             raise ValueError("consistency_issue_count must match consistency report")
         return self
 
@@ -160,7 +154,8 @@ def create_app(
 
     @app.get("/v1/claims/{claim_id}/similar", response_model=SimilarClaimsResponse)
     def similar_claims(
-        claim_id: str, request: Request,
+        claim_id: str,
+        request: Request,
         limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     ):
         try:
@@ -171,11 +166,14 @@ def create_app(
                         raise HTTPException(status_code=503, detail="Database is not configured")
                     try:
                         request.app.state.similar_service = (
-                            similar_service_loader(factory) if similar_service_loader is not None
+                            similar_service_loader(factory)
+                            if similar_service_loader is not None
                             else create_similar_claims_service(factory)
                         )
                     except (ValueError, RuntimeError) as error:
-                        raise HTTPException(status_code=503, detail="Similar claims service configuration failed") from error
+                        raise HTTPException(
+                            status_code=503, detail="Similar claims service configuration failed"
+                        ) from error
                 service = request.app.state.similar_service
             return service.search(claim_id, limit)
         except RetrievalUnavailableError as error:
@@ -185,11 +183,15 @@ def create_app(
 
     @app.post("/v1/claims/{claim_id}/investigation/assess", response_model=InvestigationAssessment)
     def stored_investigation(
-        claim_id: str, payload: StoredInvestigationRequest, request: Request,
+        claim_id: str,
+        payload: StoredInvestigationRequest,
+        request: Request,
         session: Session = Depends(database_session, scope="function"),
     ):
         return assess_stored_claim(
-            session, claim_id, payload.consistency,
+            session,
+            claim_id,
+            payload.consistency,
             lambda features: predictor(request, "anomaly").assess(features),
         )
 
@@ -219,9 +221,7 @@ def create_app(
         return predictor(request, "triage").predict(features)
 
     @app.post("/v1/anomaly/assess", response_model=RegisteredAnomalyAssessment)
-    def assess_anomaly(
-        features: TriageFeatures, request: Request
-    ) -> RegisteredAnomalyAssessment:
+    def assess_anomaly(features: TriageFeatures, request: Request) -> RegisteredAnomalyAssessment:
         return predictor(request, "anomaly").assess(features)
 
     @app.post("/v1/investigation/assess", response_model=InvestigationAssessment)
@@ -235,9 +235,7 @@ def create_app(
         )
 
     @app.post("/v1/claims/assess", response_model=ClaimsAssessment)
-    def assess_claim(
-        payload: ClaimsAssessmentRequest, request: Request
-    ) -> ClaimsAssessment:
+    def assess_claim(payload: ClaimsAssessmentRequest, request: Request) -> ClaimsAssessment:
         triage = predictor(request, "triage").predict(payload.features)
         anomaly = predictor(request, "anomaly").assess(payload.features)
         return ClaimsAssessment(
@@ -250,11 +248,18 @@ def create_app(
             ),
         )
 
-    install_knowledge_routes(app, retriever_loader=knowledge_retriever_loader,
-                             rag_loader=knowledge_rag_loader, claim_loader=knowledge_claim_loader)
+    install_knowledge_routes(
+        app,
+        retriever_loader=knowledge_retriever_loader,
+        rag_loader=knowledge_rag_loader,
+        claim_loader=knowledge_claim_loader,
+    )
     install_agent_routes(
-        app, service_loader=agent_service_loader, claim_loader=agent_claim_loader,
-        run_store_loader=agent_run_store_loader, similar_service_loader=similar_service_loader,
+        app,
+        service_loader=agent_service_loader,
+        claim_loader=agent_claim_loader,
+        run_store_loader=agent_run_store_loader,
+        similar_service_loader=similar_service_loader,
         knowledge_retriever_loader=knowledge_retriever_loader,
     )
     install_vision_routes(app, store_loader=vision_store_loader)

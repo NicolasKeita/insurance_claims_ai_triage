@@ -7,7 +7,6 @@ from claims.enums import CollisionType
 from ml.features import TriageFeatures
 from ml.synthetic_dataset import generate_synthetic_triage_dataset
 
-
 ANOMALY_KINDS = (
     "EXTREME_REPAIR_COST",
     "DAMAGE_COST_MISMATCH",
@@ -28,50 +27,29 @@ def _inject_anomaly(
 
     if kind == "EXTREME_REPAIR_COST":
         mutated["collision_type"] = CollisionType.PARKING_DAMAGE
-        mutated["repair_amount"] = round(
-            float(rng.uniform(18000, 30000)), 2
-        )
-        mutated["declared_damage_count"] = int(
-            rng.integers(2, 5)
-        )
+        mutated["repair_amount"] = round(float(rng.uniform(18000, 30000)), 2)
+        mutated["declared_damage_count"] = int(rng.integers(2, 5))
     elif kind == "DAMAGE_COST_MISMATCH":
-        mutated["declared_damage_count"] = int(
-            rng.integers(7, 9)
-        )
-        mutated["repair_amount"] = round(
-            float(rng.uniform(180, 500)), 2
-        )
+        mutated["declared_damage_count"] = int(rng.integers(7, 9))
+        mutated["repair_amount"] = round(float(rng.uniform(180, 500)), 2)
         mutated["additional_damage_count"] = 0
     elif kind == "DOCUMENT_INCONSISTENCY":
         mutated["document_count"] = int(rng.integers(5, 8))
-        mutated["missing_document_count"] = int(
-            rng.integers(3, min(6, mutated["document_count"]))
-        )
+        mutated["missing_document_count"] = int(rng.integers(3, min(6, mutated["document_count"])))
         mutated["document_completeness_ratio"] = (
-            mutated["document_count"]
-            - mutated["missing_document_count"]
+            mutated["document_count"] - mutated["missing_document_count"]
         ) / mutated["document_count"]
-        mutated["additional_damage_count"] = int(
-            rng.integers(2, 5)
-        )
-        mutated["consistency_issue_count"] = int(
-            rng.integers(5, 9)
-        )
+        mutated["additional_damage_count"] = int(rng.integers(2, 5))
+        mutated["consistency_issue_count"] = int(rng.integers(5, 9))
     elif kind == "MULTIVARIATE_ODDITY":
         # Each value is plausible in isolation; their combination is rare.
         mutated["collision_type"] = CollisionType.PARKING_DAMAGE
         mutated["vehicle_age"] = int(rng.integers(10, 15))
-        mutated["repair_amount"] = round(
-            float(rng.uniform(5000, 8000)), 2
-        )
-        mutated["declared_damage_count"] = int(
-            rng.integers(3, 6)
-        )
+        mutated["repair_amount"] = round(float(rng.uniform(5000, 8000)), 2)
+        mutated["declared_damage_count"] = int(rng.integers(3, 6))
         mutated["additional_damage_count"] = 1
         mutated["injuries_declared"] = True
-        mutated["consistency_issue_count"] = int(
-            rng.integers(1, 3)
-        )
+        mutated["consistency_issue_count"] = int(rng.integers(1, 3))
     else:
         raise ValueError(f"Unknown anomaly kind: {kind}")
 
@@ -99,9 +77,7 @@ def generate_anomaly_datasets(
     reference = baseline.iloc[:reference_count][FEATURE_COLUMNS].copy()
     reference.reset_index(drop=True, inplace=True)
 
-    evaluation_base = baseline.iloc[reference_count:][
-        FEATURE_COLUMNS
-    ].copy()
+    evaluation_base = baseline.iloc[reference_count:][FEATURE_COLUMNS].copy()
     rows = evaluation_base.to_dict(orient="records")
     rng = np.random.default_rng(seed)
     anomaly_count = int(round(evaluation_count * anomaly_fraction))

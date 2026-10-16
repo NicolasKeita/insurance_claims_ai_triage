@@ -10,8 +10,11 @@ from vision.detector import DetectorOutputError
 from vision.images import ImageValidationError
 from vision.models import VisionModelMetadata
 from vision.parts_detector import (
-    UltralyticsVehiclePartDetector, VehiclePartDetectorError, VehiclePartSettings,
-    map_ultralytics_part_result, part_mapping_from_model_names,
+    UltralyticsVehiclePartDetector,
+    VehiclePartDetectorError,
+    VehiclePartSettings,
+    map_ultralytics_part_result,
+    part_mapping_from_model_names,
 )
 from vision.taxonomy import CARPARTS_CLASS_TO_PART, VehiclePartType
 
@@ -21,7 +24,8 @@ METADATA = VisionModelMetadata(identifier="synthetic-parts", framework="fake", v
 
 def framework_result(*, name="hood", contour=None, confidence=0.9):
     return SimpleNamespace(
-        names=NAMES, orig_shape=(12, 20),
+        names=NAMES,
+        orig_shape=(12, 20),
         boxes=SimpleNamespace(xyxyn=[[0.1, 0.2, 0.8, 0.9]], cls=[list(NAMES.values()).index(name)], conf=[confidence]),
         masks=SimpleNamespace(xyn=[contour if contour is not None else [[0.1, 0.2], [0.8, 0.2], [0.8, 0.9]]]),
     )
@@ -29,8 +33,12 @@ def framework_result(*, name="hood", contour=None, confidence=0.9):
 
 def convert(result):
     return map_ultralytics_part_result(
-        result, filename="synthetic.png", width=20, height=12,
-        confidence_threshold=0.25, model_metadata=METADATA,
+        result,
+        filename="synthetic.png",
+        width=20,
+        height=12,
+        confidence_threshold=0.25,
+        model_metadata=METADATA,
     )
 
 
@@ -50,7 +58,14 @@ def test_generic_pretrained_changed_class_spellings_and_duplicate_classes_reject
 
 
 def test_checkpoint_requires_all_23_classes_but_not_hardcoded_ids():
-    assert len(part_mapping_from_model_names(dict(enumerate(reversed(list(CARPARTS_CLASS_TO_PART)))), require_complete=True)) == 23
+    assert (
+        len(
+            part_mapping_from_model_names(
+                dict(enumerate(reversed(list(CARPARTS_CLASS_TO_PART)))), require_complete=True
+            )
+        )
+        == 23
+    )
     with pytest.raises(DetectorOutputError, match="23"):
         part_mapping_from_model_names({0: "hood"}, require_complete=True)
 
@@ -90,7 +105,9 @@ def test_part_detector_loads_local_checkpoint_once_and_versions_weights(tmp_path
 
         return SimpleNamespace(task="segment", names=NAMES, predict=predict)
 
-    detector = UltralyticsVehiclePartDetector(VehiclePartSettings(model_path=checkpoint, device="cpu"), model_factory=factory)
+    detector = UltralyticsVehiclePartDetector(
+        VehiclePartSettings(model_path=checkpoint, device="cpu"), model_factory=factory
+    )
     assert loads == []
     first, second = detector.assess_image(image), detector.assess_image(image)
     assert loads == [str(checkpoint.resolve())]
@@ -102,7 +119,8 @@ def test_part_detector_loads_local_checkpoint_once_and_versions_weights(tmp_path
 def test_part_model_missing_or_image_invalid_never_triggers_model_download(tmp_path):
     calls = []
     detector = UltralyticsVehiclePartDetector(
-        VehiclePartSettings(model_path=tmp_path / "missing.pt"), model_factory=lambda path: calls.append(path),
+        VehiclePartSettings(model_path=tmp_path / "missing.pt"),
+        model_factory=lambda path: calls.append(path),
     )
     image = tmp_path / "synthetic.png"
     Image.new("RGB", (20, 12)).save(image)
@@ -115,8 +133,14 @@ def test_part_model_missing_or_image_invalid_never_triggers_model_download(tmp_p
 
 
 def test_imports_do_not_load_models_frameworks_or_datasets():
-    result = subprocess.run([
-        sys.executable, "-c", "import sys; import vision.parts_detector; import vision.multimodal_service; "
-        "assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules",
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import vision.parts_detector; import vision.multimodal_service; "
+            "assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules",
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 0, result.stderr

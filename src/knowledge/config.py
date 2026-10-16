@@ -33,7 +33,11 @@ class KnowledgeConfig:
             raise ValueError("Invalid RAG batch size or maximum chunk characters")
 
     def collection(self, source_type: KnowledgeSourceType) -> str:
-        return self.policy_collection if KnowledgeSourceType(source_type) == KnowledgeSourceType.POLICY else self.procedure_collection
+        return (
+            self.policy_collection
+            if KnowledgeSourceType(source_type) == KnowledgeSourceType.POLICY
+            else self.procedure_collection
+        )
 
     @classmethod
     def from_env(cls):

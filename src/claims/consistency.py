@@ -7,6 +7,7 @@ from claims.document_models import (
 )
 from claims.enums import DamageType
 
+
 class ClaimConsistencyReport(BaseModel):
     claim_id_match: bool
     incident_date_match: bool
@@ -17,10 +18,7 @@ class ClaimConsistencyReport(BaseModel):
 
     declared_damage_match: bool
 
-    additional_quote_damage: tuple[
-        DamageType,
-        ...
-    ]
+    additional_quote_damage: tuple[DamageType, ...]
 
     unmapped_quote_items: tuple[str, ...]
 
@@ -37,6 +35,7 @@ class ClaimConsistencyReport(BaseModel):
             and not self.additional_quote_damage
             and not self.unmapped_quote_items
         )
+
 
 QUOTE_DAMAGE_MAP = {
     "front bumper": DamageType.FRONT_BUMPER,
@@ -69,51 +68,25 @@ def compare_claim_documents(
     report: AccidentReportExtraction,
     quote: GarageQuoteExtraction,
 ) -> ClaimConsistencyReport:
-    claim_id_match = (
-        form.claim_id
-        == report.claim_id
-        == quote.claim_id
-    )
+    claim_id_match = form.claim_id == report.claim_id == quote.claim_id
 
-    incident_date_match = (
-        form.incident_date
-        == report.incident_date
-    )
+    incident_date_match = form.incident_date == report.incident_date
 
-    location_match = (
-        form.location.casefold()
-        == report.location.casefold()
-    )
+    location_match = form.location.casefold() == report.location.casefold()
 
     vehicle_match = (
-        form.vehicle_make.casefold()
-        == report.vehicle_make.casefold()
-        and
-        form.vehicle_model.casefold()
-        == report.vehicle_model.casefold()
+        form.vehicle_make.casefold() == report.vehicle_make.casefold()
+        and form.vehicle_model.casefold() == report.vehicle_model.casefold()
     )
 
-    collision_type_match = (
-        form.collision_type
-        == report.collision_type
-    )
+    collision_type_match = form.collision_type == report.collision_type
 
-    injuries_match = (
-        form.injuries_declared
-        == report.injuries_declared
-    )
-    declared_damage_match = (
-        set(form.declared_damage)
-        == set(report.reported_damage)
-    )
+    injuries_match = form.injuries_declared == report.injuries_declared
+    declared_damage_match = set(form.declared_damage) == set(report.reported_damage)
     quote_damage, unmapped_quote_items = map_quote_damage_types(quote)
     declared = set(form.declared_damage)
 
-    additional_quote_damage = tuple(
-        damage
-        for damage in quote_damage
-        if damage not in declared
-    )
+    additional_quote_damage = tuple(damage for damage in quote_damage if damage not in declared)
     return ClaimConsistencyReport(
         claim_id_match=claim_id_match,
         incident_date_match=incident_date_match,
@@ -123,7 +96,5 @@ def compare_claim_documents(
         injuries_match=injuries_match,
         declared_damage_match=declared_damage_match,
         additional_quote_damage=additional_quote_damage,
-        unmapped_quote_items=tuple(
-            unmapped_quote_items
-        ),
+        unmapped_quote_items=tuple(unmapped_quote_items),
     )

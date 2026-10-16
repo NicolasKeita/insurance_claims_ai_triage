@@ -17,6 +17,7 @@ def validated_polygon_geometry(polygon: NormalizedPolygon):
         validated = NormalizedPolygon.model_validate(polygon.model_dump())
     except ValidationError as error:
         raise PolygonGeometryError("Invalid normalized polygon") from error
+
     def component_geometries(component):
         geometry = Polygon(
             [(point.x, point.y) for point in component.points],

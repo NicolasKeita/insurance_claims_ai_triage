@@ -14,9 +14,7 @@ def read_dataset_metadata(path: Path, *, expected_role: str) -> dict:
     metadata_path = path.with_suffix(".metadata.json")
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if metadata.get("role") != expected_role:
-        raise ValueError(
-            f"{metadata_path} must have role={expected_role!r}"
-        )
+        raise ValueError(f"{metadata_path} must have role={expected_role!r}")
     if not metadata.get("dataset_version"):
         raise ValueError(f"{metadata_path} has no dataset_version")
     return metadata

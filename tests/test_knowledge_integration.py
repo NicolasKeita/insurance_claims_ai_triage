@@ -3,6 +3,8 @@
 from dataclasses import replace
 
 import pytest
+from integration_support import get_test_qdrant_url
+from qdrant_integration_support import temporary_qdrant_collections
 
 from knowledge.config import ROOT, KnowledgeConfig
 from knowledge.evaluation import evaluate_retrieval, load_benchmark
@@ -11,8 +13,6 @@ from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.qdrant_store import PAYLOAD_INDEXES, QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
-from integration_support import get_test_qdrant_url
-from qdrant_integration_support import temporary_qdrant_collections
 
 pytestmark = [pytest.mark.integration, pytest.mark.rag]
 
@@ -23,18 +23,24 @@ def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path, monkeypat
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
     with temporary_qdrant_collections("rag_policy", "rag_procedure") as (client, collections):
         # Fixed, tiny synthetic corpus only; app connection/collection overrides are ignored.
-        config = replace(KnowledgeConfig(), qdrant_url=get_test_qdrant_url(),
-                         policy_collection=collections[0], procedure_collection=collections[1],
-                         knowledge_dir=ROOT / "data" / "knowledge")
-        embeddings = SentenceTransformerEmbeddingProvider(config.embedding_model, asymmetric=True,
-                                                           local_files_only=True)
+        config = replace(
+            KnowledgeConfig(),
+            qdrant_url=get_test_qdrant_url(),
+            policy_collection=collections[0],
+            procedure_collection=collections[1],
+            knowledge_dir=ROOT / "data" / "knowledge",
+        )
+        embeddings = SentenceTransformerEmbeddingProvider(
+            config.embedding_model, asymmetric=True, local_files_only=True
+        )
         try:
             assert embeddings.dimension > 0
         except Exception as error:
             pytest.fail(
                 f"RAG requires the locally cached embedding model {config.embedding_model!r}. "
                 "No model is downloaded by pytest; preload it explicitly before running 'pytest -m rag'. "
-                f"Original error: {type(error).__name__}: {error}", pytrace=False,
+                f"Original error: {type(error).__name__}: {error}",
+                pytrace=False,
             )
         store = QdrantKnowledgeStore(client, embeddings, config)
         first = KnowledgeIndexer(store).index_all(tmp_path / "manifest.json")

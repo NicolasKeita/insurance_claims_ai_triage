@@ -5,8 +5,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from vision.training import REPO_ROOT, write_json
 from vision.tracking import VisionMLflowTracking, vision_tracking_run
+from vision.training import REPO_ROOT, write_json
 
 
 class PartsMLflowTracking(VisionMLflowTracking):
@@ -45,7 +45,9 @@ def parts_tracking_run(config: Any, *, run_id: str | None = None) -> Iterator[Vi
             if mlflow is not None:
                 mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
                 if mlflow.get_experiment_by_name(config.experiment_name) is None:
-                    mlflow.create_experiment(config.experiment_name, artifact_location=(directory / "artifacts").as_uri())
+                    mlflow.create_experiment(
+                        config.experiment_name, artifact_location=(directory / "artifacts").as_uri()
+                    )
         with vision_tracking_run(config, run_id=run_id) as tracking:
             if tracking is not None:
                 tracking.mlflow.set_tags({"perception_branch": "vehicle-parts", "dataset": "Carparts-Seg"})

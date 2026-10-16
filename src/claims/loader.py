@@ -2,8 +2,8 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
-from claims.models import Claim
 from claims.case import ClaimCase
+from claims.models import Claim
 from claims.validation import validate_claim_files
 
 

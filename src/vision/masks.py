@@ -50,9 +50,10 @@ def binary_mask_to_polygon(mask: Any) -> NormalizedPolygon | None:
     def points(ring):
         return [NormalizedPoint(x=x, y=y) for x, y in list(ring.coords)[:-1]]
 
-    components = [NormalizedPolygon(points=points(polygon.exterior),
-                                    holes=[points(hole) for hole in polygon.interiors])
-                  for polygon in polygons]
+    components = [
+        NormalizedPolygon(points=points(polygon.exterior), holes=[points(hole) for hole in polygon.interiors])
+        for polygon in polygons
+    ]
     return components[0].model_copy(update={"components": components[1:]})
 
 

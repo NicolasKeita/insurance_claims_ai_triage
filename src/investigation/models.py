@@ -59,8 +59,7 @@ class InvestigationAssessment(BaseModel):
         ge=0,
         le=100,
         description=(
-            "Deterministic heuristic review-prioritization score defined by the "
-            "policy; not a statistical probability."
+            "Deterministic heuristic review-prioritization score defined by the policy; not a statistical probability."
         ),
     )
     review_priority: ReviewPriority

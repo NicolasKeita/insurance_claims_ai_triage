@@ -24,7 +24,9 @@ class KnowledgeIndexer:
                     info = self.store.client.get_collection(config.collection(kind))
                     owned = (info.config.metadata or {}).get("knowledge_rag")
                     if not isinstance(owned, dict) or owned.get("source_type") != kind.value:
-                        raise IndexCompatibilityError("Refusing to recreate a collection not owned by this RAG source type")
+                        raise IndexCompatibilityError(
+                            "Refusing to recreate a collection not owned by this RAG source type"
+                        )
         if not recreate:
             # Validate both existing collections before upserting either one.
             for kind in KnowledgeSourceType:
@@ -35,21 +37,33 @@ class KnowledgeIndexer:
             self.store.ensure_collection(kind, recreate=recreate)
             chunks = [c for c in catalog.chunks.values() if c.source_type == kind]
             for start in range(0, len(chunks), config.batch_size):
-                batch = chunks[start:start + config.batch_size]
+                batch = chunks[start : start + config.batch_size]
                 vectors = self.store.embeddings.embed_documents([c.text for c in batch])
                 self.store.upsert(kind, batch, vectors)
             sources = [s for s in catalog.sources if s.source_type == kind]
-            collections.append({
-                "collection": config.collection(kind), **self.store.contract(kind),
-                "number_of_sources": len(sources), "number_of_chunks": len(chunks),
-                "point_count": self.store.count(kind),
-                "indexed_timestamp": datetime.now(timezone.utc).isoformat(),
-                "source_versions": [{"source_id": s.source_id, "version": s.version,
-                                     "file_path": s.file_path,
-                                     "chunk_ids": [c.chunk_id for c in chunks if c.source_id == s.source_id
-                                                   and c.source_version == s.version]}
-                                    for s in sources],
-            })
+            collections.append(
+                {
+                    "collection": config.collection(kind),
+                    **self.store.contract(kind),
+                    "number_of_sources": len(sources),
+                    "number_of_chunks": len(chunks),
+                    "point_count": self.store.count(kind),
+                    "indexed_timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_versions": [
+                        {
+                            "source_id": s.source_id,
+                            "version": s.version,
+                            "file_path": s.file_path,
+                            "chunk_ids": [
+                                c.chunk_id
+                                for c in chunks
+                                if c.source_id == s.source_id and c.source_version == s.version
+                            ],
+                        }
+                        for s in sources
+                    ],
+                }
+            )
         manifest = {"manifest_version": "knowledge_index_manifest_v1", "collections": collections}
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = manifest_path.with_suffix(".json.tmp")

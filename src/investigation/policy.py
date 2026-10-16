@@ -7,10 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from investigation.models import InvestigationSignal, ReviewPriority, SignalCode
 
-
-HISTORICAL_CODES = frozenset({
-    SignalCode.RECENT_CLAIM_FREQUENCY, SignalCode.PREVIOUS_ANOMALOUS_CLAIMS,
-})
+HISTORICAL_CODES = frozenset(
+    {
+        SignalCode.RECENT_CLAIM_FREQUENCY,
+        SignalCode.PREVIOUS_ANOMALOUS_CLAIMS,
+    }
+)
 MULTIMODAL_CODES = frozenset({SignalCode.VISUAL_ADDITIONAL_DAMAGE})
 V1_CODES = frozenset(SignalCode) - HISTORICAL_CODES - MULTIMODAL_CODES
 
@@ -46,11 +48,14 @@ class InvestigationPolicy(BaseModel):
 
     @model_validator(mode="after")
     def validate_score_rules(self) -> "InvestigationPolicy":
-        history_enabled = any(value is not None for value in (
-            self.recent_claims_30_days_threshold,
-            self.recent_claims_365_days_threshold,
-            self.previous_anomalous_claims_threshold,
-        ))
+        history_enabled = any(
+            value is not None
+            for value in (
+                self.recent_claims_30_days_threshold,
+                self.recent_claims_365_days_threshold,
+                self.previous_anomalous_claims_threshold,
+            )
+        )
         expected = set(V1_CODES)
         if history_enabled:
             expected.update(HISTORICAL_CODES)
@@ -64,24 +69,16 @@ class InvestigationPolicy(BaseModel):
             raise ValueError("Multimodal rules require a new policy version")
         if any(weight < 0 for weight in self.signal_weights.values()):
             raise ValueError("signal weights must be nonnegative")
-        if not (
-            self.elevated_priority_min_score
-            < self.high_priority_min_score
-            <= self.max_review_score
-        ):
+        if not (self.elevated_priority_min_score < self.high_priority_min_score <= self.max_review_score):
             raise ValueError("priority thresholds must increase within score bounds")
         if self.review_recommendation_min_score > self.max_review_score:
             raise ValueError("review recommendation threshold exceeds score maximum")
         # A policy version must not change because a caller edits a nested dict.
-        object.__setattr__(
-            self, "signal_weights", MappingProxyType(dict(self.signal_weights))
-        )
+        object.__setattr__(self, "signal_weights", MappingProxyType(dict(self.signal_weights)))
         return self
 
     @field_serializer("signal_weights")
-    def serialize_signal_weights(
-        self, weights: Mapping[SignalCode, int]
-    ) -> dict[SignalCode, int]:
+    def serialize_signal_weights(self, weights: Mapping[SignalCode, int]) -> dict[SignalCode, int]:
         return dict(weights)
 
     def score_signals(self, signals: Iterable[InvestigationSignal]) -> int:

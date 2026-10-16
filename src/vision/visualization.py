@@ -56,7 +56,12 @@ def save_annotated_image(source: Path, assessment: ImageDamageAssessment, destin
             draw = ImageDraw.Draw(rendered)
             for detection in assessment.detections:
                 box = detection.bounding_box
-                rectangle = (box.x_min * (image.width - 1), box.y_min * (image.height - 1), box.x_max * (image.width - 1), box.y_max * (image.height - 1))
+                rectangle = (
+                    box.x_min * (image.width - 1),
+                    box.y_min * (image.height - 1),
+                    box.x_max * (image.width - 1),
+                    box.y_max * (image.height - 1),
+                )
                 color = COLORS[detection.damage_type]
                 draw.rectangle(rectangle, outline=color, width=2)
                 label = f"{detection.damage_type.value.replace('_', ' ')} {detection.confidence:.2f}"
@@ -73,7 +78,9 @@ def save_annotated_image(source: Path, assessment: ImageDamageAssessment, destin
 
 
 def save_multimodal_annotated_image(
-    source: Path, assessment: ImageVisualAssessment, destination: Path,
+    source: Path,
+    assessment: ImageVisualAssessment,
+    destination: Path,
 ) -> Path:
     """Render the two observations and their associations from one stored result.
 
@@ -81,6 +88,7 @@ def save_multimodal_annotated_image(
     Part contours are cyan; damage contours use the existing damage palette.
     """
     import textwrap
+
     from PIL import Image, ImageDraw, ImageFont
 
     source, destination = Path(source), Path(destination)
@@ -112,8 +120,16 @@ def save_multimodal_annotated_image(
                     painter = ImageDraw.Draw(overlay)
                 else:
                     box = detection.bounding_box
-                    painter.rectangle((box.x_min * (image.width - 1), box.y_min * (image.height - 1),
-                                       box.x_max * (image.width - 1), box.y_max * (image.height - 1)), outline=color, width=2)
+                    painter.rectangle(
+                        (
+                            box.x_min * (image.width - 1),
+                            box.y_min * (image.height - 1),
+                            box.x_max * (image.width - 1),
+                            box.y_max * (image.height - 1),
+                        ),
+                        outline=color,
+                        width=2,
+                    )
             panel.alpha_composite(overlay)
             overlay.close()
             painter = ImageDraw.Draw(panel)
@@ -121,8 +137,10 @@ def save_multimodal_annotated_image(
                 color = "#00bcd4" if kind == "part" else COLORS[detection.damage_type]
                 category = detection.part_type if kind == "part" else detection.damage_type
                 label = f"{'P' if kind == 'part' else 'D'}{index}: {category.value} {detection.confidence:.2f}"
-                position = (detection.bounding_box.x_min * (image.width - 1),
-                            max(0, detection.bounding_box.y_min * (image.height - 1) - 20))
+                position = (
+                    detection.bounding_box.x_min * (image.width - 1),
+                    max(0, detection.bounding_box.y_min * (image.height - 1) - 20),
+                )
                 # Keep labels visible even when the detection reaches the right edge.
                 bounds = painter.textbbox((0, 0), label, font=font)
                 position = (max(0, min(position[0], image.width - (bounds[2] - bounds[0]))), position[1])
@@ -139,36 +157,58 @@ def save_multimodal_annotated_image(
             if kind == "fusion":
                 draw = ImageDraw.Draw(panel)
                 for item in assessment.evidence:
-                    candidates = ([item.primary_association] if item.primary_association is not None
-                                  else [association for association in item.associations if association.eligible])
+                    candidates = (
+                        [item.primary_association]
+                        if item.primary_association is not None
+                        else [association for association in item.associations if association.eligible]
+                    )
                     for association in candidates:
                         first, second = item.damage_detection.bounding_box, association.candidate_part.bounding_box
-                        start = ((first.x_min + first.x_max) / 2 * (image.width - 1),
-                                 (first.y_min + first.y_max) / 2 * (image.height - 1))
-                        end = ((second.x_min + second.x_max) / 2 * (image.width - 1),
-                               (second.y_min + second.y_max) / 2 * (image.height - 1))
+                        start = (
+                            (first.x_min + first.x_max) / 2 * (image.width - 1),
+                            (first.y_min + first.y_max) / 2 * (image.height - 1),
+                        )
+                        end = (
+                            (second.x_min + second.x_max) / 2 * (image.width - 1),
+                            (second.y_min + second.y_max) / 2 * (image.height - 1),
+                        )
                         draw.line((start, end), fill="#ffeb3b", width=3)
                         draw.ellipse((end[0] - 4, end[1] - 4, end[0] + 4, end[1] + 4), fill="#ffeb3b")
 
         captions = []
         for item in assessment.evidence:
-            part = item.vehicle_part.value.upper() if item.vehicle_part is not None else item.association_status.value.upper()
+            part = (
+                item.vehicle_part.value.upper()
+                if item.vehicle_part is not None
+                else item.association_status.value.upper()
+            )
             text = f"D{item.damage_detection_index}: {item.visual_damage_type.value.upper()} -> {part}"
             if item.containment_ratio is not None:
                 text += f" ({item.containment_ratio:.2f} containment)"
             if item.primary_association is not None:
-                text += f" [{item.primary_association.association_method.value}; IoU {item.primary_association.iou:.3f}]"
+                text += (
+                    f" [{item.primary_association.association_method.value}; IoU {item.primary_association.iou:.3f}]"
+                )
             captions.extend(textwrap.wrap(text, width=max(30, image.width * 3 // 9)))
             if item.association_status.value == "ambiguous":
-                choices = ", ".join(f"P{a.part_detection_index} {a.candidate_part.part_type.value}: {a.damage_containment_ratio:.2f}"
-                                    for a in item.associations if a.eligible)
+                choices = ", ".join(
+                    f"P{a.part_detection_index} {a.candidate_part.part_type.value}: {a.damage_containment_ratio:.2f}"
+                    for a in item.associations
+                    if a.eligible
+                )
                 captions.extend(textwrap.wrap(f"  Candidates: {choices}", width=max(30, image.width * 3 // 9)))
         if not captions:
-            captions = ["No damage observations above the detector threshold. Non-detection is not evidence of absence."]
+            captions = [
+                "No damage observations above the detector threshold. Non-detection is not evidence of absence."
+            ]
         margin, header = 12, 58
-        canvas = Image.new("RGB", (image.width * 3 + margin * 4, header + image.height + 28 * len(captions) + 42), "#101820")
+        canvas = Image.new(
+            "RGB", (image.width * 3 + margin * 4, header + image.height + 28 * len(captions) + 42), "#101820"
+        )
         draw = ImageDraw.Draw(canvas)
-        for index, (panel, title) in enumerate(zip(panels, ("Damage masks", "Vehicle part masks", "Spatial associations"))):
+        for index, (panel, title) in enumerate(
+            zip(panels, ("Damage masks", "Vehicle part masks", "Spatial associations"))
+        ):
             x = margin + index * (image.width + margin)
             rgb_panel = panel.convert("RGB")
             try:

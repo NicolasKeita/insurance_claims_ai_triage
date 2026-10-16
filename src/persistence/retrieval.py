@@ -12,11 +12,16 @@ from retrieval.models import ClaimRetrievalFacts, StoredRetrievalClaim
 
 def _map(row: ClaimRow) -> StoredRetrievalClaim:
     return StoredRetrievalClaim(
-        point_id=row.id, claim_id=row.claim_id, incident_date=row.incident_date,
+        point_id=row.id,
+        claim_id=row.claim_id,
+        incident_date=row.incident_date,
         facts=ClaimRetrievalFacts(
-            claim_type=row.claim_type.value, collision_type=row.collision_type.value,
-            location=row.incident_location, vehicle_make=row.vehicle_make,
-            vehicle_model=row.vehicle_model, vehicle_year=row.vehicle_year,
+            claim_type=row.claim_type.value,
+            collision_type=row.collision_type.value,
+            location=row.incident_location,
+            vehicle_make=row.vehicle_make,
+            vehicle_model=row.vehicle_model,
+            vehicle_year=row.vehicle_year,
             declared_damage=tuple(d.damage_type.value for d in row.damages),
             injuries_declared=row.injuries_declared,
             repair_amount=row.repair_estimate_amount,
@@ -32,16 +37,26 @@ class RetrievalClaimRepository:
     def _read(self, statement):
         # Two queries per batch: facts and damages. No customer, policy or outputs.
         with self.factory() as session:
-            rows = session.scalars(statement.options(
-                load_only(
-                    ClaimRow.id, ClaimRow.claim_id, ClaimRow.incident_date,
-                    ClaimRow.claim_type, ClaimRow.collision_type, ClaimRow.incident_location,
-                    ClaimRow.vehicle_make, ClaimRow.vehicle_model, ClaimRow.vehicle_year,
-                    ClaimRow.injuries_declared, ClaimRow.repair_estimate_amount,
-                    ClaimRow.repair_estimate_currency, raiseload=True,
-                ),
-                selectinload(ClaimRow.damages),
-            ))
+            rows = session.scalars(
+                statement.options(
+                    load_only(
+                        ClaimRow.id,
+                        ClaimRow.claim_id,
+                        ClaimRow.incident_date,
+                        ClaimRow.claim_type,
+                        ClaimRow.collision_type,
+                        ClaimRow.incident_location,
+                        ClaimRow.vehicle_make,
+                        ClaimRow.vehicle_model,
+                        ClaimRow.vehicle_year,
+                        ClaimRow.injuries_declared,
+                        ClaimRow.repair_estimate_amount,
+                        ClaimRow.repair_estimate_currency,
+                        raiseload=True,
+                    ),
+                    selectinload(ClaimRow.damages),
+                )
+            )
             return [_map(row) for row in rows]
 
     def get(self, claim_id: str) -> StoredRetrievalClaim:

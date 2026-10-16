@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 from qdrant_client import QdrantClient, models
+from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
 
 from persistence.repositories import ClaimNotFoundError
 from retrieval.config import RetrievalConfig
@@ -15,10 +16,11 @@ from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 from retrieval.models import IndexCompatibilityError, RetrievalUnavailableError
 from retrieval.qdrant_store import QdrantClaimStore
 from retrieval.representation import (
-    CLAIM_RETRIEVAL_REPRESENTATION_VERSION, build_claim_retrieval_text, build_retrieval_document,
+    CLAIM_RETRIEVAL_REPRESENTATION_VERSION,
+    build_claim_retrieval_text,
+    build_retrieval_document,
 )
 from retrieval.similar_claims import SimilarClaimsIndexer, SimilarClaimsService
-from retrieval_fakes import FakeEmbeddings, FakeRepository, claim
 
 
 @pytest.fixture
@@ -34,41 +36,81 @@ def components():
 
 def test_canonical_representation_is_stable_and_allowlisted():
     current = claim()
-    expected = "\n".join([
-        "claim_type: AUTO_COLLISION", "collision_type: FRONT_COLLISION", "location: Bordeaux",
-        "vehicle_make: Renault", "vehicle_model: Clio", "vehicle_year: 2021",
-        "declared_damage: FRONT_BUMPER, LEFT_HEADLIGHT", "injuries_declared: false",
-        "repair_estimate_amount: 3160", "repair_estimate_currency: EUR",
-    ])
+    expected = "\n".join(
+        [
+            "claim_type: AUTO_COLLISION",
+            "collision_type: FRONT_COLLISION",
+            "location: Bordeaux",
+            "vehicle_make: Renault",
+            "vehicle_model: Clio",
+            "vehicle_year: 2021",
+            "declared_damage: FRONT_BUMPER, LEFT_HEADLIGHT",
+            "injuries_declared: false",
+            "repair_estimate_amount: 3160",
+            "repair_estimate_currency: EUR",
+        ]
+    )
     assert build_claim_retrieval_text(current.facts) == expected
-    reordered = replace(current.facts, declared_damage=tuple(reversed(current.facts.declared_damage)),
-                        repair_amount=Decimal("3160.000000"), location=" Bordeaux\n ")
+    reordered = replace(
+        current.facts,
+        declared_damage=tuple(reversed(current.facts.declared_damage)),
+        repair_amount=Decimal("3160.000000"),
+        location=" Bordeaux\n ",
+    )
     assert build_claim_retrieval_text(reordered) == expected
-    changed_identity = replace(current, claim_id="PRIVATE-ID", point_id=claim(9).point_id,
-                               incident_date=current.incident_date - timedelta(days=10))
+    changed_identity = replace(
+        current,
+        claim_id="PRIVATE-ID",
+        point_id=claim(9).point_id,
+        incident_date=current.incident_date - timedelta(days=10),
+    )
     assert build_retrieval_document(changed_identity).canonical_text == expected
     document = build_retrieval_document(current)
     assert document.representation_version == "claim_retrieval_v1"
     assert document.point_id == current.point_id
     forbidden = [
-        "claim_id", "customer", "policy", "uuid", "triage", "workflow", "confidence",
-        "anomaly", "investigation", "review_score", "priority", "model_version", "mlflow",
+        "claim_id",
+        "customer",
+        "policy",
+        "uuid",
+        "triage",
+        "workflow",
+        "confidence",
+        "anomaly",
+        "investigation",
+        "review_score",
+        "priority",
+        "model_version",
+        "mlflow",
     ]
     assert all(word not in expected.lower() for word in forbidden)
     # The input type cannot carry identifiers or model outputs at all.
     assert set(vars(current.facts)) == {
-        "claim_type", "collision_type", "location", "vehicle_make", "vehicle_model", "vehicle_year",
-        "declared_damage", "injuries_declared", "repair_amount", "repair_currency",
+        "claim_type",
+        "collision_type",
+        "location",
+        "vehicle_make",
+        "vehicle_model",
+        "vehicle_year",
+        "declared_damage",
+        "injuries_declared",
+        "repair_amount",
+        "repair_currency",
     }
 
 
 def test_import_api_and_provider_construction_loads_no_sentence_transformer():
-    result = subprocess.run([
-        sys.executable, "-c",
-        "import sys; import api.main; from retrieval.embeddings import SentenceTransformerEmbeddingProvider; "
-        "p = SentenceTransformerEmbeddingProvider('unused'); "
-        "assert p._model is None; assert 'sentence_transformers' not in sys.modules",
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import api.main; from retrieval.embeddings import SentenceTransformerEmbeddingProvider; "
+            "p = SentenceTransformerEmbeddingProvider('unused'); "
+            "assert p._model is None; assert 'sentence_transformers' not in sys.modules",
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 0, result.stderr
 
 
@@ -111,7 +153,9 @@ def test_collection_upsert_idempotence_and_manifest(components, tmp_path):
     assert info.config.metadata["claim_retrieval"] == store.contract()
     point = store.client.retrieve(store.collection, [str(claim().point_id)])[0]
     assert point.payload == {
-        "claim_id": "DEMO-TEST-1", "claim_type": "AUTO_COLLISION", "incident_date": "2026-09-20",
+        "claim_id": "DEMO-TEST-1",
+        "claim_type": "AUTO_COLLISION",
+        "incident_date": "2026-09-20",
         "incident_date_ordinal": claim().incident_date.toordinal(),
         "representation_version": CLAIM_RETRIEVAL_REPRESENTATION_VERSION,
     }
@@ -139,7 +183,8 @@ def test_incompatible_collection_never_silently_deleted(components, difference):
     if difference == "representation":
         contract["representation_version"] = "old-v0"
     store.client.create_collection(
-        store.collection, vectors_config=models.VectorParams(size=dimension, distance=distance),
+        store.collection,
+        vectors_config=models.VectorParams(size=dimension, distance=distance),
         metadata={} if difference == "missing_contract" else {"claim_retrieval": contract},
     )
     with pytest.raises(IndexCompatibilityError, match="new collection/version"):
@@ -152,9 +197,13 @@ def test_incompatible_collection_never_silently_deleted(components, difference):
 def test_ranking_top_k_and_strict_date_and_type_filters(components):
     embeddings, store = components
     claims = [
-        claim(), claim(2, days=2), claim(3, days=4, amount="3500"),
+        claim(),
+        claim(2, days=2),
+        claim(3, days=4, amount="3500"),
         claim(4, days=6, collision="PARKING_DAMAGE"),
-        claim(5, days=0), claim(6, days=-1), claim(7, days=10, claim_type="HOME"),
+        claim(5, days=0),
+        claim(6, days=-1),
+        claim(7, days=10, claim_type="HOME"),
     ]
     repository = FakeRepository(claims)
     SimilarClaimsIndexer(repository, embeddings, store).index_all()
@@ -166,8 +215,12 @@ def test_ranking_top_k_and_strict_date_and_type_filters(components):
     assert [r.claim_id for r in results] == [c.claim_id for c in claims[1:4]]
     assert all(r.incident_date < claims[0].incident_date for r in results)
     # Qdrant itself excludes type/date/current; do not rely on app filtering alone.
-    page = store.query(embeddings.embed_query(build_retrieval_document(claims[0]).canonical_text),
-                       claims[0].incident_date, "AUTO_COLLISION", 20)
+    page = store.query(
+        embeddings.embed_query(build_retrieval_document(claims[0]).canonical_text),
+        claims[0].incident_date,
+        "AUTO_COLLISION",
+        20,
+    )
     assert {h.point_id for h in page.hits} == {c.point_id for c in claims[1:4]}
     other_domain = service.search(claims[-1].claim_id).results
     assert other_domain == []  # compares to actual HOME, never hardcodes AUTO_COLLISION
@@ -182,10 +235,13 @@ def test_stale_points_ignored_and_postgres_facts_used(components):
     SimilarClaimsIndexer(repository, embeddings, store).index_all()
     del repository.claims[claims[1].point_id]
     repository.claims[claims[2].point_id] = replace(claims[2], incident_date=claims[0].incident_date)
-    repository.claims[claims[3].point_id] = replace(claims[3], incident_date=claims[0].incident_date + timedelta(days=1))
+    repository.claims[claims[3].point_id] = replace(
+        claims[3], incident_date=claims[0].incident_date + timedelta(days=1)
+    )
     repository.claims[claims[4].point_id] = replace(claims[4], facts=replace(claims[4].facts, claim_type="HOME"))
-    repository.claims[claims[5].point_id] = replace(claims[5], facts=replace(
-        claims[5].facts, repair_amount=Decimal("3200"), collision_type="SIDE_COLLISION"))
+    repository.claims[claims[5].point_id] = replace(
+        claims[5], facts=replace(claims[5].facts, repair_amount=Decimal("3200"), collision_type="SIDE_COLLISION")
+    )
     results = SimilarClaimsService(repository, embeddings, store).search(claims[0].claim_id).results
     assert len(results) == 1
     assert results[0].claim_id == claims[5].claim_id

@@ -5,7 +5,7 @@ from qdrant_client import QdrantClient
 from claims.llm import LlmError, OllamaStructuredLlm
 from knowledge.config import KnowledgeConfig
 from knowledge.qdrant_store import QdrantKnowledgeStore
-from knowledge.rag import KnowledgeRagService, RAG_SYSTEM_PROMPT
+from knowledge.rag import RAG_SYSTEM_PROMPT, KnowledgeRagService
 from knowledge.retrieval import KnowledgeRetriever
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
@@ -25,6 +25,7 @@ def create_knowledge_rag_service(retriever):
     model = os.environ.get("CLAIMS_LLM_MODEL")
     if not model:
         raise LlmError("CLAIMS_LLM_MODEL is required for RAG generation")
-    llm = OllamaStructuredLlm(model=model, host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
-                             system_prompt=RAG_SYSTEM_PROMPT)
+    llm = OllamaStructuredLlm(
+        model=model, host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"), system_prompt=RAG_SYSTEM_PROMPT
+    )
     return KnowledgeRagService(retriever, llm)

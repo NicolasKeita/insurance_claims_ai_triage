@@ -65,9 +65,7 @@ def test_anomaly_labels_are_evaluation_only(
     assert "is_synthetic_anomaly" not in reference.columns
     assert "anomaly_kind" not in reference.columns
     assert set(evaluation["is_synthetic_anomaly"].unique()) == {False, True}
-    assert set(evaluation.loc[~evaluation["is_synthetic_anomaly"], "anomaly_kind"]) == {
-        "NONE"
-    }
+    assert set(evaluation.loc[~evaluation["is_synthetic_anomaly"], "anomaly_kind"]) == {"NONE"}
 
 
 def test_all_synthetic_anomaly_families_are_present(
@@ -87,13 +85,10 @@ def test_anomaly_examples_respect_feature_bounds(
 
     for dataset in (reference, evaluation):
         assert np.isfinite(dataset["repair_amount"]).all()
-        assert (
-            dataset["missing_document_count"] <= dataset["document_count"]
-        ).all()
+        assert (dataset["missing_document_count"] <= dataset["document_count"]).all()
         assert np.allclose(
             dataset["document_completeness_ratio"],
-            (dataset["document_count"] - dataset["missing_document_count"])
-            / dataset["document_count"],
+            (dataset["document_count"] - dataset["missing_document_count"]) / dataset["document_count"],
         )
         for features in dataset[feature_columns].to_dict(orient="records"):
             TriageFeatures.model_validate(features)
@@ -108,12 +103,8 @@ def test_training_features_exclude_outcomes_and_synthetic_labels(
     selected = select_anomaly_features(with_outcomes)
 
     assert list(selected.columns) == list(ANOMALY_FEATURE_COLUMNS)
-    assert set(selected.columns).isdisjoint(
-        {"workflow", "is_synthetic_anomaly", "anomaly_kind"}
-    )
-    assert list(anomaly_detector.pipeline.feature_names_in_) == list(
-        ANOMALY_FEATURE_COLUMNS
-    )
+    assert set(selected.columns).isdisjoint({"workflow", "is_synthetic_anomaly", "anomaly_kind"})
+    assert list(anomaly_detector.pipeline.feature_names_in_) == list(ANOMALY_FEATURE_COLUMNS)
     assert list(reference.columns) == list(ANOMALY_FEATURE_COLUMNS)
 
 
@@ -128,9 +119,7 @@ def test_higher_anomaly_score_means_more_atypical(
     for features in extreme.to_dict(orient="records"):
         TriageFeatures.model_validate(features)
 
-    assert anomaly_detector.score_samples(extreme).mean() > (
-        anomaly_detector.score_samples(ordinary).mean()
-    )
+    assert anomaly_detector.score_samples(extreme).mean() > (anomaly_detector.score_samples(ordinary).mean())
 
 
 def test_threshold_and_assessment_follow_score_convention(
@@ -143,17 +132,11 @@ def test_threshold_and_assessment_follow_score_convention(
     assessment = anomaly_detector.assess(extreme)
 
     assert np.isfinite(anomaly_detector.threshold)
-    assert anomaly_detector.threshold == pytest.approx(
-        float(np.quantile(reference_scores, 0.98))
-    )
+    assert anomaly_detector.threshold == pytest.approx(float(np.quantile(reference_scores, 0.98)))
     assert isinstance(assessment, AnomalyAssessment)
-    assert assessment.anomaly_score == pytest.approx(
-        float(anomaly_detector.score_samples(extreme.to_frame().T)[0])
-    )
+    assert assessment.anomaly_score == pytest.approx(float(anomaly_detector.score_samples(extreme.to_frame().T)[0]))
     assert assessment.threshold == pytest.approx(anomaly_detector.threshold)
-    assert assessment.is_anomalous == (
-        assessment.anomaly_score >= assessment.threshold
-    )
+    assert assessment.is_anomalous == (assessment.anomaly_score >= assessment.threshold)
     assert 0 <= assessment.reference_percentile <= 1
     assert assessment.is_anomalous
     assert "repair_amount: very_high" in assessment.statistical_signals
@@ -186,9 +169,7 @@ def test_anomaly_evaluation_reports_bounded_metrics_and_errors(
     assert all(len(row) == 2 for row in metrics.confusion_matrix)
     assert sum(map(sum, metrics.confusion_matrix)) == len(evaluation)
     assert 0 <= metrics.flagged_count <= len(evaluation)
-    assert metrics.flagged_rate == pytest.approx(
-        metrics.flagged_count / len(evaluation)
-    )
+    assert metrics.flagged_rate == pytest.approx(metrics.flagged_count / len(evaluation))
     assert set(ANOMALY_KINDS) <= set(metrics.by_anomaly_kind)
     assert {"error_type", "anomaly_kind"} <= set(result.errors.columns)
     assert set(result.errors["error_type"]) <= {

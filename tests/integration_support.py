@@ -17,9 +17,7 @@ from persistence.database import DatabaseConfig, require_test_database
 from persistence.models import Base
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TEST_DATABASE_URL = (
-    "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test"
-)
+DEFAULT_TEST_DATABASE_URL = "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test"
 DEFAULT_TEST_QDRANT_URL = "http://127.0.0.1:6335"
 
 
@@ -47,7 +45,8 @@ def isolated_postgres_schema(config: DatabaseConfig | None = None) -> Iterator[E
     config = get_test_database_config() if config is None else require_test_database(config.url)
     schema = f"persistence_test_{uuid4().hex}"
     admin = create_engine(
-        config.url, hide_parameters=True,
+        config.url,
+        hide_parameters=True,
         connect_args={"connect_timeout": 5, "options": "-csearch_path=pg_catalog"},
     )
     engine = None
@@ -58,8 +57,7 @@ def isolated_postgres_schema(config: DatabaseConfig | None = None) -> Iterator[E
                 actual_database = connection.scalar(text("SELECT current_database()"))
                 if actual_database != config.url.database:
                     raise RuntimeError(
-                        "Refusing PostgreSQL test setup: server database does not match "
-                        "the validated TEST_DATABASE_URL"
+                        "Refusing PostgreSQL test setup: server database does not match the validated TEST_DATABASE_URL"
                     )
                 connection.execute(text(f'CREATE SCHEMA "{schema}"'))
             created = True
@@ -72,7 +70,8 @@ def isolated_postgres_schema(config: DatabaseConfig | None = None) -> Iterator[E
                 "The selected PostgreSQL suite requires a reachable, writable test database."
             ) from error
         engine = create_engine(
-            config.url, hide_parameters=True,
+            config.url,
+            hide_parameters=True,
             connect_args={"connect_timeout": 5, "options": f"-csearch_path={schema}"},
         )
         yield engine

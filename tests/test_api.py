@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from test_ml_inference import FakePipeline, make_features
 
 from api.main import create_app
 from claims.consistency import ClaimConsistencyReport
@@ -7,7 +8,6 @@ from investigation.policy import DEFAULT_INVESTIGATION_POLICY
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.anomaly_training import AnomalyAssessment
 from ml.inference import RegisteredTriagePredictor
-from test_ml_inference import FakePipeline, make_features
 
 
 def fake_predictor_loader():
@@ -94,9 +94,7 @@ def test_health():
 
 def test_predict_triage():
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/triage/predict", json=make_features().model_dump(mode="json")
-        )
+        response = client.post("/v1/triage/predict", json=make_features().model_dump(mode="json"))
         assert response.status_code == 200
         body = response.json()
         assert body["recommended_workflow"] == "STANDARD"
@@ -105,9 +103,7 @@ def test_predict_triage():
 
 def test_assess_anomaly():
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/anomaly/assess", json=make_features().model_dump(mode="json")
-        )
+        response = client.post("/v1/anomaly/assess", json=make_features().model_dump(mode="json"))
         assert response.status_code == 200
         body = response.json()
         assert body["registered_model"] == "test-anomaly-model"
@@ -124,9 +120,7 @@ def test_assess_anomaly():
 
 def test_combined_assessment_keeps_results_independent():
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/claims/assess", json=make_combined_payload()
-        )
+        response = client.post("/v1/claims/assess", json=make_combined_payload())
         assert response.status_code == 200
         body = response.json()
         assert body["triage"]["recommended_workflow"] == "STANDARD"
@@ -139,9 +133,7 @@ def test_combined_assessment_keeps_results_independent():
         assert "UNMAPPED_QUOTE_ITEM" in codes
         assert "ANOMALOUS_PATTERN" in codes
         mismatch = next(
-            signal
-            for signal in body["investigation"]["signals"]
-            if signal["code"] == "DOCUMENT_FIELD_MISMATCH"
+            signal for signal in body["investigation"]["signals"] if signal["code"] == "DOCUMENT_FIELD_MISMATCH"
         )
         assert mismatch["evidence"]["field"] == "incident_date"
         assert mismatch["evidence"]["matched"] is False
@@ -169,9 +161,7 @@ def test_investigation_assessment_uses_structured_evidence():
 
 def test_combined_assessment_requires_consistency_details():
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/claims/assess", json=make_features().model_dump(mode="json")
-        )
+        response = client.post("/v1/claims/assess", json=make_features().model_dump(mode="json"))
         assert response.status_code == 422
 
 
@@ -250,6 +240,7 @@ def test_history_database_unconfigured_is_503_and_loads_no_models(monkeypatch):
 
 def test_history_database_failure_is_503_not_empty_profile():
     from contextlib import contextmanager
+
     from sqlalchemy.exc import OperationalError
 
     class BrokenFactory:

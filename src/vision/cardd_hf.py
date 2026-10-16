@@ -19,7 +19,6 @@ from typing import Any, Callable
 from vision.dataset import DatasetValidationError, annotation_hash
 from vision.taxonomy import map_category_name
 
-
 DEFAULT_HF_REPOSITORY = "harpreetsahota/CarDD"
 _LOAD_LOCK = threading.RLock()
 Point = tuple[float, float]
@@ -101,7 +100,13 @@ def _label(value: Any) -> str:
 
 
 def _area(points: Polygon | list[Point]) -> float:
-    return sum(x * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * y for i, (x, y) in enumerate(points)) / 2
+    return (
+        sum(
+            x * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * y
+            for i, (x, y) in enumerate(points)
+        )
+        / 2
+    )
 
 
 def _polygon(points: Any) -> Polygon:
@@ -111,7 +116,10 @@ def _polygon(points: Any) -> Polygon:
     for point in points:
         if not isinstance(point, (tuple, list)) or len(point) != 2:
             raise DatasetValidationError("Instance polygon vertices must be x/y pairs")
-        if any(isinstance(v, bool) or not isinstance(v, (float, int)) or not math.isfinite(v) or not 0 <= v <= 1 for v in point):
+        if any(
+            isinstance(v, bool) or not isinstance(v, (float, int)) or not math.isfinite(v) or not 0 <= v <= 1
+            for v in point
+        ):
             raise DatasetValidationError("Instance polygons require finite normalized coordinates in [0, 1]")
         result.append((float(point[0]), float(point[1])))
     if result and result[-1] == result[0]:
@@ -133,7 +141,9 @@ def _contains(polygon: Polygon | list[Point], point: Point) -> bool:
 
 def _bridge(outer: list[Point], ring: list[Point]) -> list[Point]:
     """Retrace a zero-area connector; retain the hole ring's opposite winding."""
-    _, left, right = min(((x - a) ** 2 + (y - b) ** 2, i, j) for i, (x, y) in enumerate(outer) for j, (a, b) in enumerate(ring))
+    _, left, right = min(
+        ((x - a) ** 2 + (y - b) ** 2, i, j) for i, (x, y) in enumerate(outer) for j, (a, b) in enumerate(ring)
+    )
     rotated = ring[right:] + ring[:right]
     return outer[: left + 1] + rotated + [rotated[0], outer[left]] + outer[left + 1 :]
 
@@ -150,7 +160,10 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
     array = np.asarray(mask)
     if array.ndim != 2 or not array.size:
         raise DatasetValidationError("Instance mask must be a nonempty 2D binary array")
-    if not (np.issubdtype(array.dtype, np.bool_) or np.issubdtype(array.dtype, np.number)) or not np.isfinite(array).all():
+    if (
+        not (np.issubdtype(array.dtype, np.bool_) or np.issubdtype(array.dtype, np.number))
+        or not np.isfinite(array).all()
+    ):
         raise DatasetValidationError("Instance mask must contain finite binary pixels")
     unique = set(np.unique(array).tolist())
     if not unique.issubset({0, 1, 255}) or (1 in unique and 255 in unique):
@@ -158,7 +171,11 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
     binary = array != 0
     if not binary.any():
         raise DatasetValidationError("Instance mask contains no foreground pixels")
-    if not isinstance(bbox, (tuple, list)) or len(bbox) != 4 or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in bbox):
+    if (
+        not isinstance(bbox, (tuple, list))
+        or len(bbox) != 4
+        or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in bbox)
+    ):
         raise DatasetValidationError("Instance mask requires a finite normalized x/y/width/height bounding box")
     x, y, width, height = map(float, bbox)
     if width <= 0 or height <= 0 or x < 0 or y < 0 or x + width > 1 + 1e-9 or y + height > 1 + 1e-9:
@@ -173,7 +190,15 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
     edges: dict[tuple[int, int], list[tuple[int, int]]] = {}
     for side, boundary in enumerate(boundaries):
         for row, col in zip(*np.nonzero(boundary)):
-            a, b = ((col, row), (col + 1, row)) if side == 0 else ((col + 1, row), (col + 1, row + 1)) if side == 1 else ((col + 1, row + 1), (col, row + 1)) if side == 2 else ((col, row + 1), (col, row))
+            a, b = (
+                ((col, row), (col + 1, row))
+                if side == 0
+                else ((col + 1, row), (col + 1, row + 1))
+                if side == 1
+                else ((col + 1, row + 1), (col, row + 1))
+                if side == 2
+                else ((col, row + 1), (col, row))
+            )
             edges.setdefault(a, []).append(b)
     directions = {(1, 0): 0, (0, 1): 1, (-1, 0): 2, (0, -1): 3}
     rings: list[list[Point]] = []
@@ -193,7 +218,10 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
                 # Left turn first joins corner-touching foreground (8-connectivity,
                 # matching common instance-mask contour implementations).
                 preference = {3: 0, 0: 1, 1: 2, 2: 3}
-                following = min(choices, key=lambda p: preference[(directions[(p[0] - current[0], p[1] - current[1])] - direction) % 4])
+                following = min(
+                    choices,
+                    key=lambda p: preference[(directions[(p[0] - current[0], p[1] - current[1])] - direction) % 4],
+                )
             direction = directions[(following[0] - current[0], following[1] - current[1])]
             choices.remove(following)
             if not choices:
@@ -201,7 +229,12 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
             current = following
             if current == start:
                 break
-        simplified = [point for i, point in enumerate(ring) if (point[0] - ring[i - 1][0]) * (ring[(i + 1) % len(ring)][1] - point[1]) != (point[1] - ring[i - 1][1]) * (ring[(i + 1) % len(ring)][0] - point[0])]
+        simplified = [
+            point
+            for i, point in enumerate(ring)
+            if (point[0] - ring[i - 1][0]) * (ring[(i + 1) % len(ring)][1] - point[1])
+            != (point[1] - ring[i - 1][1]) * (ring[(i + 1) % len(ring)][0] - point[0])
+        ]
         rings.append(simplified)
     outers = [ring for ring in rings if _area(ring) > 0]
     holes = [ring for ring in rings if _area(ring) < 0]
@@ -217,7 +250,10 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
         index = min(enclosing, key=lambda i: abs(_area(outers[i])))
         outers[index] = _bridge(outers[index], hole)
     mask_height, mask_width = binary.shape
-    polygons = tuple(_polygon([(min(1.0, x + px / mask_width * width), min(1.0, y + py / mask_height * height)) for px, py in ring]) for ring in outers)
+    polygons = tuple(
+        _polygon([(min(1.0, x + px / mask_width * width), min(1.0, y + py / mask_height * height)) for px, py in ring])
+        for ring in outers
+    )
     return polygons, len(holes)
 
 
@@ -248,7 +284,9 @@ def _instances(value: Any, name: str) -> tuple[HfDamageInstance, ...]:
 
                         mask = np.array(image)
             if mask is None:
-                raise DatasetValidationError("Detection has no per-instance segmentation mask; bounding-box-only annotations are insufficient")
+                raise DatasetValidationError(
+                    "Detection has no per-instance segmentation mask; bounding-box-only annotations are insufficient"
+                )
             polygons, holes = _mask_polygons(mask, _get(label, "bounding_box"))
             result.append(HfDamageInstance(_label(label), polygons, name, "instance_mask", holes))
         elif instance_kind == "Polyline":
@@ -263,7 +301,9 @@ def _instances(value: Any, name: str) -> tuple[HfDamageInstance, ...]:
     return tuple(result)
 
 
-def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | None, *, annotation_field: str | None = None) -> HfDamageDataset:
+def normalize_fiftyone_dataset(
+    dataset: Any, repository: str, revision: str | None, *, annotation_field: str | None = None
+) -> HfDamageDataset:
     """Discover schema/usable instance fields from actual loaded FiftyOne data."""
     try:
         schema = dataset.get_field_schema()
@@ -271,9 +311,15 @@ def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | No
         raise DatasetValidationError("Expected a loaded FiftyOne dataset with a field schema") from exc
     field_schema = {name: str(value) for name, value in schema.items()}
     kinds = {name: _schema_kind(value) for name, value in schema.items()}
-    candidates = [name for name, kind in kinds.items() if kind in {"Detection", "Detections", "Polyline", "Polylines", "Segmentation"}]
+    candidates = [
+        name
+        for name, kind in kinds.items()
+        if kind in {"Detection", "Detections", "Polyline", "Polylines", "Segmentation"}
+    ]
     if annotation_field is not None and annotation_field not in candidates:
-        raise DatasetValidationError(f"Requested annotation field {annotation_field!r} is absent or not a supported label type; schema={field_schema}")
+        raise DatasetValidationError(
+            f"Requested annotation field {annotation_field!r} is absent or not a supported label type; schema={field_schema}"
+        )
     raw_samples = list(dataset.iter_samples())
     if not raw_samples:
         raise DatasetValidationError("CarDD HF mirror has no samples")
@@ -291,12 +337,23 @@ def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | No
                 collected.append(())
                 continue
             kind = _kind(value)
-            source_labels = _get(value, "detections" if kind == "Detections" else "polylines", []) if kind in ("Detections", "Polylines") else [value] if kind in ("Detection", "Polyline") else []
+            source_labels = (
+                _get(value, "detections" if kind == "Detections" else "polylines", [])
+                if kind in ("Detections", "Polylines")
+                else [value]
+                if kind in ("Detection", "Polyline")
+                else []
+            )
             source_count += len(source_labels)
             annotated_samples += bool(source_labels)
-            mask_count += sum(_kind(label) == "Detection" and (_get(label, "mask") is not None or bool(_get(label, "mask_path"))) for label in source_labels)
+            mask_count += sum(
+                _kind(label) == "Detection" and (_get(label, "mask") is not None or bool(_get(label, "mask_path")))
+                for label in source_labels
+            )
             polyline_count += sum(_kind(label) == "Polyline" for label in source_labels)
-            source_classes.update(_get(label, "label").strip() for label in source_labels if isinstance(_get(label, "label"), str))
+            source_classes.update(
+                _get(label, "label").strip() for label in source_labels if isinstance(_get(label, "label"), str)
+            )
             try:
                 instances = _instances(value, name)
                 collected.append(instances)
@@ -306,19 +363,35 @@ def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | No
                 if len(errors) < 3:
                     errors.append(str(exc))
         usable = bool(count) and not errors
-        summaries[name] = {"kind": kinds[name], "usable_for_instance_segmentation": usable, "source_labeled_instance_count": source_count, "source_instances_per_class": dict(sorted(source_classes.items())), "samples_with_annotations": annotated_samples, "per_instance_mask_count": mask_count, "polyline_count": polyline_count, "validated_instance_count": count, "errors": errors}
+        summaries[name] = {
+            "kind": kinds[name],
+            "usable_for_instance_segmentation": usable,
+            "source_labeled_instance_count": source_count,
+            "source_instances_per_class": dict(sorted(source_classes.items())),
+            "samples_with_annotations": annotated_samples,
+            "per_instance_mask_count": mask_count,
+            "polyline_count": polyline_count,
+            "validated_instance_count": count,
+            "errors": errors,
+        }
         if usable:
             per_field[name] = collected
     if annotation_field is not None:
         if annotation_field not in per_field:
-            raise DatasetValidationError(f"Selected annotation field {annotation_field!r} has unusable instance segmentation: {summaries.get(annotation_field)}")
+            raise DatasetValidationError(
+                f"Selected annotation field {annotation_field!r} has unusable instance segmentation: {summaries.get(annotation_field)}"
+            )
         selected = annotation_field
     elif len(per_field) == 1:
         selected = next(iter(per_field))
     elif len(per_field) > 1:
-        raise DatasetValidationError(f"Multiple usable annotation fields discovered: {sorted(per_field)}. Select --annotation-field explicitly to avoid duplicate annotations.")
+        raise DatasetValidationError(
+            f"Multiple usable annotation fields discovered: {sorted(per_field)}. Select --annotation-field explicitly to avoid duplicate annotations."
+        )
     else:
-        raise DatasetValidationError(f"CarDD HF mirror lacks usable per-instance segmentation masks/polylines. No bbox fallback. Inspected schema={field_schema}; annotation findings={summaries}")
+        raise DatasetValidationError(
+            f"CarDD HF mirror lacks usable per-instance segmentation masks/polylines. No bbox fallback. Inspected schema={field_schema}; annotation findings={summaries}"
+        )
     from PIL import Image
 
     samples = []
@@ -334,7 +407,14 @@ def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | No
         except (OSError, ValueError) as exc:
             raise DatasetValidationError(f"Cannot read image: {filepath}: {exc}") from exc
         metadata = _get(raw, "metadata")
-        if width < 1 or height < 1 or (metadata is not None and (_get(metadata, "width", width) != width or _get(metadata, "height", height) != height)):
+        if (
+            width < 1
+            or height < 1
+            or (
+                metadata is not None
+                and (_get(metadata, "width", width) != width or _get(metadata, "height", height) != height)
+            )
+        ):
             raise DatasetValidationError(f"Actual image dimensions disagree with FiftyOne metadata: {filepath}")
         digest = annotation_hash(filepath)
         coco_id = _get(raw, "coco_id")
@@ -348,30 +428,64 @@ def normalize_fiftyone_dataset(dataset: Any, repository: str, revision: str | No
         ids.add(sample_id)
         samples.append(HfDamageSample(sample_id, filepath, width, height, instances, digest))
     classes = tuple(sorted({instance.label for sample in samples for instance in sample.instances}))
-    return HfDamageDataset(repository, revision, tuple(sorted(samples, key=lambda sample: sample.sample_id)), field_schema, (selected,), classes, annotation_field_summaries=summaries)
+    return HfDamageDataset(
+        repository,
+        revision,
+        tuple(sorted(samples, key=lambda sample: sample.sample_id)),
+        field_schema,
+        (selected,),
+        classes,
+        annotation_field_summaries=summaries,
+    )
 
 
 def inspect_cardd_hf(dataset: HfDamageDataset) -> dict[str, Any]:
     counts = Counter(instance.label for sample in dataset.samples for instance in sample.instances)
-    image_counts = Counter(label for sample in dataset.samples for label in {instance.label for instance in sample.instances})
+    image_counts = Counter(
+        label for sample in dataset.samples for label in {instance.label for instance in sample.instances}
+    )
     filenames = Counter(sample.filepath.name.casefold() for sample in dataset.samples)
     paths = Counter(str(sample.filepath.resolve()).casefold() for sample in dataset.samples)
     hashes = Counter(sample.image_sha256 for sample in dataset.samples)
     widths, heights = [s.width for s in dataset.samples], [s.height for s in dataset.samples]
     return {
-        "source_name": f"CarDD HF mirror ({dataset.repository})", "source_repo": dataset.repository,
-        "source_revision": dataset.revision, "source_format": dataset.source_format,
-        "official_cardd_splits_used": False, "sample_count": len(dataset.samples),
-        "field_schema": dataset.field_schema, "annotation_fields": list(dataset.annotation_fields),
+        "source_name": f"CarDD HF mirror ({dataset.repository})",
+        "source_repo": dataset.repository,
+        "source_revision": dataset.revision,
+        "source_format": dataset.source_format,
+        "official_cardd_splits_used": False,
+        "sample_count": len(dataset.samples),
+        "field_schema": dataset.field_schema,
+        "annotation_fields": list(dataset.annotation_fields),
         "annotation_field_summaries": dataset.annotation_field_summaries,
-        "damage_classes": list(dataset.classes), "labeled_instance_count": sum(counts.values()),
+        "damage_classes": list(dataset.classes),
+        "labeled_instance_count": sum(counts.values()),
         "instances_per_class": {name: counts[name] for name in dataset.classes},
         "images_per_class": {name: image_counts[name] for name in dataset.classes},
         "images_without_annotations": sum(not sample.instances for sample in dataset.samples),
         "segmentation_usable": bool(counts),
-        "segmentation": {"instance_masks": sum(i.source_kind == "instance_mask" for s in dataset.samples for i in s.instances), "polylines": sum(i.source_kind == "polyline" for s in dataset.samples for i in s.instances), "multipart_instances": sum(len(i.polygons) > 1 for s in dataset.samples for i in s.instances), "mask_holes": sum(i.mask_hole_count for s in dataset.samples for i in s.instances), "bbox_fallback": False, "mask_polygon_policy": "trace binary pixel-cell edges with 8-connected foreground; preserve component and hole vertices with retraced hole bridges", "representation_limitation": "YOLO has one contour per instance; multipart/hole bridges may add pixels during rasterization"},
-        "image_dimensions": {"width_min": min(widths), "width_max": max(widths), "height_min": min(heights), "height_max": max(heights), "distinct_sizes": len({(s.width, s.height) for s in dataset.samples})},
-        "duplicate_checks": {"duplicate_filenames": sorted(k for k, v in filenames.items() if v > 1), "duplicate_filepaths": sorted(k for k, v in paths.items() if v > 1), "duplicate_image_sha256": sorted(k for k, v in hashes.items() if v > 1), "image_hash_scope": "SHA-256 of full encoded image bytes; detects exact copies even when renamed"},
+        "segmentation": {
+            "instance_masks": sum(i.source_kind == "instance_mask" for s in dataset.samples for i in s.instances),
+            "polylines": sum(i.source_kind == "polyline" for s in dataset.samples for i in s.instances),
+            "multipart_instances": sum(len(i.polygons) > 1 for s in dataset.samples for i in s.instances),
+            "mask_holes": sum(i.mask_hole_count for s in dataset.samples for i in s.instances),
+            "bbox_fallback": False,
+            "mask_polygon_policy": "trace binary pixel-cell edges with 8-connected foreground; preserve component and hole vertices with retraced hole bridges",
+            "representation_limitation": "YOLO has one contour per instance; multipart/hole bridges may add pixels during rasterization",
+        },
+        "image_dimensions": {
+            "width_min": min(widths),
+            "width_max": max(widths),
+            "height_min": min(heights),
+            "height_max": max(heights),
+            "distinct_sizes": len({(s.width, s.height) for s in dataset.samples}),
+        },
+        "duplicate_checks": {
+            "duplicate_filenames": sorted(k for k, v in filenames.items() if v > 1),
+            "duplicate_filepaths": sorted(k for k, v in paths.items() if v > 1),
+            "duplicate_image_sha256": sorted(k for k, v in hashes.items() if v > 1),
+            "image_hash_scope": "SHA-256 of full encoded image bytes; detects exact copies even when renamed",
+        },
         "sample_id_policy": "source coco_id when available, otherwise filename and full image SHA-256; local FiftyOne/MongoDB IDs are not used",
     }
 
@@ -417,7 +531,9 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
         import fiftyone as fo
         import fiftyone.utils.huggingface as fo_hf
     except ImportError as exc:
-        raise DatasetValidationError("FiftyOne is required for this HF export. Install the project's cardd-hf optional dependencies in a supported Python environment.") from exc
+        raise DatasetValidationError(
+            "FiftyOne is required for this HF export. Install the project's cardd-hf optional dependencies in a supported Python environment."
+        ) from exc
     name = "cardd_hf_" + hashlib.sha256((repository + "@" + revision).encode()).hexdigest()[:20]
     with _LOAD_LOCK:
         if fo.dataset_exists(name):
@@ -430,7 +546,13 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
         fo_hf.hfh = _PinnedHub(previous_hub, revision, cache_dir / "huggingface")
         try:
             dataset = fo_hf.load_from_hub(repository, revision=revision, name=name, persistent=True, overwrite=False)
-            dataset.info.update(source_repo=repository, source_revision=revision, cardd_hf_source_repository=repository, cardd_hf_source_revision=revision, source_name=f"CarDD HF mirror ({repository})")
+            dataset.info.update(
+                source_repo=repository,
+                source_revision=revision,
+                cardd_hf_source_repository=repository,
+                cardd_hf_source_revision=revision,
+                source_name=f"CarDD HF mirror ({repository})",
+            )
             dataset.save()
             return dataset
         except Exception:
@@ -443,7 +565,15 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
             fo.config.default_dataset_dir, fo_hf.hfh = previous_dir, previous_hub
 
 
-def load_cardd_hf(repository: str | None = None, *, revision: str | None = None, cache_dir: Path | str | None = None, annotation_field: str | None = None, loader: Callable[..., Any] | None = None, revision_resolver: Callable[[str, str | None], str] | None = None) -> HfDamageDataset:
+def load_cardd_hf(
+    repository: str | None = None,
+    *,
+    revision: str | None = None,
+    cache_dir: Path | str | None = None,
+    annotation_field: str | None = None,
+    loader: Callable[..., Any] | None = None,
+    revision_resolver: Callable[[str, str | None], str] | None = None,
+) -> HfDamageDataset:
     """Load the mirror using official ``fiftyone.utils.huggingface.load_from_hub``.
 
     Dependencies/network/database are lazy. Immutable revisions isolate caches.
@@ -458,9 +588,15 @@ def load_cardd_hf(repository: str | None = None, *, revision: str | None = None,
         raise DatasetValidationError("Dataset revision resolver must return a 40-character commit SHA")
     cache = Path(cache_dir).expanduser().resolve() if cache_dir is not None else default_hf_cache_dir()
     try:
-        raw = _official_load(repository, resolved.lower(), cache) if loader is None else loader(repository, revision=resolved.lower())
+        raw = (
+            _official_load(repository, resolved.lower(), cache)
+            if loader is None
+            else loader(repository, revision=resolved.lower())
+        )
     except DatasetValidationError:
         raise
     except Exception as exc:
-        raise DatasetValidationError(f"FiftyOne could not load CarDD HF mirror ({repository}) at {resolved}: {type(exc).__name__}: {exc}") from exc
+        raise DatasetValidationError(
+            f"FiftyOne could not load CarDD HF mirror ({repository}) at {resolved}: {type(exc).__name__}: {exc}"
+        ) from exc
     return normalize_fiftyone_dataset(raw, repository, resolved.lower(), annotation_field=annotation_field)

@@ -1,20 +1,21 @@
-from datetime import date
-from pathlib import Path
 import subprocess
 import sys
+from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from knowledge_fakes import FakeEmbeddingProvider
 from qdrant_client import QdrantClient, models
 
-from knowledge.config import ROOT, KNOWLEDGE_CHUNKING_VERSION, KnowledgeConfig
+from knowledge.config import KNOWLEDGE_CHUNKING_VERSION, ROOT, KnowledgeConfig
 from knowledge.indexing import KnowledgeIndexer
-from knowledge.models import KnowledgeSource, KnowledgeSourceType as Kind, applicable_on
+from knowledge.models import KnowledgeSource, applicable_on
+from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.qdrant_store import QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
 from knowledge.sources import KnowledgeCatalog, chunk_markdown
-from knowledge_fakes import FakeEmbeddingProvider
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 from retrieval.models import IndexCompatibilityError, RetrievalUnavailableError
 
@@ -29,14 +30,26 @@ def store():
 
 
 def source(**updates):
-    data = dict(source_id="TEST", source_type="POLICY", title="Demo", version="1",
-                product="AUTO_PREMIUM", language="en", file_path="policies/test.md",
-                effective_from=date(2026, 1, 1), effective_to=None)
+    data = dict(
+        source_id="TEST",
+        source_type="POLICY",
+        title="Demo",
+        version="1",
+        product="AUTO_PREMIUM",
+        language="en",
+        file_path="policies/test.md",
+        effective_from=date(2026, 1, 1),
+        effective_to=None,
+    )
     return KnowledgeSource(**(data | updates))
 
 
 def test_chunking_stable_heading_paragraph_size_and_metadata():
-    text = "# Demo\n\nIntro.\n\n## Collision Damage\n\n" + "A vehicle hits an object. " * 20 + "\n\n### Evidence\n\nPhotographs are needed."
+    text = (
+        "# Demo\n\nIntro.\n\n## Collision Damage\n\n"
+        + "A vehicle hits an object. " * 20
+        + "\n\n### Evidence\n\nPhotographs are needed."
+    )
     first = chunk_markdown(source(), text, 100)
     assert first == chunk_markdown(source(), text, 100)
     assert len({c.chunk_id for c in first}) == len(first)
@@ -61,6 +74,7 @@ def test_catalog_demo_and_validation(tmp_path):
     path.write_text("Not a synthetic source", encoding="utf-8")
     metadata = source().model_dump(mode="json", exclude={"file_path"})
     import json
+
     path.with_suffix(".metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(ValueError, match="synthetic"):
         KnowledgeCatalog.load(tmp_path)
@@ -101,7 +115,9 @@ def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store,
     KnowledgeIndexer(store).index_all(tmp_path / "manifest.json")
     service = KnowledgeRetriever(store)
     catalog = KnowledgeCatalog.load(store.config.knowledge_dir)
-    target = next(c for c in catalog.chunks.values() if c.source_id == "AUTO_PREMIUM_POLICY" and c.section == "Deductible")
+    target = next(
+        c for c in catalog.chunks.values() if c.source_id == "AUTO_PREMIUM_POLICY" and c.section == "Deductible"
+    )
     response = service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", language="en", limit=3)
     assert len(response) == 3 and response[0].chunk_id == target.chunk_id
     assert [r.similarity_score for r in response] == sorted((r.similarity_score for r in response), reverse=True)
@@ -114,16 +130,25 @@ def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store,
     assert service.search("test", Kind.POLICY, as_of_date=date(2025, 12, 31)) == []
     assert all(r.source_type == Kind.PROCEDURE and r.product is None for r in service.search("test", Kind.PROCEDURE))
     # Do not expose forged payload text or provenance.
-    store.client.set_payload(store.config.policy_collection, payload={"text": "FORGED", "title": "FORGED"}, points=[target.chunk_id])
+    store.client.set_payload(
+        store.config.policy_collection, payload={"text": "FORGED", "title": "FORGED"}, points=[target.chunk_id]
+    )
     resolved = service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", limit=1)[0]
     assert resolved.text == target.text and resolved.title == target.title
     # A foreign ID cannot resolve to a local chunk; refill to requested limit.
     from uuid import uuid4
+
     foreign_id = str(uuid4())
-    store.client.upsert(store.config.policy_collection, points=[models.PointStruct(
-        id=foreign_id, vector=store.embeddings.embed_query(target.text),
-        payload=target.model_dump(mode="json") | {"chunk_id": foreign_id},
-    )])
+    store.client.upsert(
+        store.config.policy_collection,
+        points=[
+            models.PointStruct(
+                id=foreign_id,
+                vector=store.embeddings.embed_query(target.text),
+                payload=target.model_dump(mode="json") | {"chunk_id": foreign_id},
+            )
+        ],
+    )
     assert len(service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", limit=5)) == 5
 
 
@@ -138,14 +163,19 @@ def test_temporal_pure_and_qdrant_boundaries(store):
     with pytest.raises(ValueError, match="exclusive"):
         source(effective_to=date(2026, 1, 1))
     chunks = []
-    for s in (bounded, source(version="2", effective_from=date(2026, 10, 1)),
-              source(source_id="TIMELESS", effective_from=None)):
+    for s in (
+        bounded,
+        source(version="2", effective_from=date(2026, 10, 1)),
+        source(source_id="TIMELESS", effective_from=None),
+    ):
         chunks.extend(chunk_markdown(s, "## Rules\n\nA demo rule."))
     store.ensure_collection(Kind.POLICY)
     store.upsert(Kind.POLICY, chunks, store.embeddings.embed_documents([c.text for c in chunks]))
-    for day, expected in ((date(2026, 1, 1), {chunks[0].chunk_id, chunks[2].chunk_id}),
-                          (date(2026, 10, 1), {chunks[1].chunk_id, chunks[2].chunk_id}),
-                          (date(2025, 1, 1), {chunks[2].chunk_id})):
+    for day, expected in (
+        (date(2026, 1, 1), {chunks[0].chunk_id, chunks[2].chunk_id}),
+        (date(2026, 10, 1), {chunks[1].chunk_id, chunks[2].chunk_id}),
+        (date(2025, 1, 1), {chunks[2].chunk_id}),
+    ):
         hits, _ = store.query(Kind.POLICY, store.embeddings.embed_query("rule"), as_of_date=day, limit=20)
         assert {i for i, _ in hits} == expected
 
@@ -154,8 +184,9 @@ def test_recreate_preflight_preserves_owned_collection_if_other_collection_is_fo
     store.ensure_collection(Kind.POLICY)
     chunk = chunk_markdown(source(), "## Rules\n\nA demo rule.")[0]
     store.upsert(Kind.POLICY, [chunk], store.embeddings.embed_documents([chunk.text]))
-    store.client.create_collection(store.config.procedure_collection,
-                                   vectors_config=models.VectorParams(size=8, distance=models.Distance.COSINE))
+    store.client.create_collection(
+        store.config.procedure_collection, vectors_config=models.VectorParams(size=8, distance=models.Distance.COSINE)
+    )
     with pytest.raises(IndexCompatibilityError, match="not owned"):
         KnowledgeIndexer(store).index_all(tmp_path / "manifest.json", recreate=True)
     assert store.count(Kind.POLICY) == 1
@@ -164,6 +195,7 @@ def test_recreate_preflight_preserves_owned_collection_if_other_collection_is_fo
 def test_chunking_and_dimension_contract_mismatches(store):
     store.ensure_collection(Kind.POLICY)
     from dataclasses import replace
+
     changed = QdrantKnowledgeStore(store.client, store.embeddings, replace(store.config, max_chunk_chars=700))
     with pytest.raises(IndexCompatibilityError):
         changed.require_collection(Kind.POLICY)
@@ -233,6 +265,13 @@ def test_rag_model_config_independent_and_import_lazy(monkeypatch):
         KnowledgeConfig(policy_collection="same", procedure_collection="same")
     with pytest.raises(ValueError, match="Similar Claims"):
         KnowledgeConfig(policy_collection="insurance_claims_similar_v1")
-    result = subprocess.run([sys.executable, "-c", "import sys; import api.main; from knowledge.factory import create_knowledge_retriever; r = create_knowledge_retriever(); assert r.store.embeddings._model is None; assert 'sentence_transformers' not in sys.modules; r.close()"],
-                            capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import api.main; from knowledge.factory import create_knowledge_retriever; r = create_knowledge_retriever(); assert r.store.embeddings._model is None; assert 'sentence_transformers' not in sys.modules; r.close()",
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 0, result.stderr

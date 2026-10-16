@@ -17,7 +17,7 @@ def _split_long(text: str, maximum: int) -> list[str]:
     # Prefer sentence ends, then whitespace; hard split only a single oversized token.
     pieces = []
     while len(text) > maximum:
-        window = text[:maximum + 1]
+        window = text[: maximum + 1]
         boundaries = [m.end() for m in re.finditer(r"[.!?](?=\s)", window)]
         cut = boundaries[-1] if boundaries else window.rfind(" ", 0, maximum + 1)
         if cut < 1:
@@ -72,16 +72,29 @@ def chunk_markdown(source: KnowledgeSource, markdown: str, max_chars: int = 600)
             blocks.append(buffer)
         for block in blocks:
             index = len(chunks)
-            identity = json.dumps([source.model_dump(mode="json"), KNOWLEDGE_CHUNKING_VERSION,
-                                   max_chars, section, index, block], sort_keys=True, ensure_ascii=False)
+            identity = json.dumps(
+                [source.model_dump(mode="json"), KNOWLEDGE_CHUNKING_VERSION, max_chars, section, index, block],
+                sort_keys=True,
+                ensure_ascii=False,
+            )
             chunk_id = str(uuid5(NAMESPACE_URL, sha256(identity.encode("utf-8")).hexdigest()))
-            chunks.append(KnowledgeChunk(
-                chunk_id=chunk_id, source_id=source.source_id, source_type=source.source_type,
-                source_version=source.version, title=source.title, section=section,
-                chunk_index=index, text=block, product=source.product, language=source.language,
-                effective_from=source.effective_from, effective_to=source.effective_to,
-                chunking_version=KNOWLEDGE_CHUNKING_VERSION,
-            ))
+            chunks.append(
+                KnowledgeChunk(
+                    chunk_id=chunk_id,
+                    source_id=source.source_id,
+                    source_type=source.source_type,
+                    source_version=source.version,
+                    title=source.title,
+                    section=section,
+                    chunk_index=index,
+                    text=block,
+                    product=source.product,
+                    language=source.language,
+                    effective_from=source.effective_from,
+                    effective_to=source.effective_to,
+                    chunking_version=KNOWLEDGE_CHUNKING_VERSION,
+                )
+            )
     return chunks
 
 

@@ -62,9 +62,9 @@ class VehiclePartType(str, Enum):
     WHEEL = "wheel"
 
 
-CARPARTS_CLASS_TO_PART = {
-    part.value: part for part in VehiclePartType if part is not VehiclePartType.OTHER
-} | {"object": VehiclePartType.OTHER}
+CARPARTS_CLASS_TO_PART = {part.value: part for part in VehiclePartType if part is not VehiclePartType.OTHER} | {
+    "object": VehiclePartType.OTHER
+}
 
 # Intentionally incomplete: neither unknown sides nor unsupported business parts
 # may be guessed from a segmentation category.

@@ -35,7 +35,17 @@ def synthetic_cardd(tmp_path: Path) -> Path:
         document = {
             "images": [{"id": index, "file_name": filename, "width": 20, "height": 10}],
             "categories": [{"id": 42, "name": "scratch"}, {"id": 7, "name": "dent"}],
-            "annotations": [{"id": index, "image_id": index, "category_id": 42, "bbox": [2, 1, 10, 5], "area": 50, "iscrowd": 0, "segmentation": [[2, 1, 12, 1, 12, 6, 2, 6]]}],
+            "annotations": [
+                {
+                    "id": index,
+                    "image_id": index,
+                    "category_id": 42,
+                    "bbox": [2, 1, 10, 5],
+                    "area": 50,
+                    "iscrowd": 0,
+                    "segmentation": [[2, 1, 12, 1, 12, 6, 2, 6]],
+                }
+            ],
         }
         (root / "annotations" / f"instances_{split}2017.json").write_text(json.dumps(document), encoding="utf-8")
     return root
@@ -52,7 +62,9 @@ def prepare_fixture(tmp_path: Path, **kwargs):
     root = synthetic_cardd(tmp_path)
     dataset = discover_cardd_dataset(root)
     output = tmp_path / "prepared"
-    manifest = prepare_cardd_yolo(dataset, output, manifest_path=tmp_path / "portable_manifest.json", converter="native", **kwargs)
+    manifest = prepare_cardd_yolo(
+        dataset, output, manifest_path=tmp_path / "portable_manifest.json", converter="native", **kwargs
+    )
     return root, output, manifest
 
 
@@ -71,8 +83,17 @@ def test_discovery_reads_real_categories_and_split_statistics(tmp_path, monkeypa
     root = synthetic_cardd(tmp_path)
     monkeypatch.setenv("CARDD_DATASET_DIR", str(root))
     summary = inspect_cardd_dataset(discover_cardd_dataset())
-    assert summary["category_mapping"] == [{"category_id": 7, "name": "dent", "yolo_class_id": 0}, {"category_id": 42, "name": "scratch", "yolo_class_id": 1}]
-    assert summary["splits"]["train"] == {"image_count": 1, "annotation_count": 1, "annotations_per_category": {"dent": 0, "scratch": 1}, "images_per_category": {"dent": 0, "scratch": 1}, "images_without_annotations": 0}
+    assert summary["category_mapping"] == [
+        {"category_id": 7, "name": "dent", "yolo_class_id": 0},
+        {"category_id": 42, "name": "scratch", "yolo_class_id": 1},
+    ]
+    assert summary["splits"]["train"] == {
+        "image_count": 1,
+        "annotation_count": 1,
+        "annotations_per_category": {"dent": 0, "scratch": 1},
+        "images_per_category": {"dent": 0, "scratch": 1},
+        "images_without_annotations": 0,
+    }
 
 
 @pytest.mark.parametrize("split,remove", [("train", "annotation"), ("val", "images"), ("test", "annotation")])
@@ -130,7 +151,16 @@ def test_category_mapping_must_agree_across_splits(tmp_path):
         discover_cardd_dataset(root)
 
 
-@pytest.mark.parametrize("categories", [[], [{"id": 2, "name": "dent"}, {"id": 2, "name": "scratch"}], [{"id": 2, "name": "dent"}, {"id": 3, "name": "DENT"}], [{"id": True, "name": "dent"}], [{"id": 2, "name": ""}]])
+@pytest.mark.parametrize(
+    "categories",
+    [
+        [],
+        [{"id": 2, "name": "dent"}, {"id": 2, "name": "scratch"}],
+        [{"id": 2, "name": "dent"}, {"id": 3, "name": "DENT"}],
+        [{"id": True, "name": "dent"}],
+        [{"id": 2, "name": ""}],
+    ],
+)
 def test_invalid_category_mapping_rejected(categories):
     with pytest.raises(DatasetValidationError):
         read_category_mapping({"categories": categories})
@@ -155,7 +185,10 @@ def test_manifest_hashes_are_portable_and_reproducible(tmp_path):
     second = build_dataset_manifest(dataset)
     assert first["dataset_fingerprint"] == second["dataset_fingerprint"]
     assert first["annotation_hashes"] == second["annotation_hashes"]
-    assert first["annotation_hashes"]["test"] == hashlib.sha256((root / "annotations" / "instances_test2017.json").read_bytes()).hexdigest()
+    assert (
+        first["annotation_hashes"]["test"]
+        == hashlib.sha256((root / "annotations" / "instances_test2017.json").read_bytes()).hexdigest()
+    )
     assert "timestamp" in first and "preparation_version" in first
     assert str(root) not in json.dumps(first)
     assert not (root / "cardd_dataset_manifest.json").exists()
@@ -176,8 +209,12 @@ def test_native_conversion_remaps_ids_and_preserves_polygon(tmp_path):
     root = synthetic_cardd(tmp_path)
     before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     output = tmp_path / "prepared"
-    manifest = prepare_cardd_yolo(discover_cardd_dataset(root), output, manifest_path=tmp_path / "manifest.json", converter="native")
-    rows = validate_segmentation_label(output / "labels" / "train" / "synthetic_train.txt", class_count=2, expected_count=1)
+    manifest = prepare_cardd_yolo(
+        discover_cardd_dataset(root), output, manifest_path=tmp_path / "manifest.json", converter="native"
+    )
+    rows = validate_segmentation_label(
+        output / "labels" / "train" / "synthetic_train.txt", class_count=2, expected_count=1
+    )
     assert rows[0][0] == 1
     assert rows[0][1] == pytest.approx([0.1, 0.1, 0.6, 0.1, 0.6, 0.6, 0.1, 0.6])
     assert load_prepared_dataset(output / "dataset.yaml") == manifest
@@ -198,7 +235,16 @@ def test_unsupported_domain_name_rejected_at_preparation_only(tmp_path):
         prepare_cardd_yolo(dataset, tmp_path / "prepared", manifest_path=None, converter="native")
 
 
-@pytest.mark.parametrize("change,reason", [(lambda ann: ann.pop("segmentation"), "missing_segmentation"), (lambda ann: ann.update(segmentation={"counts": "rle", "size": [10, 20]}), "rle"), (lambda ann: ann.update(iscrowd=1), "crowd"), (lambda ann: ann.update(segmentation=[[0, 0, 40, 1, 2, 2]]), "invalid_coordinates"), (lambda ann: ann.update(segmentation=[[0, 0, 1, 1, 2, 2]]), "degenerate_polygon")])
+@pytest.mark.parametrize(
+    "change,reason",
+    [
+        (lambda ann: ann.pop("segmentation"), "missing_segmentation"),
+        (lambda ann: ann.update(segmentation={"counts": "rle", "size": [10, 20]}), "rle"),
+        (lambda ann: ann.update(iscrowd=1), "crowd"),
+        (lambda ann: ann.update(segmentation=[[0, 0, 40, 1, 2, 2]]), "invalid_coordinates"),
+        (lambda ann: ann.update(segmentation=[[0, 0, 1, 1, 2, 2]]), "degenerate_polygon"),
+    ],
+)
 def test_unusable_masks_error_by_default_or_explicit_counted_skip(tmp_path, change, reason):
     root = synthetic_cardd(tmp_path)
     edit_split(root, "train", lambda doc: change(doc["annotations"][0]))
@@ -233,7 +279,9 @@ def test_multipart_preserves_component_vertices_and_records_limitation(tmp_path)
 
 def test_invalid_multipart_component_rejected(tmp_path):
     root = synthetic_cardd(tmp_path)
-    edit_split(root, "train", lambda doc: doc["annotations"][0].update(segmentation=[[1, 1, 4, 1, 4, 4], [10, 1, 10, 2]]))
+    edit_split(
+        root, "train", lambda doc: doc["annotations"][0].update(segmentation=[[1, 1, 4, 1, 4, 4], [10, 1, 10, 2]])
+    )
     with pytest.raises(DatasetValidationError, match="invalid_polygon"):
         prepare_cardd_yolo(discover_cardd_dataset(root), tmp_path / "prepared", manifest_path=None, converter="native")
 
@@ -244,13 +292,17 @@ def test_duplicate_polygons_do_not_silently_disappear_in_yolo(tmp_path):
     dataset = discover_cardd_dataset(root)
     with pytest.raises(DatasetValidationError, match="duplicate_polygon"):
         prepare_cardd_yolo(dataset, tmp_path / "prepared", manifest_path=None, converter="native")
-    manifest = prepare_cardd_yolo(dataset, tmp_path / "prepared", manifest_path=None, converter="native", unsupported="skip")
+    manifest = prepare_cardd_yolo(
+        dataset, tmp_path / "prepared", manifest_path=None, converter="native", unsupported="skip"
+    )
     assert manifest["splits"]["train"]["annotation_count"] == 2
     assert manifest["splits"]["train"]["converted_annotation_count"] == 1
     assert manifest["splits"]["train"]["skipped_annotations"] == {"duplicate_polygon": 1}
 
 
-@pytest.mark.parametrize("row", ["2 0 0 1 0 1 1\n", "0 0 0 1.2 0 1 1\n", "0 0 0 nan 0 1 1\n", "0 0 0 1 1\n", "0 0 0 0.5 0.5 1 1\n"])
+@pytest.mark.parametrize(
+    "row", ["2 0 0 1 0 1 1\n", "0 0 0 1.2 0 1 1\n", "0 0 0 nan 0 1 1\n", "0 0 0 1 1\n", "0 0 0 0.5 0.5 1 1\n"]
+)
 def test_invalid_segmentation_rows_rejected(tmp_path, row):
     path = tmp_path / "label.txt"
     path.write_text(row)
@@ -311,8 +363,10 @@ def test_official_converter_is_lazy_and_auto_fallback_is_explicit(tmp_path, monk
     import vision.dataset as dataset_module
 
     root = synthetic_cardd(tmp_path)
+
     def unavailable(*args, **kwargs):
         raise ImportError("optional dependency unavailable")
+
     monkeypatch.setattr(dataset_module, "_try_ultralytics_conversion", unavailable)
     manifest = prepare_cardd_yolo(discover_cardd_dataset(root), tmp_path / "prepared", manifest_path=None)
     assert manifest["conversion"]["backend"] == "native_polygon"
@@ -320,13 +374,21 @@ def test_official_converter_is_lazy_and_auto_fallback_is_explicit(tmp_path, monk
 
 
 def test_module_import_does_not_import_ultralytics():
-    result = subprocess.run([sys.executable, "-c", "import sys; import vision.dataset; assert 'ultralytics' not in sys.modules"], text=True, capture_output=True)
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys; import vision.dataset; assert 'ultralytics' not in sys.modules"],
+        text=True,
+        capture_output=True,
+    )
     assert result.returncode == 0, result.stderr
 
 
 def test_explicit_split_paths_support_custom_layout(tmp_path):
     root = synthetic_cardd(tmp_path)
-    dataset = discover_cardd_dataset(root, annotation_files={split: f"annotations/instances_{split}2017.json" for split in ("train", "val", "test")}, image_directories={split: f"{split}2017" for split in ("train", "val", "test")})
+    dataset = discover_cardd_dataset(
+        root,
+        annotation_files={split: f"annotations/instances_{split}2017.json" for split in ("train", "val", "test")},
+        image_directories={split: f"{split}2017" for split in ("train", "val", "test")},
+    )
     assert set(dataset.splits) == {"train", "val", "test"}
 
 

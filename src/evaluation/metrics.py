@@ -28,39 +28,75 @@ def aggregate_metrics(results):
             unexpected += sum(item not in expected_set for item in assertion.actual)
     completion = {}
     for name in ("document", "vision", "retrieval", "agent", "triage", "anomaly", "history", "similar_claims"):
-        values = [r.component_results[name] for r in results if name in r.component_results
-                  and r.component_results[name].metadata.get("applicable", True)]
+        values = [
+            r.component_results[name]
+            for r in results
+            if name in r.component_results and r.component_results[name].metadata.get("applicable", True)
+        ]
         passed, failed, skipped = (sum(v.status == s for v in values) for s in ("PASS", "FAIL", "SKIP"))
-        completion[name] = {"success_rate": _ratio(passed, passed + failed),
+        completion[name] = {
+            "success_rate": _ratio(passed, passed + failed),
             "requested_completion_rate": _ratio(passed, len(values)),
-            "completed": passed, "failed": failed, "skipped": skipped, "attempted": passed + failed}
+            "completed": passed,
+            "failed": failed,
+            "skipped": skipped,
+            "attempted": passed + failed,
+        }
 
     timings = {}
     for name in ("document", "vision", "triage", "anomaly", "ml", "retrieval", "rag_generation", "agent", "total"):
-        samples = [r.timings[name] for r in results if name in r.timings and
-                   (name in {"ml", "total"} or r.component_results.get(name) and r.component_results[name].status != "SKIP")]
-        timings[name] = {"count": len(samples), "individual_seconds": samples,
-                         "mean_seconds": mean(samples) if samples else None}
+        samples = [
+            r.timings[name]
+            for r in results
+            if name in r.timings
+            and (
+                name in {"ml", "total"} or r.component_results.get(name) and r.component_results[name].status != "SKIP"
+            )
+        ]
+        timings[name] = {
+            "count": len(samples),
+            "individual_seconds": samples,
+            "mean_seconds": mean(samples) if samples else None,
+        }
         # Small runs are diagnostics. Tail summaries require >=20 observations.
         if len(samples) >= 20:
             ordered = sorted(samples)
-            timings[name].update(median_seconds=median(samples), p95_seconds=ordered[max(0, __import__("math").ceil(.95 * len(samples)) - 1)])
+            timings[name].update(
+                median_seconds=median(samples),
+                p95_seconds=ordered[max(0, __import__("math").ceil(0.95 * len(samples)) - 1)],
+            )
     agents = [r.observation.agent for r in results if r.observation.agent]
-    agent_attempts = [r for r in results if r.component_results.get("agent") and
-                      r.component_results["agent"].status != "SKIP" and
-                      r.component_results["agent"].metadata.get("applicable", True)]
+    agent_attempts = [
+        r
+        for r in results
+        if r.component_results.get("agent")
+        and r.component_results["agent"].status != "SKIP"
+        and r.component_results["agent"].metadata.get("applicable", True)
+    ]
     completion_denominator = len(agent_attempts) if agent_attempts else len(agents)
-    completed_agents = sum(bool(r.observation.agent) and r.observation.agent.get("status") == "COMPLETED"
-                           and r.component_results["agent"].status == "PASS" for r in agent_attempts) if agent_attempts else sum(a.get("status") == "COMPLETED" for a in agents)
+    completed_agents = (
+        sum(
+            bool(r.observation.agent)
+            and r.observation.agent.get("status") == "COMPLETED"
+            and r.component_results["agent"].status == "PASS"
+            for r in agent_attempts
+        )
+        if agent_attempts
+        else sum(a.get("status") == "COMPLETED" for a in agents)
+    )
     return {
         "scenario_counts": counts,
         "scenario_pass_rate": _ratio(counts["PASS"], counts["PASS"] + counts["FAIL"]),
         "scenario_pass_rate_denominator": counts["PASS"] + counts["FAIL"],
         "scenario_execution_coverage": _ratio(counts["PASS"] + counts["FAIL"], len(results)),
         "component_completion": completion,
-        **{f"{name}_success_rate": completion[name]["success_rate"] for name in ("document", "vision", "retrieval", "agent")},
+        **{
+            f"{name}_success_rate": completion[name]["success_rate"]
+            for name in ("document", "vision", "retrieval", "agent")
+        },
         "expected_fact_recall": _ratio(sum(a.status == "PASS" for a in facts), len(facts)),
-        "expected_fact_count": len(facts), "unexpected_fact_count": unexpected,
+        "expected_fact_count": len(facts),
+        "unexpected_fact_count": unexpected,
         "required_signal_recall": rate("required_signal:"),
         "required_signal_count": len(group("required_signal:")),
         "forbidden_signal_count": sum(a.status == "FAIL" for a in group("forbidden_signal:")),
@@ -72,7 +108,9 @@ def aggregate_metrics(results):
         "agent_human_review_correctness": rate("agent:human_review_required"),
         "agent_valid_action_rate": rate("agent:acceptable_action"),
         "agent_tool_call_count": sum(a.get("tool_call_count", 0) for a in agents),
-        "agent_duplicate_tool_calls_blocked": sum(sum(step.get("observation_status") == "DUPLICATE_BLOCKED" for step in a.get("trace", [])) for a in agents),
+        "agent_duplicate_tool_calls_blocked": sum(
+            sum(step.get("observation_status") == "DUPLICATE_BLOCKED" for step in a.get("trace", [])) for a in agents
+        ),
         "forbidden_action_count": sum(len(a.actual or []) for a in group("safety:forbidden_actions")),
         "latencies": timings,
         "definitions": {

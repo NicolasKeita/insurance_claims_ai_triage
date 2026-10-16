@@ -9,12 +9,12 @@ import os
 import platform
 import sys
 import time
-import tomllib
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRAINING_CONFIG = REPO_ROOT / "configs/vision/cardd_hf_yolo26n_seg_v1.toml"
@@ -107,7 +107,7 @@ def observe_environment(torch: Any, ultralytics: Any) -> dict[str, Any]:
                 "index": index,
                 "name": torch.cuda.get_device_name(index),
                 "total_memory_bytes": int(torch.cuda.get_device_properties(index).total_memory),
-                "total_memory_gib": round(torch.cuda.get_device_properties(index).total_memory / 1024 ** 3, 3),
+                "total_memory_gib": round(torch.cuda.get_device_properties(index).total_memory / 1024**3, 3),
                 "compute_capability": list(torch.cuda.get_device_capability(index)),
             }
             for index in range(usable_count)
@@ -119,14 +119,18 @@ def disable_builtin_mlflow_callbacks(trainer: Any) -> None:
     """The built-in callback logs image batches. Keep only our metadata logger."""
     for event, callbacks in trainer.callbacks.items():
         trainer.callbacks[event] = [
-            callback for callback in callbacks
+            callback
+            for callback in callbacks
             if not getattr(callback, "__module__", "").startswith("ultralytics.utils.callbacks.mlflow")
         ]
 
 
 def load_resume_metadata(
-    config: DamageTrainingConfig, manifest: dict[str, Any], threshold: float,
-    *, provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
+    config: DamageTrainingConfig,
+    manifest: dict[str, Any],
+    threshold: float,
+    *,
+    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Refuse to resume a different, completed, or already evaluated baseline."""
     for name in ("training_summary.json", "test_metrics.json", "evaluation", "test_smoke"):
@@ -146,8 +150,12 @@ def load_resume_metadata(
     if metadata.get("checkpoint_selection_split", "val") != "val":
         raise ValueError("Resume requires a VAL-selected baseline")
     completed, best_epoch = metadata.get("epochs_completed"), metadata.get("best_epoch")
-    if (type(completed) is not int or not 0 < completed < config.epochs
-            or type(best_epoch) is not int or not 0 < best_epoch <= completed):
+    if (
+        type(completed) is not int
+        or not 0 < completed < config.epochs
+        or type(best_epoch) is not int
+        or not 0 < best_epoch <= completed
+    ):
         raise ValueError("Resume epochs must identify an incomplete baseline and its selected best epoch")
     elapsed = metadata.get("elapsed_seconds")
     if not isinstance(elapsed, (int, float)) or isinstance(elapsed, bool) or not math.isfinite(elapsed) or elapsed < 0:
@@ -163,17 +171,31 @@ def load_resume_metadata(
 
 
 def validate_resume_checkpoint(
-    model: Any, config: DamageTrainingConfig, metadata: dict[str, Any], manifest: dict[str, Any],
+    model: Any,
+    config: DamageTrainingConfig,
+    metadata: dict[str, Any],
+    manifest: dict[str, Any],
 ) -> dict[str, Any]:
     """Inspect the loaded local checkpoint without permitting scratch fallback."""
     checkpoint = getattr(model, "ckpt", None)
-    if (not isinstance(checkpoint, dict) or checkpoint.get("optimizer") is None
-            or checkpoint.get("epoch") != metadata["epochs_completed"] - 1):
+    if (
+        not isinstance(checkpoint, dict)
+        or checkpoint.get("optimizer") is None
+        or checkpoint.get("epoch") != metadata["epochs_completed"] - 1
+    ):
         raise ValueError("last.pt must retain optimizer state and the validated incomplete epoch")
     args = checkpoint.get("train_args", {})
-    expected = {key: getattr(config, key) for key in (
-        "epochs", "imgsz", "batch", "patience", "seed", "workers",
-    )}
+    expected = {
+        key: getattr(config, key)
+        for key in (
+            "epochs",
+            "imgsz",
+            "batch",
+            "patience",
+            "seed",
+            "workers",
+        )
+    }
     expected.update({"task": "segment", "split": "val", "val": True, "pretrained": True})
     if any(args.get(key) != value for key, value in expected.items()):
         raise ValueError("last.pt training arguments differ from the configured TRAIN/VAL baseline")
@@ -206,14 +228,18 @@ def run_training(
     """
     if dataset_loader is None:
         from vision.dataset import load_prepared_dataset
+
         dataset_loader = load_prepared_dataset
     manifest = dataset_loader(config.dataset_yaml)
     from vision.config import VisionSettings
+
     threshold = VisionSettings.from_env().confidence_threshold if confidence_threshold is None else confidence_threshold
     if isinstance(threshold, bool) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
         raise ValueError("Confidence threshold must be finite and between zero and one")
     provenance_provider = provenance_provider or dataset_provenance
-    recovery = load_resume_metadata(config, manifest, threshold, provenance_provider=provenance_provider) if resume else None
+    recovery = (
+        load_resume_metadata(config, manifest, threshold, provenance_provider=provenance_provider) if resume else None
+    )
     if config.output_dir.exists() and not resume:
         raise FileExistsError(f"Run directory already exists: {config.output_dir}. Choose a new version/output_dir.")
     environment = environment_provider()
@@ -228,8 +254,14 @@ def run_training(
     progress: dict[str, Any] = {"best_epoch": recovery["best_epoch"] if recovery else None}
     provenance = provenance_provider(config.dataset_yaml, manifest)
     previous_elapsed = float(recovery["elapsed_seconds"]) if recovery else 0.0
-    base_checkpoint = Path(recovery["base_checkpoint"] if recovery else getattr(model, "ckpt_path", config.base_model)).resolve()
-    base_checkpoint_sha256 = recovery["base_checkpoint_sha256"] if recovery else (file_sha256(base_checkpoint) if base_checkpoint.is_file() else None)
+    base_checkpoint = Path(
+        recovery["base_checkpoint"] if recovery else getattr(model, "ckpt_path", config.base_model)
+    ).resolve()
+    base_checkpoint_sha256 = (
+        recovery["base_checkpoint_sha256"]
+        if recovery
+        else (file_sha256(base_checkpoint) if base_checkpoint.is_file() else None)
+    )
     started = time.perf_counter()
 
     def restore_resume_stopper(trainer: Any) -> None:
@@ -240,8 +272,10 @@ def run_training(
         trainer.stopper.best_fitness = saved_stopper.get("best_fitness", saved_checkpoint["best_fitness"])
         trainer.stopper.best_epoch = saved_stopper.get("best_epoch", recovery["best_epoch"])
         trainer.stopper.possible_stop = (
-            recovery["epochs_completed"] - trainer.stopper.best_epoch >= config.patience - 1
-        ) if config.patience else False
+            (recovery["epochs_completed"] - trainer.stopper.best_epoch >= config.patience - 1)
+            if config.patience
+            else False
+        )
 
     if recovery:
         model.add_callback("on_pretrain_routine_end", restore_resume_stopper)
@@ -253,19 +287,27 @@ def run_training(
         epoch_completed = int(trainer.epoch) + 1
         if trainer.fitness == trainer.best_fitness:
             progress["best_epoch"] = epoch_completed
-        progress.update({
-            "status": "running", "epochs_completed": epoch_completed,
-            "checkpoint_selection_split": "val", "fitness": float(trainer.fitness),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        })
+        progress.update(
+            {
+                "status": "running",
+                "epochs_completed": epoch_completed,
+                "checkpoint_selection_split": "val",
+                "fitness": float(trainer.fitness),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         write_json(config.output_dir / "training_progress.json", progress)
         recovery_state = {
-            "config": config.payload(), "dataset": provenance,
-            "confidence_threshold": threshold, "checkpoint_selection_split": "val",
-            "base_checkpoint": str(base_checkpoint), "base_checkpoint_sha256": base_checkpoint_sha256,
+            "config": config.payload(),
+            "dataset": provenance,
+            "confidence_threshold": threshold,
+            "checkpoint_selection_split": "val",
+            "base_checkpoint": str(base_checkpoint),
+            "base_checkpoint_sha256": base_checkpoint_sha256,
             "best_checkpoint_sha256": file_sha256(Path(trainer.best)),
             "last_checkpoint_sha256": file_sha256(Path(trainer.last)),
-            "best_epoch": progress["best_epoch"], "epochs_completed": epoch_completed,
+            "best_epoch": progress["best_epoch"],
+            "epochs_completed": epoch_completed,
             "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
             "resume_count": (recovery.get("resume_count", 0) if recovery else 0) + int(resume),
         }
@@ -274,14 +316,27 @@ def run_training(
     model.add_callback("on_model_save", record_checkpoint_progress)
     from vision.evaluation import extract_segmentation_metrics
     from vision.tracking import vision_tracking_run
+
     tracking_factory = tracking_factory or vision_tracking_run
     with tracking_factory(config) as tracking:
         training_arguments = dict(
-            data=str(config.dataset_yaml), epochs=config.epochs, imgsz=config.imgsz,
-            batch=config.batch, patience=config.patience, seed=config.seed,
-            device=config.device, workers=config.workers, optimizer=config.optimizer,
-            project=str(config.output_dir), name="train", exist_ok=False,
-            pretrained=True, val=True, split="val", save=True, plots=True,
+            data=str(config.dataset_yaml),
+            epochs=config.epochs,
+            imgsz=config.imgsz,
+            batch=config.batch,
+            patience=config.patience,
+            seed=config.seed,
+            device=config.device,
+            workers=config.workers,
+            optimizer=config.optimizer,
+            project=str(config.output_dir),
+            name="train",
+            exist_ok=False,
+            pretrained=True,
+            val=True,
+            split="val",
+            save=True,
+            plots=True,
         )
         if recovery:
             training_arguments.update({"resume": initial_checkpoint, "save_dir": str(config.output_dir / "train")})
@@ -307,9 +362,12 @@ def run_training(
             raise RuntimeError("Training did not record the epoch that wrote the selected best.pt checkpoint")
         early_stopped = epochs_completed < config.epochs if epochs_completed is not None else None
         summary = {
-            "schema_version": 1, "status": "completed", "task": "segment",
+            "schema_version": 1,
+            "status": "completed",
+            "task": "segment",
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "config": config.payload(), "environment": environment,
+            "config": config.payload(),
+            "environment": environment,
             "dataset": provenance,
             "confidence_threshold": threshold,
             "checkpoint_selection_split": "val",
@@ -327,7 +385,9 @@ def run_training(
             "early_stopping_best_epoch": getattr(stopper, "best_epoch", None),
             "epochs_completed": epochs_completed,
             "effective_batch_size": getattr(trainer, "batch_size", config.batch),
-            "best_validation_fitness": float(trainer.best_fitness) if getattr(trainer, "best_fitness", None) is not None else None,
+            "best_validation_fitness": float(trainer.best_fitness)
+            if getattr(trainer, "best_fitness", None) is not None
+            else None,
             "stopped_before_requested_epochs": early_stopped,
             "early_stopping_triggered": early_stopped,
             "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
@@ -368,11 +428,22 @@ def dataset_provenance(dataset_yaml: Path, manifest: dict[str, Any]) -> dict[str
         "prepared_manifest_sha256": file_sha256(dataset_yaml.parent / "cardd_dataset_manifest.json"),
     }
     if manifest.get("source_name") == "CarDD HF mirror":
-        provenance.update({key: manifest.get(key) for key in (
-            "source_name", "source_repository", "source_revision", "actual_sample_count",
-            "annotation_fields", "official_splits_used", "split_version",
-            "split_manifest_sha256", "metrics_scope",
-        )})
+        provenance.update(
+            {
+                key: manifest.get(key)
+                for key in (
+                    "source_name",
+                    "source_repository",
+                    "source_revision",
+                    "actual_sample_count",
+                    "annotation_fields",
+                    "official_splits_used",
+                    "split_version",
+                    "split_manifest_sha256",
+                    "metrics_scope",
+                )
+            }
+        )
     return provenance
 
 

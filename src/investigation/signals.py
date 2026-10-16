@@ -1,10 +1,7 @@
 """Independent fact-to-signal translators. Scoring belongs to the policy."""
 
 from claims.consistency import ClaimConsistencyReport
-from ml.anomaly_training import AnomalyAssessment
-from ml.features import TriageFeatures
-from vision.models import AssociationStatus, ClaimMultimodalVisionAssessment
-
+from investigation.history import HistoricalClaimProfile
 from investigation.models import (
     InvestigationSignal,
     SignalCategory,
@@ -12,7 +9,9 @@ from investigation.models import (
     SignalSeverity,
 )
 from investigation.policy import DEFAULT_INVESTIGATION_POLICY, InvestigationPolicy
-from investigation.history import HistoricalClaimProfile
+from ml.anomaly_training import AnomalyAssessment
+from ml.features import TriageFeatures
+from vision.models import AssociationStatus, ClaimMultimodalVisionAssessment
 
 
 def signals_from_multimodal(
@@ -29,13 +28,10 @@ def signals_from_multimodal(
     # Frozen models still contain mutable lists, and model_copy can bypass
     # validation. Validate the complete source graph before consuming or
     # snapshotting its derived consistency and geometric evidence.
-    visual_assessment = ClaimMultimodalVisionAssessment.model_validate(
-        visual_assessment.model_dump(round_trip=True)
-    )
+    visual_assessment = ClaimMultimodalVisionAssessment.model_validate(visual_assessment.model_dump(round_trip=True))
     fusion = visual_assessment.fusion_policy
-    additional = (
-        set(visual_assessment.consistency.additional_visual_damage)
-        - set(visual_assessment.consistency.declared_damage_types)
+    additional = set(visual_assessment.consistency.additional_visual_damage) - set(
+        visual_assessment.consistency.declared_damage_types
     )
     observed = {}
     for item in visual_assessment.observations:
@@ -56,29 +52,33 @@ def signals_from_multimodal(
         observations = observed[damage_type]
         damage_names = sorted({item.visual_damage_type.value.lower() for item in observations})
         part_name = damage_type.value.lower().replace("_", " ")
-        signals.append(InvestigationSignal(
-            code=SignalCode.VISUAL_ADDITIONAL_DAMAGE,
-            category=SignalCategory.MULTIMODAL_CONSISTENCY,
-            severity=SignalSeverity.MEDIUM,
-            title="Additional visually observed damage",
-            explanation=(
-                f"Damage consistent with {', '.join(damage_names)} was detected on the "
-                f"{part_name}, which is not listed among the declared damaged parts. "
-                "The model observation supports human review and does not establish intent."
-            ),
-            evidence={
-                "claim_id": visual_assessment.claim_id,
-                "mapped_damage_type": damage_type.value,
-                "declared_damage_types": [item.value for item in visual_assessment.consistency.declared_damage_types],
-                "quoted_damage_types": [item.value for item in visual_assessment.consistency.quoted_damage_types],
-                "observation_count": len(observations),
-                "observations": [item.model_dump(mode="json") for item in observations],
-                "damage_model_metadata": visual_assessment.damage_model_metadata.model_dump(mode="json"),
-                "part_model_metadata": visual_assessment.part_model_metadata.model_dump(mode="json"),
-                "fusion_policy_version": fusion.version,
-                "fusion_policy": fusion.model_dump(mode="json"),
-            },
-        ))
+        signals.append(
+            InvestigationSignal(
+                code=SignalCode.VISUAL_ADDITIONAL_DAMAGE,
+                category=SignalCategory.MULTIMODAL_CONSISTENCY,
+                severity=SignalSeverity.MEDIUM,
+                title="Additional visually observed damage",
+                explanation=(
+                    f"Damage consistent with {', '.join(damage_names)} was detected on the "
+                    f"{part_name}, which is not listed among the declared damaged parts. "
+                    "The model observation supports human review and does not establish intent."
+                ),
+                evidence={
+                    "claim_id": visual_assessment.claim_id,
+                    "mapped_damage_type": damage_type.value,
+                    "declared_damage_types": [
+                        item.value for item in visual_assessment.consistency.declared_damage_types
+                    ],
+                    "quoted_damage_types": [item.value for item in visual_assessment.consistency.quoted_damage_types],
+                    "observation_count": len(observations),
+                    "observations": [item.model_dump(mode="json") for item in observations],
+                    "damage_model_metadata": visual_assessment.damage_model_metadata.model_dump(mode="json"),
+                    "part_model_metadata": visual_assessment.part_model_metadata.model_dump(mode="json"),
+                    "fusion_policy_version": fusion.version,
+                    "fusion_policy": fusion.model_dump(mode="json"),
+                },
+            )
+        )
     return tuple(signals)
 
 
@@ -92,41 +92,48 @@ def signals_from_history(
         (30, history.claims_last_30_days, policy.recent_claims_30_days_threshold),
         (365, history.claims_last_365_days, policy.recent_claims_365_days_threshold),
     )
-    triggered = [(days, count) for days, count, threshold in windows
-                 if threshold is not None and count >= threshold]
+    triggered = [(days, count) for days, count, threshold in windows if threshold is not None and count >= threshold]
     if triggered:
-        signals.append(InvestigationSignal(
-            code=SignalCode.RECENT_CLAIM_FREQUENCY,
-            category=SignalCategory.HISTORICAL_CONTEXT,
-            severity=SignalSeverity.MEDIUM,
-            title="Recent claim frequency",
-            explanation=" ".join(
-                f"{count} previous claims occurred within the {days} days preceding this incident."
-                for days, count in triggered
-            ),
-            evidence={
-                "claims_last_30_days": history.claims_last_30_days,
-                "claims_last_365_days": history.claims_last_365_days,
-                "previous_claim_count": history.previous_claim_count,
-                "policy_30_days_threshold": policy.recent_claims_30_days_threshold,
-                "policy_365_days_threshold": policy.recent_claims_365_days_threshold,
-            },
-        ))
-    if (policy.previous_anomalous_claims_threshold is not None
-            and history.previous_anomalous_claim_count >= policy.previous_anomalous_claims_threshold):
-        signals.append(InvestigationSignal(
-            code=SignalCode.PREVIOUS_ANOMALOUS_CLAIMS,
-            category=SignalCategory.HISTORICAL_CONTEXT,
-            severity=SignalSeverity.MEDIUM,
-            title="Previous anomaly assessments",
-            explanation=(f"{history.previous_anomalous_claim_count} previous claims are currently "
-                         "flagged as anomalous by their latest stored anomaly assessments."),
-            evidence={
-                "previous_anomalous_claim_count": history.previous_anomalous_claim_count,
-                "previous_claim_count": history.previous_claim_count,
-                "policy_threshold": policy.previous_anomalous_claims_threshold,
-            },
-        ))
+        signals.append(
+            InvestigationSignal(
+                code=SignalCode.RECENT_CLAIM_FREQUENCY,
+                category=SignalCategory.HISTORICAL_CONTEXT,
+                severity=SignalSeverity.MEDIUM,
+                title="Recent claim frequency",
+                explanation=" ".join(
+                    f"{count} previous claims occurred within the {days} days preceding this incident."
+                    for days, count in triggered
+                ),
+                evidence={
+                    "claims_last_30_days": history.claims_last_30_days,
+                    "claims_last_365_days": history.claims_last_365_days,
+                    "previous_claim_count": history.previous_claim_count,
+                    "policy_30_days_threshold": policy.recent_claims_30_days_threshold,
+                    "policy_365_days_threshold": policy.recent_claims_365_days_threshold,
+                },
+            )
+        )
+    if (
+        policy.previous_anomalous_claims_threshold is not None
+        and history.previous_anomalous_claim_count >= policy.previous_anomalous_claims_threshold
+    ):
+        signals.append(
+            InvestigationSignal(
+                code=SignalCode.PREVIOUS_ANOMALOUS_CLAIMS,
+                category=SignalCategory.HISTORICAL_CONTEXT,
+                severity=SignalSeverity.MEDIUM,
+                title="Previous anomaly assessments",
+                explanation=(
+                    f"{history.previous_anomalous_claim_count} previous claims are currently "
+                    "flagged as anomalous by their latest stored anomaly assessments."
+                ),
+                evidence={
+                    "previous_anomalous_claim_count": history.previous_anomalous_claim_count,
+                    "previous_claim_count": history.previous_claim_count,
+                    "policy_threshold": policy.previous_anomalous_claims_threshold,
+                },
+            )
+        )
     return tuple(signals)
 
 
@@ -199,10 +206,7 @@ def signals_from_consistency(
                 category=SignalCategory.DOCUMENT_CONSISTENCY,
                 severity=SignalSeverity.MEDIUM,
                 title=f"{title} do not match",
-                explanation=(
-                    f"The {field.replace('_', ' ')} values do not match across "
-                    f"{readable_sources}."
-                ),
+                explanation=(f"The {field.replace('_', ' ')} values do not match across {readable_sources}."),
                 evidence={
                     "field": field,
                     "matched": False,
@@ -282,10 +286,7 @@ def signals_from_anomaly(
             )
         )
 
-    if (
-        anomaly.reference_percentile is not None
-        and anomaly.reference_percentile >= policy.extreme_anomaly_percentile
-    ):
+    if anomaly.reference_percentile is not None and anomaly.reference_percentile >= policy.extreme_anomaly_percentile:
         signals.append(
             InvestigationSignal(
                 code=SignalCode.EXTREME_ANOMALY_PERCENTILE,
@@ -334,9 +335,7 @@ def signals_from_completeness(
                 "document_count": count,
                 "missing_document_count": missing,
                 "document_completeness_ratio": ratio,
-                "minimum_document_completeness_ratio": (
-                    policy.minimum_document_completeness_ratio
-                ),
+                "minimum_document_completeness_ratio": (policy.minimum_document_completeness_ratio),
             },
         ),
     )

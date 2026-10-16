@@ -1,13 +1,12 @@
 """Real test Qdrant connections, owning only collections generated here."""
 
-from contextlib import contextmanager
 import os
 import re
+from contextlib import contextmanager
 from uuid import uuid4
 
-from qdrant_client import QdrantClient
-
 from integration_support import get_test_qdrant_url
+from qdrant_client import QdrantClient
 
 
 @contextmanager
@@ -18,8 +17,7 @@ def temporary_qdrant_collections(*labels: str):
     suffix = uuid4().hex
     collections = tuple(f"test_{label}_{suffix}" for label in labels)
     url = get_test_qdrant_url()
-    client = QdrantClient(url=url, api_key=os.environ.get("TEST_QDRANT_API_KEY"),
-                          timeout=5, check_compatibility=False)
+    client = QdrantClient(url=url, api_key=os.environ.get("TEST_QDRANT_API_KEY"), timeout=5, check_compatibility=False)
     reserved = False
     try:
         try:

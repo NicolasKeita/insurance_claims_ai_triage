@@ -6,6 +6,7 @@ import numpy as np
 
 class FakeEmbeddingProvider:
     """Deterministic vectors for mechanics tests, never a semantic benchmark."""
+
     dimension = 8
     model_name = "fake-knowledge-embeddings-v1"
     normalized = True
@@ -13,7 +14,7 @@ class FakeEmbeddingProvider:
     def embed_documents(self, texts):
         vectors = []
         for text in texts:
-            values = np.array(list(sha256(text.encode()).digest()[:self.dimension]), dtype=np.float32) + 1
+            values = np.array(list(sha256(text.encode()).digest()[: self.dimension]), dtype=np.float32) + 1
             vectors.append((values / np.linalg.norm(values)).tolist())
         return vectors
 
@@ -29,9 +30,13 @@ class FakeStructuredLlm:
     def generate(self, *, prompt, response_model):
         self.prompts.append(prompt)
         data = json.loads(prompt.split("INPUT DATA:\n", 1)[1])
-        output = self.output if self.output is not None else {
-            "answer": "Demo answer from retrieved evidence.",
-            "cited_chunk_ids": [data["retrieved_sources"][0]["chunk_id"]],
-            "insufficient_evidence": False,
-        }
+        output = (
+            self.output
+            if self.output is not None
+            else {
+                "answer": "Demo answer from retrieved evidence.",
+                "cited_chunk_ids": [data["retrieved_sources"][0]["chunk_id"]],
+                "insufficient_evidence": False,
+            }
+        )
         return response_model.model_validate(output)

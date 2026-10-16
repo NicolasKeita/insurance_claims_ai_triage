@@ -9,21 +9,28 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
+from integration_support import isolated_postgres_schema, migrate_test_schema
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
+from test_persistence import make_anomaly, make_investigation, make_triage, reference_claim
 
-from integration_support import isolated_postgres_schema, migrate_test_schema
 from persistence.models import (
-    ClaimRow, CustomerRow, DeclaredDamageRow, DocumentRow, PolicyRow,
+    ClaimRow,
+    CustomerRow,
+    DeclaredDamageRow,
+    DocumentRow,
+    PolicyRow,
     TriageAssessmentRow,
 )
 from persistence.repositories import (
-    AssessmentRepository, ClaimAlreadyExistsError, ClaimNotFoundError,
-    ClaimRepository, PolicyConflictError,
+    AssessmentRepository,
+    ClaimAlreadyExistsError,
+    ClaimNotFoundError,
+    ClaimRepository,
+    PolicyConflictError,
 )
 from persistence.service import PersistenceService
-from test_persistence import reference_claim, make_anomaly, make_investigation, make_triage
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
@@ -40,8 +47,7 @@ def factory(postgres_engine):
     # Application commits become savepoints; an outer rollback isolates tests.
     with postgres_engine.connect() as connection:
         outer = connection.begin()
-        factory = sessionmaker(connection, expire_on_commit=False,
-                               join_transaction_mode="create_savepoint")
+        factory = sessionmaker(connection, expire_on_commit=False, join_transaction_mode="create_savepoint")
         try:
             yield factory
         finally:
@@ -98,10 +104,18 @@ def test_all_assessments_append_and_latest(factory, reference_claim):
         assert repo.get_latest_triage(reference_claim.claim_id) is None
         assert repo.get_latest_anomaly(reference_claim.claim_id) is None
         assert repo.get_latest_investigation(reference_claim.claim_id) is None
-    first = service.save_assessments(reference_claim.claim_id, triage=make_triage("1"),
-                                     anomaly=make_anomaly("1"), investigation=make_investigation("v1"))
-    second = service.save_assessments(reference_claim.claim_id, triage=make_triage("2"),
-                                      anomaly=make_anomaly("2"), investigation=make_investigation("v2"))
+    first = service.save_assessments(
+        reference_claim.claim_id,
+        triage=make_triage("1"),
+        anomaly=make_anomaly("1"),
+        investigation=make_investigation("v1"),
+    )
+    second = service.save_assessments(
+        reference_claim.claim_id,
+        triage=make_triage("2"),
+        anomaly=make_anomaly("2"),
+        investigation=make_investigation("v2"),
+    )
     history = service.get_history(reference_claim.claim_id)
     for kind in ("triage", "anomaly", "investigation"):
         records = getattr(history, kind)
@@ -126,6 +140,7 @@ def test_latest_tie_breaker_is_explicit(factory, reference_claim):
     with factory.begin() as session:
         pk = ClaimRepository(session).require_pk(reference_claim.claim_id)
         from persistence.mappers import triage_to_row
+
         high = triage_to_row(pk, make_triage("higher_uuid"))
         high.id, high.created_at = UUID(int=2), timestamp
         low = triage_to_row(pk, make_triage("lower_uuid"))
@@ -141,8 +156,9 @@ def test_failed_document_write_rolls_back_entire_import(factory, reference_claim
             ClaimRepository(session).add(reference_claim)
             row = session.scalar(select(ClaimRow))
             # Fail a later document write after all initial inserts flushed.
-            session.add(DocumentRow(claim_pk=row.id, document_type="POLICE_REPORT",
-                                    available=True, filename=None, position=4))
+            session.add(
+                DocumentRow(claim_pk=row.id, document_type="POLICE_REPORT", available=True, filename=None, position=4)
+            )
             session.flush()
     with factory() as session:
         for model in (ClaimRow, CustomerRow, PolicyRow, DocumentRow, DeclaredDamageRow):

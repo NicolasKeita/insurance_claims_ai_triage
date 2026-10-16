@@ -31,8 +31,10 @@ def build_claim_retrieval_text(facts: ClaimRetrievalFacts) -> str:
 
 def build_retrieval_document(claim: StoredRetrievalClaim) -> ClaimRetrievalDocument:
     return ClaimRetrievalDocument(
-        point_id=claim.point_id, claim_id=claim.claim_id,
-        incident_date=claim.incident_date, claim_type=claim.facts.claim_type,
+        point_id=claim.point_id,
+        claim_id=claim.claim_id,
+        incident_date=claim.incident_date,
+        claim_type=claim.facts.claim_type,
         canonical_text=build_claim_retrieval_text(claim.facts),
         representation_version=CLAIM_RETRIEVAL_REPRESENTATION_VERSION,
     )

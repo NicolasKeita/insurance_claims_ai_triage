@@ -49,25 +49,27 @@ def agent_run_to_row(claim_pk: UUID, result: AgentRunResult) -> AgentRunRow:
 
 
 def agent_run_from_row(row: AgentRunRow, claim_id: str) -> AgentRunResult:
-    return AgentRunResult.model_validate({
-        "run_id": row.run_id,
-        "claim_id": claim_id,
-        "objective": row.objective,
-        "status": row.status,
-        "agent_version": row.agent_version,
-        "prompt_version": row.prompt_version,
-        "llm_model": row.llm_model,
-        "iteration_count": row.iteration_count,
-        "tool_call_count": row.tool_call_count,
-        "tools_used": row.tools_used,
-        "evidence": row.evidence,
-        "trace": row.trace,
-        "recommendation": row.recommendation,
-        "created_at": row.created_at,
-        "completed_at": row.completed_at,
-        "elapsed_seconds": row.elapsed_seconds,
-        "error": row.error,
-    })
+    return AgentRunResult.model_validate(
+        {
+            "run_id": row.run_id,
+            "claim_id": claim_id,
+            "objective": row.objective,
+            "status": row.status,
+            "agent_version": row.agent_version,
+            "prompt_version": row.prompt_version,
+            "llm_model": row.llm_model,
+            "iteration_count": row.iteration_count,
+            "tool_call_count": row.tool_call_count,
+            "tools_used": row.tools_used,
+            "evidence": row.evidence,
+            "trace": row.trace,
+            "recommendation": row.recommendation,
+            "created_at": row.created_at,
+            "completed_at": row.completed_at,
+            "elapsed_seconds": row.elapsed_seconds,
+            "error": row.error,
+        }
+    )
 
 
 class AgentRunRepository:
@@ -102,7 +104,8 @@ class AgentRunRepository:
             raise ValueError("Agent run list limit must be between 1 and 100")
         pk = self.claims.require_pk(claim_id)
         rows = self.session.scalars(
-            select(AgentRunRow).where(AgentRunRow.claim_pk == pk)
+            select(AgentRunRow)
+            .where(AgentRunRow.claim_pk == pk)
             .order_by(AgentRunRow.created_at.desc(), AgentRunRow.insertion_order.desc())
             .limit(limit)
         )

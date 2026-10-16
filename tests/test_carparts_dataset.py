@@ -21,8 +21,17 @@ def carparts_fixture(tmp_path):
         label.parent.mkdir(parents=True)
         label.write_text("1 0.1 0.1 0.9 0.1 0.9 0.9 0.1 0.9\n", encoding="utf-8")
     yaml = tmp_path / "dataset.yaml"
-    yaml.write_text(json.dumps({"path": str(tmp_path), "names": names, "nc": 3,
-                                **{split: f"images/{split}" for split in ("train", "val", "test")}}), encoding="utf-8")
+    yaml.write_text(
+        json.dumps(
+            {
+                "path": str(tmp_path),
+                "names": names,
+                "nc": 3,
+                **{split: f"images/{split}" for split in ("train", "val", "test")},
+            }
+        ),
+        encoding="utf-8",
+    )
     return yaml
 
 
@@ -53,8 +62,12 @@ def test_inspection_reports_real_invalid_or_empty_labels(carparts_fixture, chang
     elif change == "broken_image":
         (root / "images/test/tiny.png").write_bytes(b"broken image fixture")
     else:
-        label.write_text({"invalid": "99 0 0 1 0 1 1\n", "bbox": "0 0.5 0.5 0.3 0.3\n",
-                          "nan": "0 nan 0 1 0 1 1\n", "empty": ""}[change], encoding="utf-8")
+        label.write_text(
+            {"invalid": "99 0 0 1 0 1 1\n", "bbox": "0 0.5 0.5 0.3 0.3\n", "nan": "0 nan 0 1 0 1 1\n", "empty": ""}[
+                change
+            ],
+            encoding="utf-8",
+        )
     report = inspect_carparts_dataset(carparts_fixture)
     if change == "empty":
         assert report["valid"] and report["splits"]["test"]["images_without_annotation_count"] == 1
@@ -73,8 +86,15 @@ def test_manifest_reinspection_refuses_changed_labels(carparts_fixture):
 
 def test_missing_folder_is_not_success_and_never_downloads(tmp_path):
     yaml = tmp_path / "dataset.yaml"
-    yaml.write_text(json.dumps({"path": str(tmp_path), "names": ["hood"],
-                                **{split: f"images/{split}" for split in ("train", "val", "test")}}))
+    yaml.write_text(
+        json.dumps(
+            {
+                "path": str(tmp_path),
+                "names": ["hood"],
+                **{split: f"images/{split}" for split in ("train", "val", "test")},
+            }
+        )
+    )
     report = inspect_carparts_dataset(yaml)
     assert not report["valid"] and len(report["split_path_errors"]) == 3
     assert report["actual_sample_count"] == 0

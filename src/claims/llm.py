@@ -1,9 +1,8 @@
 from typing import Protocol, TypeVar
 
-from ollama import Client, ResponseError
 from httpx import RequestError
+from ollama import Client, ResponseError
 from pydantic import BaseModel, ValidationError
-
 
 T = TypeVar(
     "T",
@@ -17,8 +16,7 @@ class StructuredLlm(Protocol):
         *,
         prompt: str,
         response_model: type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
 
 class LlmError(Exception):
@@ -45,7 +43,8 @@ class OllamaStructuredLlm:
             "Never invent missing information."
         )
         self.client = Client(
-            host=host, timeout=timeout,
+            host=host,
+            timeout=timeout,
         )
 
     def generate(
@@ -77,17 +76,13 @@ class OllamaStructuredLlm:
             )
 
         except ResponseError as error:
-            raise LlmError(
-                f"Ollama request failed: {error}"
-            ) from error
+            raise LlmError(f"Ollama request failed: {error}") from error
 
         except (ConnectionError, RequestError) as error:
             raise LlmError("Ollama connection failed or timed out") from error
 
         try:
-            return response_model.model_validate_json(
-                response.message.content
-            )
+            return response_model.model_validate_json(response.message.content)
 
         except ValidationError as error:
             raw_response = response.message.content

@@ -1,12 +1,8 @@
 """Deterministic aggregation of observed facts into review priority."""
 
 from claims.consistency import ClaimConsistencyReport
-from ml.anomaly_training import AnomalyAssessment
-from ml.features import TriageFeatures
-from vision.models import ClaimMultimodalVisionAssessment
-
-from investigation.models import InvestigationAssessment
 from investigation.history import HistoricalClaimProfile
+from investigation.models import InvestigationAssessment
 from investigation.policy import DEFAULT_INVESTIGATION_POLICY, InvestigationPolicy
 from investigation.signals import (
     signals_from_anomaly,
@@ -15,6 +11,9 @@ from investigation.signals import (
     signals_from_history,
     signals_from_multimodal,
 )
+from ml.anomaly_training import AnomalyAssessment
+from ml.features import TriageFeatures
+from vision.models import ClaimMultimodalVisionAssessment
 
 
 def assess_investigation(

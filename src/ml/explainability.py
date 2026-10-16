@@ -3,27 +3,18 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import shap
-
 from sklearn.pipeline import Pipeline
+
 
 def transform_for_explanation(
     model: Pipeline,
     X: pd.DataFrame,
 ) -> pd.DataFrame:
-    preprocessor = (
-        model.named_steps[
-            "preprocessor"
-        ]
-    )
+    preprocessor = model.named_steps["preprocessor"]
 
-    transformed = (
-        preprocessor.transform(X)
-    )
+    transformed = preprocessor.transform(X)
 
-    feature_names = (
-        preprocessor
-        .get_feature_names_out()
-    )
+    feature_names = preprocessor.get_feature_names_out()
 
     return pd.DataFrame(
         transformed,
@@ -31,37 +22,29 @@ def transform_for_explanation(
         index=X.index,
     )
 
+
 def compute_tree_shap(
     *,
     model: Pipeline,
     X: pd.DataFrame,
 ):
-    classifier = (
-        model.named_steps[
-            "classifier"
-        ]
+    classifier = model.named_steps["classifier"]
+
+    transformed = transform_for_explanation(
+        model,
+        X,
     )
 
-    transformed = (
-        transform_for_explanation(
-            model,
-            X,
-        )
-    )
+    explainer = shap.TreeExplainer(classifier)
 
-    explainer = shap.TreeExplainer(
-        classifier
-    )
-
-    explanation = explainer(
-        transformed
-    )
+    explanation = explainer(transformed)
 
     return (
         explanation,
         transformed,
         classifier,
     )
+
 
 def save_class_beeswarm(
     *,
@@ -70,20 +53,14 @@ def save_class_beeswarm(
     target_class: str,
     output_path: Path,
 ) -> None:
-    classes = list(
-        classifier.classes_
-    )
+    classes = list(classifier.classes_)
 
-    class_index = classes.index(
-        target_class
-    )
-    class_explanation = (
-        explanation[
-            :,
-            :,
-            class_index,
-        ]
-    )
+    class_index = classes.index(target_class)
+    class_explanation = explanation[
+        :,
+        :,
+        class_index,
+    ]
     output_path.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -105,6 +82,7 @@ def save_class_beeswarm(
 
     plt.close()
 
+
 def save_local_waterfall(
     *,
     explanation,
@@ -113,21 +91,15 @@ def save_local_waterfall(
     target_class: str,
     output_path: Path,
 ) -> None:
-    classes = list(
-        classifier.classes_
-    )
+    classes = list(classifier.classes_)
 
-    class_index = classes.index(
-        target_class
-    )
+    class_index = classes.index(target_class)
 
-    local_explanation = (
-        explanation[
-            sample_index,
-            :,
-            class_index,
-        ]
-    )
+    local_explanation = explanation[
+        sample_index,
+        :,
+        class_index,
+    ]
     output_path.parent.mkdir(
         parents=True,
         exist_ok=True,

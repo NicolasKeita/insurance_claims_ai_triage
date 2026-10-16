@@ -1,9 +1,9 @@
 """Versioned demo thresholds, fixed before TEST and awaiting calibration on VAL."""
 
-import tomllib
 from pathlib import Path
 from typing import Literal
 
+import tomllib
 from pydantic import BaseModel, ConfigDict, Field
 
 

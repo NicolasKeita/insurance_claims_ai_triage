@@ -2,12 +2,14 @@
 
 import importlib.util
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location("integration_smoke_script", Path("scripts/check_multimodal_integration_smoke.py"))
+SPEC = importlib.util.spec_from_file_location(
+    "integration_smoke_script", Path("scripts/check_multimodal_integration_smoke.py")
+)
 SMOKE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = SMOKE
 SPEC.loader.exec_module(SMOKE)

@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import os
 import subprocess
-import tomllib
 from dataclasses import dataclass, fields
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
-from datetime import datetime, timezone
+
+import tomllib
 
 from vision.carparts_dataset import carparts_provenance, load_carparts_dataset
-from vision.training import DamageTrainingConfig, REPO_ROOT, run_training
+from vision.training import REPO_ROOT, DamageTrainingConfig, run_training
 
 DEFAULT_PARTS_CONFIG = REPO_ROOT / "configs/vision/carparts_yolo26n_seg_v1.toml"
 
@@ -23,9 +24,16 @@ class VehiclePartTrainingConfig(DamageTrainingConfig):
     def __post_init__(self) -> None:
         super().__post_init__()
         import math
+
         if Path(self.base_model).name != "yolo26n-seg.pt":
-            raise ValueError("Vehicle-part V1 must initialize from independent COCO yolo26n-seg.pt; never damage best.pt")
-        if isinstance(self.confidence_threshold, bool) or not math.isfinite(self.confidence_threshold) or not 0 <= self.confidence_threshold <= 1:
+            raise ValueError(
+                "Vehicle-part V1 must initialize from independent COCO yolo26n-seg.pt; never damage best.pt"
+            )
+        if (
+            isinstance(self.confidence_threshold, bool)
+            or not math.isfinite(self.confidence_threshold)
+            or not 0 <= self.confidence_threshold <= 1
+        ):
             raise ValueError("Part baseline confidence threshold must be finite and between zero and one")
 
 
@@ -58,8 +66,11 @@ def require_requested_device(config: VehiclePartTrainingConfig, environment: dic
 
 
 def run_parts_training(
-    config: VehiclePartTrainingConfig, *, model_factory: Callable[[str], Any],
-    environment_provider: Callable[[], dict[str, Any]], resume: bool = False,
+    config: VehiclePartTrainingConfig,
+    *,
+    model_factory: Callable[[str], Any],
+    environment_provider: Callable[[], dict[str, Any]],
+    resume: bool = False,
     dataset_loader: Callable[[Path], dict[str, Any]] = load_carparts_dataset,
     tracking_factory: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
@@ -67,6 +78,7 @@ def run_parts_training(
 
     def observed_model(checkpoint: str) -> Any:
         model = model_factory(checkpoint)
+
         def record_gpu_runtime(trainer: Any) -> None:
             epoch = getattr(trainer, "epoch", -1)
             if epoch not in {-1, 0} and (int(epoch) + 1) % 10:
@@ -77,11 +89,16 @@ def run_parts_training(
             path = config.output_dir / "gpu_runtime_evidence.txt"
             try:
                 result = subprocess.run(["nvidia-smi"], capture_output=True, text=True, timeout=10, check=False)
-                evidence = result.stdout if result.returncode == 0 else f"nvidia-smi unavailable (exit {result.returncode})"
+                evidence = (
+                    result.stdout if result.returncode == 0 else f"nvidia-smi unavailable (exit {result.returncode})"
+                )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 evidence = f"nvidia-smi unavailable: {type(exc).__name__}"
             with path.open("a", encoding="utf-8") as stream:
-                stream.write(f"\nUTC={datetime.now(timezone.utc).isoformat()} Python PID={os.getpid()} trainer.device={device} epoch={int(epoch) + 1}\n{evidence}\n")
+                stream.write(
+                    f"\nUTC={datetime.now(timezone.utc).isoformat()} Python PID={os.getpid()} trainer.device={device} epoch={int(epoch) + 1}\n{evidence}\n"
+                )
+
         # Recording is explicit training-only and never runs during imports/tests.
         if config.device == "0":
             model.add_callback("on_train_start", record_gpu_runtime)
@@ -89,9 +106,11 @@ def run_parts_training(
         return model
 
     return run_training(
-        config, model_factory=observed_model,
+        config,
+        model_factory=observed_model,
         environment_provider=lambda: require_requested_device(config, environment_provider()),
-        dataset_loader=dataset_loader, resume=resume,
+        dataset_loader=dataset_loader,
+        resume=resume,
         provenance_provider=carparts_provenance,
         confidence_threshold=config.confidence_threshold,
         tracking_factory=tracking_factory or parts_tracking_run,

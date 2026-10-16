@@ -36,6 +36,7 @@ def compute_file_sha256(
 
     return digest.hexdigest()
 
+
 def get_git_commit() -> str | None:
     try:
         result = subprocess.run(
@@ -57,17 +58,10 @@ def get_git_commit() -> str | None:
 
     return result.stdout.strip()
 
+
 def get_classifier_params(
     model: Pipeline,
 ) -> dict[str, str]:
-    classifier = model.named_steps[
-        "classifier"
-    ]
+    classifier = model.named_steps["classifier"]
 
-    return {
-        f"classifier.{name}": str(value)
-        for name, value
-        in classifier.get_params(
-            deep=False
-        ).items()
-    }
+    return {f"classifier.{name}": str(value) for name, value in classifier.get_params(deep=False).items()}

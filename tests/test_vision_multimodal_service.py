@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image
+from test_vision_fusion import damage, part
 
 from claims.case import ClaimCase
 from claims.enums import DamageType
@@ -13,12 +14,12 @@ from vision.multimodal_service import ClaimMultimodalVisionService
 from vision.parts_detector import FakeVehiclePartDetector
 from vision.taxonomy import VehiclePartType
 
-from test_vision_fusion import damage, part
-
 
 def case_with_images(tmp_path, *, filenames=("synthetic.png",), declared=(DamageType.HOOD,)):
     claim = Claim.model_validate_json(Path("data/CLAIM-2026-00001/claim.json").read_text(encoding="utf-8"))
-    case = ClaimCase(claim=claim.model_copy(update={"images": list(filenames), "declared_damage": list(declared)}), root_dir=tmp_path)
+    case = ClaimCase(
+        claim=claim.model_copy(update={"images": list(filenames), "declared_damage": list(declared)}), root_dir=tmp_path
+    )
     case.images_dir.mkdir()
     for filename in filenames:
         Image.new("RGB", (20, 12)).save(case.image_path(filename))
@@ -35,7 +36,9 @@ def detectors(filenames, *, kind=VehiclePartType.HOOD, has_damage=True):
 def test_declared_and_quote_matching_visual_damage_are_supported(tmp_path):
     case = case_with_images(tmp_path)
     damage_detector, part_detector = detectors(case.claim.images)
-    result = ClaimMultimodalVisionService(damage_detector, part_detector).assess_claim(case, quoted_damage_types=[DamageType.HOOD])
+    result = ClaimMultimodalVisionService(damage_detector, part_detector).assess_claim(
+        case, quoted_damage_types=[DamageType.HOOD]
+    )
     assert result.consistency.visually_supported_declared_damage == [DamageType.HOOD]
     assert result.consistency.visually_supported_quote_damage == [DamageType.HOOD]
     assert result.consistency.additional_visual_damage == []
@@ -47,7 +50,9 @@ def test_declared_and_quote_matching_visual_damage_are_supported(tmp_path):
 def test_additional_damage_aggregates_types_without_deduplicating_observations_between_photos(tmp_path):
     case = case_with_images(tmp_path, filenames=("first.png", "second.png"), declared=(DamageType.FRONT_BUMPER,))
     damage_detector, part_detector = detectors(case.claim.images)
-    result = ClaimMultimodalVisionService(damage_detector, part_detector).assess_claim(case, quoted_damage_types=[DamageType.HOOD])
+    result = ClaimMultimodalVisionService(damage_detector, part_detector).assess_claim(
+        case, quoted_damage_types=[DamageType.HOOD]
+    )
     assert result.consistency.additional_visual_damage == [DamageType.HOOD]
     assert result.consistency.visually_supported_quote_damage == [DamageType.HOOD]
     assert result.consistency.declared_damage_not_visually_confirmed == [DamageType.FRONT_BUMPER]
@@ -60,7 +65,9 @@ def test_additional_damage_aggregates_types_without_deduplicating_observations_b
 
 def test_generic_light_part_is_assigned_visually_but_unmapped_to_business_taxonomy(tmp_path):
     case = case_with_images(tmp_path)
-    result = ClaimMultimodalVisionService(*detectors(case.claim.images, kind=VehiclePartType.FRONT_LIGHT)).assess_claim(case)
+    result = ClaimMultimodalVisionService(*detectors(case.claim.images, kind=VehiclePartType.FRONT_LIGHT)).assess_claim(
+        case
+    )
     assert result.observations[0].association_status is AssociationStatus.ASSIGNED
     assert result.observations[0].vehicle_part is VehiclePartType.FRONT_LIGHT
     assert result.consistency.visual_damage_unmapped == result.observations

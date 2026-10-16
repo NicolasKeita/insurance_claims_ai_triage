@@ -11,13 +11,17 @@ from vision.fusion import fuse_image_assessments
 from vision.fusion_config import DEFAULT_FUSION_POLICY, VisionFusionPolicy
 from vision.images import ImageValidationError
 from vision.models import (
-    ClaimMultimodalVisionAssessment, ImageVisualAssessment, MultimodalConsistencyAssessment,
+    ClaimMultimodalVisionAssessment,
+    ImageVisualAssessment,
+    MultimodalConsistencyAssessment,
 )
 from vision.parts_detector import VehiclePartDetector
 
 
 def assess_multimodal_consistency(
-    images: Iterable[ImageVisualAssessment], *, declared_damage_types: Iterable[DamageType],
+    images: Iterable[ImageVisualAssessment],
+    *,
+    declared_damage_types: Iterable[DamageType],
     quoted_damage_types: Iterable[DamageType] = (),
 ) -> MultimodalConsistencyAssessment:
     """Compare domain parts only; quote text is never reparsed by vision."""
@@ -27,7 +31,8 @@ def assess_multimodal_consistency(
     mapped = {item.mapped_damage_type for item in evidence if item.mapped_damage_type is not None}
     ordered = lambda values: [damage for damage in DamageType if damage in values]
     return MultimodalConsistencyAssessment(
-        declared_damage_types=ordered(declared), quoted_damage_types=ordered(quoted),
+        declared_damage_types=ordered(declared),
+        quoted_damage_types=ordered(quoted),
         visually_supported_declared_damage=ordered(mapped & declared),
         additional_visual_damage=ordered(mapped - declared),
         visually_supported_quote_damage=ordered(mapped & quoted),
@@ -38,7 +43,9 @@ def assess_multimodal_consistency(
 
 class ClaimMultimodalVisionService:
     def __init__(
-        self, damage_detector: DamageDetector, part_detector: VehiclePartDetector,
+        self,
+        damage_detector: DamageDetector,
+        part_detector: VehiclePartDetector,
         fusion_policy: VisionFusionPolicy | None = None,
     ):
         self.damage_detector = damage_detector
@@ -46,7 +53,10 @@ class ClaimMultimodalVisionService:
         self.fusion_policy = fusion_policy or DEFAULT_FUSION_POLICY
 
     def assess_claim(
-        self, case: ClaimCase, *, quoted_damage_types: Iterable[DamageType] = (),
+        self,
+        case: ClaimCase,
+        *,
+        quoted_damage_types: Iterable[DamageType] = (),
     ) -> ClaimMultimodalVisionAssessment:
         images = []
         image_root = case.images_dir.resolve()
@@ -60,20 +70,30 @@ class ClaimMultimodalVisionService:
             if damage.filename != asset.path.name or parts.filename != asset.path.name:
                 raise ImageValidationError("Detector assessment filename does not match the requested image")
             for assessment in (damage, parts):
-                if assessment.asset_reference is not None and Path(assessment.asset_reference).resolve() != asset.path.resolve():
+                if (
+                    assessment.asset_reference is not None
+                    and Path(assessment.asset_reference).resolve() != asset.path.resolve()
+                ):
                     raise ImageValidationError("Detector assessment asset reference does not match the requested image")
             source = {"filename": asset.filename, "asset_reference": str(asset.path)}
-            images.append(fuse_image_assessments(
-                damage.model_copy(update=source), parts.model_copy(update=source),
-                damage_model_metadata=self.damage_detector.model_metadata, policy=self.fusion_policy,
-            ))
+            images.append(
+                fuse_image_assessments(
+                    damage.model_copy(update=source),
+                    parts.model_copy(update=source),
+                    damage_model_metadata=self.damage_detector.model_metadata,
+                    policy=self.fusion_policy,
+                )
+            )
         consistency = assess_multimodal_consistency(
-            images, declared_damage_types=case.claim.declared_damage,
+            images,
+            declared_damage_types=case.claim.declared_damage,
             quoted_damage_types=quoted_damage_types,
         )
         return ClaimMultimodalVisionAssessment(
-            claim_id=case.claim.claim_id, images=images,
+            claim_id=case.claim.claim_id,
+            images=images,
             damage_model_metadata=self.damage_detector.model_metadata,
             part_model_metadata=self.part_detector.model_metadata,
-            fusion_policy=self.fusion_policy, consistency=consistency,
+            fusion_policy=self.fusion_policy,
+            consistency=consistency,
         )

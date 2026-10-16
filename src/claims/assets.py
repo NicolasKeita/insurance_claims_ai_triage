@@ -2,8 +2,8 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from claims.enums import DocumentType
 from claims.case import ClaimCase
+from claims.enums import DocumentType
 
 
 @dataclass(frozen=True)
@@ -22,9 +22,7 @@ class DocumentAsset:
 
     @property
     def media_type(self) -> str | None:
-        media_type, _ = mimetypes.guess_type(
-            self.filename
-        )
+        media_type, _ = mimetypes.guess_type(self.filename)
 
         return media_type
 
@@ -44,11 +42,10 @@ class ImageAsset:
 
     @property
     def media_type(self) -> str | None:
-        media_type, _ = mimetypes.guess_type(
-            self.filename
-        )
+        media_type, _ = mimetypes.guess_type(self.filename)
 
         return media_type
+
 
 def resolve_document_assets(
     case: ClaimCase,
@@ -65,9 +62,7 @@ def resolve_document_assets(
         asset = DocumentAsset(
             type=document.type,
             filename=document.filename,
-            path=case.document_path(
-                document.filename
-            ),
+            path=case.document_path(document.filename),
         )
 
         assets.append(asset)

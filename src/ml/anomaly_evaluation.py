@@ -55,9 +55,7 @@ def _read_synthetic_labels(evaluation: pd.DataFrame) -> np.ndarray:
     if pd.api.types.is_bool_dtype(labels):
         return labels.to_numpy(dtype=bool)
 
-    parsed = labels.astype(str).str.strip().str.lower().map(
-        {"true": True, "false": False, "1": True, "0": False}
-    )
+    parsed = labels.astype(str).str.strip().str.lower().map({"true": True, "false": False, "1": True, "0": False})
     if parsed.isna().any():
         raise ValueError("is_synthetic_anomaly must contain boolean values")
     return parsed.to_numpy(dtype=bool)
@@ -95,11 +93,7 @@ def evaluate_anomaly_detector(
             synthetic_anomaly_count=synthetic_count,
             flagged_count=flagged_count,
             flagged_rate=flagged_count / count,
-            recall=(
-                int(np.sum(y_pred[mask] & y_true[mask])) / synthetic_count
-                if synthetic_count
-                else None
-            ),
+            recall=(int(np.sum(y_pred[mask] & y_true[mask])) / synthetic_count if synthetic_count else None),
             mean_anomaly_score=float(np.mean(scores[mask])),
         )
 
@@ -111,17 +105,9 @@ def evaluate_anomaly_detector(
         precision=float(precision_score(y_true, y_pred, zero_division=0)),
         recall=float(recall_score(y_true, y_pred, zero_division=0)),
         f1=float(f1_score(y_true, y_pred, zero_division=0)),
-        confusion_matrix=confusion_matrix(
-            y_true, y_pred, labels=[False, True]
-        ).tolist(),
-        average_precision=(
-            float(average_precision_score(y_true, scores))
-            if has_both_classes
-            else None
-        ),
-        roc_auc=(
-            float(roc_auc_score(y_true, scores)) if has_both_classes else None
-        ),
+        confusion_matrix=confusion_matrix(y_true, y_pred, labels=[False, True]).tolist(),
+        average_precision=(float(average_precision_score(y_true, scores)) if has_both_classes else None),
+        roc_auc=(float(roc_auc_score(y_true, scores)) if has_both_classes else None),
         threshold=detector.threshold,
         threshold_percentile=detector.threshold_percentile,
         by_anomaly_kind=by_kind,
@@ -134,8 +120,6 @@ def evaluate_anomaly_detector(
     errors["anomaly_score"] = scores[error_mask]
     errors["reference_percentile"] = percentiles[error_mask]
     errors["is_anomalous"] = y_pred[error_mask]
-    errors["error_type"] = np.where(
-        false_positives[error_mask], "false_positive", "false_negative"
-    )
+    errors["error_type"] = np.where(false_positives[error_mask], "false_positive", "false_negative")
 
     return AnomalyEvaluation(metrics=metrics, errors=errors)

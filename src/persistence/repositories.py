@@ -13,12 +13,22 @@ from investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.inference import TriagePrediction
 from persistence.mappers import (
-    anomaly_from_row, anomaly_to_row, claim_to_row, investigation_from_row,
-    investigation_to_row, row_to_claim, triage_from_row, triage_to_row,
+    anomaly_from_row,
+    anomaly_to_row,
+    claim_to_row,
+    investigation_from_row,
+    investigation_to_row,
+    row_to_claim,
+    triage_from_row,
+    triage_to_row,
 )
 from persistence.models import (
-    AnomalyAssessmentRow, ClaimRow, CustomerRow, InvestigationAssessmentRow,
-    PolicyRow, TriageAssessmentRow,
+    AnomalyAssessmentRow,
+    ClaimRow,
+    CustomerRow,
+    InvestigationAssessmentRow,
+    PolicyRow,
+    TriageAssessmentRow,
 )
 
 
@@ -48,8 +58,7 @@ class ClaimRepository:
         self.session = session
 
     def exists(self, claim_id: str) -> bool:
-        return self.session.scalar(select(ClaimRow.id).where(
-            ClaimRow.claim_id == claim_id)) is not None
+        return self.session.scalar(select(ClaimRow.id).where(ClaimRow.claim_id == claim_id)) is not None
 
     def require_pk(self, claim_id: str) -> UUID:
         pk = self.session.scalar(select(ClaimRow.id).where(ClaimRow.claim_id == claim_id))
@@ -60,9 +69,12 @@ class ClaimRepository:
     def _reuse(self, model, key: str, value: str, **fields):
         # ON CONFLICT DO NOTHING handles concurrent imports without overwriting
         # customer/policy data. PostgreSQL unique constraints remain authoritative.
-        pk = self.session.scalar(insert(model).values(**{key: value}, **fields)
-                                 .on_conflict_do_nothing(index_elements=[key])
-                                 .returning(model.id))
+        pk = self.session.scalar(
+            insert(model)
+            .values(**{key: value}, **fields)
+            .on_conflict_do_nothing(index_elements=[key])
+            .returning(model.id)
+        )
         row = self.session.scalar(select(model).where(getattr(model, key) == value))
         return row, pk is not None
 
@@ -70,12 +82,15 @@ class ClaimRepository:
         if self.exists(claim.claim_id):
             raise ClaimAlreadyExistsError(f"Claim {claim.claim_id} already exists")
         # Build/validate before issuing writes.
-        row = claim_to_row(claim, CustomerRow(customer_id=claim.customer.customer_id),
-                           PolicyRow(policy_id=claim.policy.policy_id, product=claim.policy.product))
-        customer, customer_created = self._reuse(
-            CustomerRow, "customer_id", claim.customer.customer_id)
+        row = claim_to_row(
+            claim,
+            CustomerRow(customer_id=claim.customer.customer_id),
+            PolicyRow(policy_id=claim.policy.policy_id, product=claim.policy.product),
+        )
+        customer, customer_created = self._reuse(CustomerRow, "customer_id", claim.customer.customer_id)
         policy, policy_created = self._reuse(
-            PolicyRow, "policy_id", claim.policy.policy_id, product=claim.policy.product)
+            PolicyRow, "policy_id", claim.policy.policy_id, product=claim.policy.product
+        )
         if policy.product != claim.policy.product:
             raise PolicyConflictError(f"Policy {claim.policy.policy_id} has a different product")
         row.customer, row.policy = customer, policy
@@ -86,15 +101,16 @@ class ClaimRepository:
             if getattr(getattr(error.orig, "diag", None), "constraint_name", None) == "uq_claims_claim_id":
                 raise ClaimAlreadyExistsError(f"Claim {claim.claim_id} already exists") from error
             raise
-        return ClaimImportResult(claim.claim_id, customer_created, policy_created,
-                                 len(row.documents), len(row.images))
+        return ClaimImportResult(claim.claim_id, customer_created, policy_created, len(row.documents), len(row.images))
 
     save = add
 
     def _read(self, statement) -> list[Claim]:
         statement = statement.options(
-            selectinload(ClaimRow.customer), selectinload(ClaimRow.policy),
-            selectinload(ClaimRow.damages), selectinload(ClaimRow.documents),
+            selectinload(ClaimRow.customer),
+            selectinload(ClaimRow.policy),
+            selectinload(ClaimRow.damages),
+            selectinload(ClaimRow.documents),
             selectinload(ClaimRow.images),
         )
         return [row_to_claim(row) for row in self.session.scalars(statement)]
@@ -104,12 +120,20 @@ class ClaimRepository:
         return claims[0] if claims else None
 
     def list_for_customer(self, customer_id: str) -> list[Claim]:
-        return self._read(select(ClaimRow).join(ClaimRow.customer).where(
-            CustomerRow.customer_id == customer_id).order_by(ClaimRow.incident_date, ClaimRow.claim_id))
+        return self._read(
+            select(ClaimRow)
+            .join(ClaimRow.customer)
+            .where(CustomerRow.customer_id == customer_id)
+            .order_by(ClaimRow.incident_date, ClaimRow.claim_id)
+        )
 
     def list_for_policy(self, policy_id: str) -> list[Claim]:
-        return self._read(select(ClaimRow).join(ClaimRow.policy).where(
-            PolicyRow.policy_id == policy_id).order_by(ClaimRow.incident_date, ClaimRow.claim_id))
+        return self._read(
+            select(ClaimRow)
+            .join(ClaimRow.policy)
+            .where(PolicyRow.policy_id == policy_id)
+            .order_by(ClaimRow.incident_date, ClaimRow.claim_id)
+        )
 
 
 class AssessmentRepository:
@@ -118,6 +142,7 @@ class AssessmentRepository:
     Other histories retain their existing stable UUID tie-break. Anomaly's
     database counter orders timestamp ties by allocation, not commit time.
     """
+
     def __init__(self, session: Session):
         self.session = session
         self.claims = ClaimRepository(session)
@@ -144,8 +169,7 @@ class AssessmentRepository:
         if latest:
             row = self.session.scalar(query.order_by(model.created_at.desc(), tie_break.desc()).limit(1))
             return from_row(row) if row else None
-        return [from_row(row) for row in self.session.scalars(
-            query.order_by(model.created_at, tie_break))]
+        return [from_row(row) for row in self.session.scalars(query.order_by(model.created_at, tie_break))]
 
     def list_triage_history(self, claim_id: str):
         return self._read(claim_id, TriageAssessmentRow, triage_from_row)

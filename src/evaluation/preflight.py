@@ -4,13 +4,14 @@ Heavy adapters are loaded once and retained for the run. No downloaded models,
 service startup, writes to the database/vector stores, or fake replacements.
 """
 
-from dataclasses import dataclass, field, replace
 import hashlib
 import os
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from time import perf_counter
-import tomllib
 from typing import Any, Callable
+
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v1.toml"
@@ -55,10 +56,19 @@ class RealEvaluationConfig:
         if raw.get("benchmark_version") != "e2e_claims_v1":
             raise ValueError("Unsupported real evaluation benchmark_version")
         models, visual = raw.get("models", {}), raw.get("vision_diagnostic", {})
-        values = {key: raw[key] for key in (
-            "include_vision", "include_agent", "include_rag", "include_similar",
-            "fail_fast", "dependency_unavailable", "timeout_seconds",
-        ) if key in raw}
+        values = {
+            key: raw[key]
+            for key in (
+                "include_vision",
+                "include_agent",
+                "include_rag",
+                "include_similar",
+                "fail_fast",
+                "dependency_unavailable",
+                "timeout_seconds",
+            )
+            if key in raw
+        }
         for key in ("triage_checkpoint", "anomaly_checkpoint", "damage_checkpoint", "part_checkpoint"):
             if key in models:
                 model_path = Path(models[key]).expanduser()
@@ -119,8 +129,10 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
                 row.update(status="PASS", reason=None, **metadata)
             except Exception as error:
                 # Missing optional dependencies are explicit SKIP/FAIL according to config.
-                row.update(status="SKIP" if name == "mlflow" else config.dependency_unavailable,
-                           reason=f"{type(error).__name__}: {error}")
+                row.update(
+                    status="SKIP" if name == "mlflow" else config.dependency_unavailable,
+                    reason=f"{type(error).__name__}: {error}",
+                )
         row["duration_seconds"] = round(perf_counter() - start, 6)
         report.rows.append(row)
         if progress is not None:
@@ -129,13 +141,19 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
 
     def postgres():
         from sqlalchemy import create_engine, text
+
         from persistence.database import DatabaseConfig, create_session_factory
+
         value = config.database_url or os.environ.get("DATABASE_URL")
         if not value:
             raise RuntimeError("DATABASE_URL is not configured; no test-database fallback is attempted")
         database = DatabaseConfig.from_url(value)
-        engine = create_engine(database.url, pool_pre_ping=True, hide_parameters=True,
-                               connect_args={"connect_timeout": max(1, int(config.timeout_seconds))})
+        engine = create_engine(
+            database.url,
+            pool_pre_ping=True,
+            hide_parameters=True,
+            connect_args={"connect_timeout": max(1, int(config.timeout_seconds))},
+        )
         try:
             with engine.connect() as connection:
                 version = connection.execute(text("SHOW server_version")).scalar_one()
@@ -144,14 +162,19 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
         except Exception:
             engine.dispose()
             raise
-        return {"version": version, "schema_available": tables is not None,
-                "endpoint": database.url.render_as_string(hide_password=True)}
+        return {
+            "version": version,
+            "schema_available": tables is not None,
+            "endpoint": database.url.render_as_string(hide_password=True),
+        }
 
     probe("postgresql", postgres)
 
     def qdrant():
         from qdrant_client import QdrantClient
+
         from retrieval.config import RetrievalConfig
+
         url = config.qdrant_url or RetrievalConfig.from_env().qdrant_url
         client = QdrantClient(url=url, api_key=os.environ.get("QDRANT_API_KEY"), timeout=config.timeout_seconds)
         try:
@@ -166,6 +189,7 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
     probe("qdrant", qdrant, enabled=config.include_rag or config.include_similar)
     from knowledge.config import KnowledgeConfig
     from retrieval.config import RetrievalConfig
+
     knowledge_config = KnowledgeConfig.from_env()
     retrieval_config = RetrievalConfig.from_env()
     if config.qdrant_url:
@@ -179,17 +203,29 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
         missing = set(names) - set(report.resources["collections"])
         if missing:
             raise RuntimeError("Missing collections: " + ", ".join(sorted(missing)))
-        return {"collections": list(names), "point_counts": {
-            name: report.resources["qdrant_client"].get_collection(name).points_count for name in names}}
+        return {
+            "collections": list(names),
+            "point_counts": {
+                name: report.resources["qdrant_client"].get_collection(name).points_count for name in names
+            },
+        }
 
-    probe("knowledge_collections", lambda: collections([knowledge_config.policy_collection, knowledge_config.procedure_collection]),
-          enabled=config.include_rag)
-    probe("similar_claims_collection", lambda: collections([retrieval_config.collection]), enabled=config.include_similar)
+    probe(
+        "knowledge_collections",
+        lambda: collections([knowledge_config.policy_collection, knowledge_config.procedure_collection]),
+        enabled=config.include_rag,
+    )
+    probe(
+        "similar_claims_collection", lambda: collections([retrieval_config.collection]), enabled=config.include_similar
+    )
 
     def embeddings():
         from retrieval.embeddings import SentenceTransformerEmbeddingProvider
+
         # local_files_only is enforced even when another import initialized HF settings.
-        provider = SentenceTransformerEmbeddingProvider(knowledge_config.embedding_model, asymmetric=True, local_files_only=True)
+        provider = SentenceTransformerEmbeddingProvider(
+            knowledge_config.embedding_model, asymmetric=True, local_files_only=True
+        )
         dimension = provider.dimension
         report.resources["embeddings"] = provider
         return {"version": provider.model_name, "dimension": dimension, "local_files_only": True}
@@ -198,6 +234,7 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
 
     def ollama():
         import httpx
+
         host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         response = httpx.get(host + "/api/tags", timeout=config.timeout_seconds)
         response.raise_for_status()
@@ -205,7 +242,9 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
         model = config.llm_model or os.environ.get("CLAIMS_LLM_MODEL")
         report.resources["ollama_models"] = names
         if not model:
-            raise RuntimeError("Ollama reachable but CLAIMS_LLM_MODEL is not configured; installed models: " + ", ".join(names))
+            raise RuntimeError(
+                "Ollama reachable but CLAIMS_LLM_MODEL is not configured; installed models: " + ", ".join(names)
+            )
         if model not in names and model + ":latest" not in names:
             raise RuntimeError(f"Requested Ollama model {model!r} is not installed; no pull attempted")
         report.resources["llm_model"] = model
@@ -219,9 +258,11 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
             raise RuntimeError("MLFLOW_TRACKING_URI is not configured; existing local trained artifacts are allowed")
         if uri.startswith(("http://", "https://")):
             import httpx
+
             response = httpx.get(uri.rstrip("/") + "/health", timeout=config.timeout_seconds)
             response.raise_for_status()
         import mlflow as library
+
         library.set_tracking_uri(uri)
         return {"version": library.__version__, "tracking_uri": uri}
 
@@ -233,9 +274,11 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
             try:
                 if kind == "triage":
                     from ml.inference import load_candidate_predictor
+
                     predictor = load_candidate_predictor()
                 else:
                     from ml.anomaly_inference import load_candidate_anomaly_predictor
+
                     predictor = load_candidate_anomaly_predictor()
                 report.resources[kind] = predictor
                 report.resources[kind + "_source"] = "mlflow_candidate"
@@ -243,6 +286,7 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
             except Exception as error:
                 registry_error = f"{type(error).__name__}: {error}"
         import joblib
+
         if not path.is_file() or path.stat().st_size == 0:
             raise RuntimeError(f"Existing trained checkpoint unavailable: {path}; registry: {registry_error}")
         model = joblib.load(path)
@@ -250,17 +294,25 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
             if not hasattr(model, "predict_proba") or "classifier" not in model.named_steps:
                 raise ValueError("Triage checkpoint does not implement the existing trained Pipeline contract")
             from ml.inference import RegisteredTriagePredictor
-            predictor = RegisteredTriagePredictor(model, "local:" + path.name, checkpoint_version(path), "local-artifact")
+
+            predictor = RegisteredTriagePredictor(
+                model, "local:" + path.name, checkpoint_version(path), "local-artifact"
+            )
         else:
             from ml.anomaly_training import AnomalyDetector
+
             if not isinstance(model, AnomalyDetector):
                 raise ValueError("Anomaly checkpoint is not the project AnomalyDetector")
             predictor = model
         report.resources[kind] = predictor
         report.resources[kind + "_source"] = "existing_local_trained_artifact"
-        return {"version": checkpoint_version(path), "source": "existing_local_trained_artifact",
-                "checkpoint": str(path.resolve()), "registry_unavailable_reason": registry_error,
-                "fallback_reason": None if report.available("mlflow") else report.reason("mlflow")}
+        return {
+            "version": checkpoint_version(path),
+            "source": "existing_local_trained_artifact",
+            "checkpoint": str(path.resolve()),
+            "registry_unavailable_reason": registry_error,
+            "fallback_reason": None if report.available("mlflow") else report.reason("mlflow"),
+        }
 
     probe("triage", lambda: trained_model("triage", config.triage_checkpoint))
     probe("anomaly", lambda: trained_model("anomaly", config.anomaly_checkpoint))
@@ -269,17 +321,24 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
         from vision.config import VisionSettings
         from vision.detector import UltralyticsDamageDetector
         from vision.parts_detector import UltralyticsVehiclePartDetector, VehiclePartSettings
+
         if kind == "damage":
-            adapter = UltralyticsDamageDetector(VisionSettings(
-                model_path=config.damage_checkpoint, device=config.vision_device))
+            adapter = UltralyticsDamageDetector(
+                VisionSettings(model_path=config.damage_checkpoint, device=config.vision_device)
+            )
         else:
-            adapter = UltralyticsVehiclePartDetector(VehiclePartSettings(
-                model_path=config.part_checkpoint, device=config.vision_device))
+            adapter = UltralyticsVehiclePartDetector(
+                VehiclePartSettings(model_path=config.part_checkpoint, device=config.vision_device)
+            )
         # Validate loadability, segmentation task and complete domain taxonomy.
         model = adapter._load_model()
         report.resources[kind + "_detector"] = adapter
-        return {"version": adapter.model_metadata.version,
-                "checkpoint": adapter.model_metadata.identifier, "task": model.task, "class_count": len(model.names)}
+        return {
+            "version": adapter.model_metadata.version,
+            "checkpoint": adapter.model_metadata.identifier,
+            "task": model.task,
+            "class_count": len(model.names),
+        }
 
     probe("damage_vision", lambda: detector("damage"), enabled=config.include_vision)
     probe("part_vision", lambda: detector("part"), enabled=config.include_vision)
@@ -287,5 +346,6 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
 
 
 def print_preflight_row(row: dict) -> None:
-    print(f"{row['component']:<27} {row['status']:<5} {row.get('version') or '-'} "
-          f"{row.get('reason') or ''}", flush=True)
+    print(
+        f"{row['component']:<27} {row['status']:<5} {row.get('version') or '-'} {row.get('reason') or ''}", flush=True
+    )

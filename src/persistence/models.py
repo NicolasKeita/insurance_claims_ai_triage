@@ -5,14 +5,27 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Identity, Index, MetaData, Numeric,
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Identity,
+    Index,
+    MetaData,
+    Numeric,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from claims.enums import (
-    ClaimStatus, ClaimType, CollisionType, DamageType, DocumentType, TriageWorkflow,
+    ClaimStatus,
+    ClaimType,
+    CollisionType,
+    DamageType,
+    DocumentType,
+    TriageWorkflow,
 )
 from investigation.models import ReviewPriority
 
@@ -22,18 +35,26 @@ def utc_now() -> datetime:
 
 
 def enum_column(enum, name: str):
-    return Enum(enum, name=name, native_enum=False, create_constraint=True,
-                validate_strings=True, values_callable=lambda cls: [e.value for e in cls])
+    return Enum(
+        enum,
+        name=name,
+        native_enum=False,
+        create_constraint=True,
+        validate_strings=True,
+        values_callable=lambda cls: [e.value for e in cls],
+    )
 
 
 class Base(DeclarativeBase):
-    metadata = MetaData(naming_convention={
-        "ix": "ix_%(table_name)s_%(column_0_name)s",
-        "uq": "uq_%(table_name)s_%(column_0_name)s",
-        "ck": "ck_%(table_name)s_%(constraint_name)s",
-        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-        "pk": "pk_%(table_name)s",
-    })
+    metadata = MetaData(
+        naming_convention={
+            "ix": "ix_%(table_name)s_%(column_0_name)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+    )
 
 
 class IdentityMixin:
@@ -45,9 +66,7 @@ class CreatedMixin:
 
 
 class TimestampMixin(CreatedMixin):
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
-    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class CustomerRow(IdentityMixin, TimestampMixin, Base):
@@ -79,9 +98,7 @@ class ClaimRow(IdentityMixin, TimestampMixin, Base):
     status: Mapped[ClaimStatus] = mapped_column(enum_column(ClaimStatus, "claim_status"))
     incident_date: Mapped[date] = mapped_column(index=True)
     incident_location: Mapped[str]
-    collision_type: Mapped[CollisionType] = mapped_column(
-        enum_column(CollisionType, "collision_type"), index=True
-    )
+    collision_type: Mapped[CollisionType] = mapped_column(enum_column(CollisionType, "collision_type"), index=True)
     injuries_declared: Mapped[bool]
     vehicle_make: Mapped[str]
     vehicle_model: Mapped[str]
@@ -93,12 +110,8 @@ class ClaimRow(IdentityMixin, TimestampMixin, Base):
     damages: Mapped[list["DeclaredDamageRow"]] = relationship(
         cascade="all, delete-orphan", order_by="DeclaredDamageRow.position"
     )
-    documents: Mapped[list["DocumentRow"]] = relationship(
-        cascade="all, delete-orphan", order_by="DocumentRow.position"
-    )
-    images: Mapped[list["ImageRow"]] = relationship(
-        cascade="all, delete-orphan", order_by="ImageRow.position"
-    )
+    documents: Mapped[list["DocumentRow"]] = relationship(cascade="all, delete-orphan", order_by="DocumentRow.position")
+    images: Mapped[list["ImageRow"]] = relationship(cascade="all, delete-orphan", order_by="ImageRow.position")
 
 
 class DeclaredDamageRow(IdentityMixin, Base):
@@ -124,9 +137,7 @@ class DocumentRow(IdentityMixin, Base):
 
 class ImageRow(IdentityMixin, Base):
     __tablename__ = "claim_images"
-    claim_pk: Mapped[UUID] = mapped_column(
-        ForeignKey("claims.id", ondelete="CASCADE"), index=True
-    )
+    claim_pk: Mapped[UUID] = mapped_column(ForeignKey("claims.id", ondelete="CASCADE"), index=True)
     filename: Mapped[str]
     position: Mapped[int]
 
@@ -148,9 +159,7 @@ class TriageAssessmentRow(AssessmentMixin, ModelMetadataMixin, Base):
         Index("ix_triage_assessments_claim_date", "claim_pk", "created_at", "id"),
         CheckConstraint("confidence BETWEEN 0 AND 1", name="confidence"),
     )
-    recommended_workflow: Mapped[TriageWorkflow] = mapped_column(
-        enum_column(TriageWorkflow, "triage_workflow")
-    )
+    recommended_workflow: Mapped[TriageWorkflow] = mapped_column(enum_column(TriageWorkflow, "triage_workflow"))
     confidence: Mapped[float]
     probabilities: Mapped[dict[str, float]] = mapped_column(JSONB)
 
@@ -177,9 +186,7 @@ class InvestigationAssessmentRow(AssessmentMixin, Base):
         CheckConstraint("review_score BETWEEN 0 AND 100", name="review_score"),
     )
     review_score: Mapped[int]
-    review_priority: Mapped[ReviewPriority] = mapped_column(
-        enum_column(ReviewPriority, "review_priority")
-    )
+    review_priority: Mapped[ReviewPriority] = mapped_column(enum_column(ReviewPriority, "review_priority"))
     review_recommended: Mapped[bool]
     policy_version: Mapped[str]
     signals: Mapped[list[dict]] = mapped_column(JSONB)
@@ -204,6 +211,7 @@ class VisionAssessmentRow(AssessmentMixin, Base):
 
 class AgentRunRow(IdentityMixin, Base):
     """Immutable audit snapshot; no relationship cascades or business writes."""
+
     __tablename__ = "agent_runs"
     __table_args__ = (
         UniqueConstraint("insertion_order"),

@@ -93,9 +93,7 @@ def test_each_consistency_check_has_an_explicit_field_signal(check, field):
 
 
 def test_each_document_mismatch_keeps_its_field_in_evidence():
-    signals = signals_from_consistency(
-        make_consistency(incident_date_match=False, vehicle_match=False)
-    )
+    signals = signals_from_consistency(make_consistency(incident_date_match=False, vehicle_match=False))
     mismatches = [s for s in signals if s.code == SignalCode.DOCUMENT_FIELD_MISMATCH]
     assert {s.evidence["field"] for s in mismatches} == {
         "incident_date",
@@ -113,9 +111,7 @@ def test_quote_damage_and_unmapped_descriptions_are_json_evidence():
         )
     )
     by_code = {s.code: s for s in signals}
-    assert by_code[SignalCode.ADDITIONAL_QUOTE_DAMAGE].evidence["damage_types"] == [
-        "HOOD"
-    ]
+    assert by_code[SignalCode.ADDITIONAL_QUOTE_DAMAGE].evidence["damage_types"] == ["HOOD"]
     assert set(by_code[SignalCode.UNMAPPED_QUOTE_ITEM].evidence["descriptions"]) == {
         "Paint labor",
         "Diagnostic scan",
@@ -124,9 +120,7 @@ def test_quote_damage_and_unmapped_descriptions_are_json_evidence():
 
 
 def test_repeated_unmapped_quote_items_keep_each_observed_occurrence():
-    signals = signals_from_consistency(
-        make_consistency(unmapped_quote_items=("Paint labor", "Paint labor"))
-    )
+    signals = signals_from_consistency(make_consistency(unmapped_quote_items=("Paint labor", "Paint labor")))
     assert len(signals) == 1
     assert signals[0].code == SignalCode.UNMAPPED_QUOTE_ITEM
     assert signals[0].evidence["descriptions"] == ["Paint labor", "Paint labor"]
@@ -177,9 +171,7 @@ def test_anomaly_extreme_percentile_uses_policy_boundary():
 
 
 def test_extreme_percentile_can_be_observed_without_model_flag():
-    signals = signals_from_anomaly(
-        make_anomaly(is_anomalous=False, reference_percentile=0.995)
-    )
+    signals = signals_from_anomaly(make_anomaly(is_anomalous=False, reference_percentile=0.995))
     assert [s.code for s in signals] == [SignalCode.EXTREME_ANOMALY_PERCENTILE]
     policy = DEFAULT_INVESTIGATION_POLICY
     score = policy.score_signals(signals)
@@ -229,9 +221,7 @@ def test_versioned_policy_weights_are_immutable_and_json_serializable():
     default = DEFAULT_INVESTIGATION_POLICY
     weights = dict(default.signal_weights)
     weights[SignalCode.UNMAPPED_QUOTE_ITEM] = 9
-    custom = InvestigationPolicy(
-        **{**default.model_dump(), "version": "custom_test_policy", "signal_weights": weights}
-    )
+    custom = InvestigationPolicy(**{**default.model_dump(), "version": "custom_test_policy", "signal_weights": weights})
     with pytest.raises(TypeError):
         default.signal_weights[SignalCode.UNMAPPED_QUOTE_ITEM] = 9
     with pytest.raises(TypeError):

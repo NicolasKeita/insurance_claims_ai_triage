@@ -5,6 +5,8 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, select
+from test_persistence_postgres import factory, postgres_engine, reference_claim
+from test_retrieval_qdrant import remote_store
 
 from api.main import create_app
 from persistence.models import ClaimRow
@@ -14,8 +16,6 @@ from retrieval.models import StoredRetrievalClaim
 from retrieval.representation import build_claim_retrieval_text
 from retrieval.similar_claims import SimilarClaimsIndexer, SimilarClaimsService
 from scripts.seed_similar_claims import demo_claims, seed
-from test_persistence_postgres import factory, postgres_engine, reference_claim
-from test_retrieval_qdrant import remote_store
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
@@ -91,6 +91,7 @@ def test_postgres_qdrant_and_api_use_authoritative_business_data(factory, refere
     with factory.begin() as session:
         row = session.scalar(select(ClaimRow).where(ClaimRow.claim_id == first.claim_id))
         row.repair_estimate_amount = Decimal("3200")
+
     # Same indexed vector/rank, fresh PostgreSQL display amount.
     class BorrowedService:
         search = service.search

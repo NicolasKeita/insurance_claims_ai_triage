@@ -22,20 +22,37 @@ def mirror_fixture(tmp_path: Path) -> HfDamageDataset:
     for index in range(12):
         path = source / f"synthetic_{index}.png"
         Image.new("RGB", (20, 10), color=(index * 17, 40, 10)).save(path)
-        polygons = (((.1, .1), (.6, .1), (.6, .6), (.1, .6)),)
+        polygons = (((0.1, 0.1), (0.6, 0.1), (0.6, 0.6), (0.1, 0.6)),)
         label = "dent" if index % 2 else "scratch"
         instances = (HfDamageInstance(label, polygons, "ground_truth", "polyline"),)
         if index % 3 == 0:
             other = "scratch" if label == "dent" else "dent"
-            instances += (HfDamageInstance(other, (((.7, .1), (.9, .1), (.9, .4), (.7, .4)),), "ground_truth", "polyline"),)
+            instances += (
+                HfDamageInstance(
+                    other, (((0.7, 0.1), (0.9, 0.1), (0.9, 0.4), (0.7, 0.4)),), "ground_truth", "polyline"
+                ),
+            )
         samples.append(HfDamageSample(f"stable-id-{index:02d}", path, 20, 10, instances, annotation_hash(path)))
-    return HfDamageDataset("synthetic/CarDD-mirror", "a" * 40, tuple(samples), {"ground_truth": "Polylines"}, ("ground_truth",), ("dent", "scratch"))
+    return HfDamageDataset(
+        "synthetic/CarDD-mirror",
+        "a" * 40,
+        tuple(samples),
+        {"ground_truth": "Polylines"},
+        ("ground_truth",),
+        ("dent", "scratch"),
+    )
 
 
 def prepare_fixture(tmp_path: Path, dataset=None):
     source = dataset or mirror_fixture(tmp_path)
     output = tmp_path / "prepared_hf"
-    manifest = prepare_cardd_hf_yolo(source, output, split_manifest_path=tmp_path / "split_v1.json", manifest_path=tmp_path / "manifest.json", converter="native")
+    manifest = prepare_cardd_hf_yolo(
+        source,
+        output,
+        split_manifest_path=tmp_path / "split_v1.json",
+        manifest_path=tmp_path / "manifest.json",
+        converter="native",
+    )
     return source, output, manifest
 
 
@@ -49,7 +66,9 @@ def test_hf_preparation_preserves_all_instances_and_custom_split_provenance(tmp_
     assert manifest["field_schema"] == {"ground_truth": "Polylines"}
     assert manifest["official_splits_used"] is False
     assert manifest["conversion"]["bbox_fallback"] is False
-    assert sum(split["converted_annotation_count"] for split in manifest["splits"].values()) == sum(len(sample.instances) for sample in source.samples)
+    assert sum(split["converted_annotation_count"] for split in manifest["splits"].values()) == sum(
+        len(sample.instances) for sample in source.samples
+    )
     assert load_prepared_dataset(output / "dataset.yaml") == manifest
     by_id = {sample.sample_id: sample for sample in source.samples}
     for split, entries in manifest["prepared_files"].items():
@@ -58,14 +77,20 @@ def test_hf_preparation_preserves_all_instances_and_custom_split_provenance(tmp_
             rows = validate_segmentation_label(output / entry["label"], class_count=2)
             sample = by_id[entry["source_sample_id"]]
             assert rows[0][0] == (0 if sample.instances[0].label == "dent" else 1)
-            assert rows[0][1] == pytest.approx([.1, .1, .6, .1, .6, .6, .1, .6])
+            assert rows[0][1] == pytest.approx([0.1, 0.1, 0.6, 0.1, 0.6, 0.6, 0.1, 0.6])
             assert annotation_hash(output / entry["image"]) == sample.image_sha256
 
 
 def test_hf_preparation_reuses_frozen_split_and_portable_fingerprint(tmp_path):
     source, _, first = prepare_fixture(tmp_path)
     split_bytes = (tmp_path / "split_v1.json").read_bytes()
-    second = prepare_cardd_hf_yolo(source, tmp_path / "prepared_hf_second", split_manifest_path=tmp_path / "split_v1.json", manifest_path=None, converter="native")
+    second = prepare_cardd_hf_yolo(
+        source,
+        tmp_path / "prepared_hf_second",
+        split_manifest_path=tmp_path / "split_v1.json",
+        manifest_path=None,
+        converter="native",
+    )
     assert (tmp_path / "split_v1.json").read_bytes() == split_bytes
     assert first["dataset_fingerprint"] == second["dataset_fingerprint"]
     assert first["annotation_hashes"] == second["annotation_hashes"]
@@ -74,11 +99,21 @@ def test_hf_preparation_reuses_frozen_split_and_portable_fingerprint(tmp_path):
 
 def test_hf_multipart_keeps_every_provided_vertex(tmp_path):
     dataset = mirror_fixture(tmp_path)
-    instance = HfDamageInstance("scratch", (((.1, .1), (.3, .1), (.3, .4), (.1, .4)), ((.6, .1), (.6, .4), (.8, .4), (.8, .1))), "ground_truth", "polyline")
+    instance = HfDamageInstance(
+        "scratch",
+        (((0.1, 0.1), (0.3, 0.1), (0.3, 0.4), (0.1, 0.4)), ((0.6, 0.1), (0.6, 0.4), (0.8, 0.4), (0.8, 0.1))),
+        "ground_truth",
+        "polyline",
+    )
     changed = replace(dataset.samples[0], instances=(instance,))
     dataset = replace(dataset, samples=(changed,) + dataset.samples[1:])
     _, output, manifest = prepare_fixture(tmp_path, dataset)
-    entry = next(entry for entries in manifest["prepared_files"].values() for entry in entries if entry["source_sample_id"] == changed.sample_id)
+    entry = next(
+        entry
+        for entries in manifest["prepared_files"].values()
+        for entry in entries
+        if entry["source_sample_id"] == changed.sample_id
+    )
     rows = validate_segmentation_label(output / entry["label"], class_count=2)
     points = set(zip(rows[0][1][::2], rows[0][1][1::2]))
     assert len(rows) == 1
@@ -124,10 +159,17 @@ def test_hf_wrong_image_with_updated_hash_is_bound_to_frozen_source(tmp_path):
     source, output, manifest = prepare_fixture(tmp_path)
     entry = manifest["prepared_files"]["train"][0]
     original = next(sample for sample in source.samples if sample.sample_id == entry["source_sample_id"])
-    replacement = next(sample for sample in source.samples if sample.sample_id != original.sample_id and [instance.label for instance in sample.instances] == [instance.label for instance in original.instances])
+    replacement = next(
+        sample
+        for sample in source.samples
+        if sample.sample_id != original.sample_id
+        and [instance.label for instance in sample.instances] == [instance.label for instance in original.instances]
+    )
     shutil.copy2(replacement.filepath, output / entry["image"])
     entry["image_sha256"] = replacement.image_sha256
-    mapping = [{key: item[key] for key in ("category_id", "name", "yolo_class_id")} for item in manifest["category_mapping"]]
+    mapping = [
+        {key: item[key] for key in ("category_id", "name", "yolo_class_id")} for item in manifest["category_mapping"]
+    ]
     manifest["dataset_fingerprint"] = hf_prepared_fingerprint(manifest, mapping)
     (output / "cardd_dataset_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(DatasetValidationError, match="disagrees with frozen source sample"):
@@ -159,7 +201,9 @@ def test_hf_prepared_dimensions_and_instance_counts_are_bound_to_frozen_source(t
         load_prepared_dataset(output / "dataset.yaml")
 
 
-@pytest.mark.parametrize("key,value", [("annotation_fields", ["fabricated_field"]), ("field_schema", {"ground_truth": "fabricated_schema"})])
+@pytest.mark.parametrize(
+    "key,value", [("annotation_fields", ["fabricated_field"]), ("field_schema", {"ground_truth": "fabricated_schema"})]
+)
 def test_hf_prepared_schema_is_bound_to_frozen_source(tmp_path, key, value):
     _, output, manifest = prepare_fixture(tmp_path)
     manifest[key] = value
@@ -182,9 +226,13 @@ def test_hf_no_overwrite_and_no_source_modification(tmp_path):
     _, output, _ = prepare_fixture(tmp_path, dataset)
     assert {sample.filepath: sample.filepath.read_bytes() for sample in dataset.samples} == before
     with pytest.raises(DatasetValidationError, match="already exists"):
-        prepare_cardd_hf_yolo(dataset, output, split_manifest_path=tmp_path / "split_v1.json", manifest_path=None, converter="native")
+        prepare_cardd_hf_yolo(
+            dataset, output, split_manifest_path=tmp_path / "split_v1.json", manifest_path=None, converter="native"
+        )
     with pytest.raises(DatasetValidationError, match="outside and separate"):
-        prepare_cardd_hf_yolo(dataset, dataset.samples[0].filepath.parent / "prepared", manifest_path=None, converter="native")
+        prepare_cardd_hf_yolo(
+            dataset, dataset.samples[0].filepath.parent / "prepared", manifest_path=None, converter="native"
+        )
 
 
 def test_hf_preparation_module_does_not_import_frameworks_or_download():

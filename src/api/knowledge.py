@@ -5,13 +5,13 @@ from datetime import date
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import SQLAlchemyError
 
 from claims.llm import LlmError
 from knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
 from knowledge.models import GroundedAnswer, GroundingError, KnowledgeSearchResponse, KnowledgeSourceType
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
 from retrieval.models import RetrievalUnavailableError
-from sqlalchemy.exc import SQLAlchemyError
 
 
 class ClaimKnowledgeSearchRequest(BaseModel):
@@ -89,7 +89,9 @@ def install_knowledge_routes(app, *, retriever_loader=None, rag_loader=None, cla
     @app.exception_handler(LlmError)
     async def generation_failed(request, error):
         # Do not expose raw LLM data in an HTTP error response.
-        return JSONResponse(status_code=503, content={"detail": "Knowledge generation is unavailable or returned invalid data"})
+        return JSONResponse(
+            status_code=503, content={"detail": "Knowledge generation is unavailable or returned invalid data"}
+        )
 
     @app.exception_handler(SQLAlchemyError)
     async def database_failed(request, error):

@@ -9,8 +9,14 @@ from collections.abc import Callable
 from typing import Protocol
 
 from agent.models import (
-    AgentPlanStep, AgentToolName, EvidenceItem, EvidenceSourceType,
-    KnowledgeSearchInput, ObservationStatus, SimilarClaimsInput, ToolObservation,
+    AgentPlanStep,
+    AgentToolName,
+    EvidenceItem,
+    EvidenceSourceType,
+    KnowledgeSearchInput,
+    ObservationStatus,
+    SimilarClaimsInput,
+    ToolObservation,
 )
 from claims.models import Claim
 from knowledge.models import KnowledgeSourceType, applicable_on
@@ -35,7 +41,7 @@ def _bounded(value, depth: int = 0, budget: list[int] | None = None):
     if budget[0] <= 0:
         return "[data budget exhausted]"
     if isinstance(value, str):
-        result = value[:min(MAX_VALUE_CHARS, budget[0])]
+        result = value[: min(MAX_VALUE_CHARS, budget[0])]
         budget[0] -= len(result)
         return result
     if isinstance(value, (bool, int, float)) or value is None:
@@ -75,8 +81,10 @@ def _claim_data(claim: Claim) -> dict:
         "vehicle": _bounded(claim.vehicle.model_dump(mode="json")),
         "repair_estimate": claim.repair_estimate.model_dump(mode="json"),
         "declared_damage": sorted({damage.value for damage in claim.declared_damage}),
-        "documents": [{"type": kind, "available": available, "count": count}
-                      for (kind, available), count in sorted(documents.items())],
+        "documents": [
+            {"type": kind, "available": available, "count": count}
+            for (kind, available), count in sorted(documents.items())
+        ],
         "document_count": len(claim.documents),
         "image_count": len(claim.images),
     }
@@ -84,7 +92,11 @@ def _claim_data(claim: Claim) -> dict:
 
 class ReadOnlyAgentTools:
     def __init__(
-        self, factory, similar_service=None, knowledge_retriever=None, *,
+        self,
+        factory,
+        similar_service=None,
+        knowledge_retriever=None,
+        *,
         similar_service_loader: Callable | None = None,
         knowledge_retriever_loader: Callable | None = None,
     ):
@@ -119,13 +131,14 @@ class ReadOnlyAgentTools:
         return ToolObservation(
             tool_name=tool,
             status=ObservationStatus.NOT_AVAILABLE if unavailable else ObservationStatus.NOT_FOUND,
-            data=None, evidence=[], message=message,
+            data=None,
+            evidence=[],
+            message=message,
         )
 
     @staticmethod
     def _observation(tool: AgentToolName, data: dict, evidence: list[EvidenceItem]):
-        return ToolObservation(tool_name=tool, status=ObservationStatus.OK,
-                               data=data, evidence=evidence)
+        return ToolObservation(tool_name=tool, status=ObservationStatus.OK, data=data, evidence=evidence)
 
     def execute(self, claim_id: str, step: AgentPlanStep) -> ToolObservation:
         tool = step.tool_name
@@ -138,11 +151,14 @@ class ReadOnlyAgentTools:
             claim = self._claim(claim_id)
             data = _claim_data(claim)
             evidence = EvidenceItem(
-                evidence_id=f"claim:{claim_id}", source_type=EvidenceSourceType.CLAIM_DATA,
+                evidence_id=f"claim:{claim_id}",
+                source_type=EvidenceSourceType.CLAIM_DATA,
                 source_reference=claim_id,
-                summary=(f"Current claim: {claim.claim_type.value}, incident {claim.incident.date}; "
-                         f"repair estimate {claim.repair_estimate.amount} {claim.repair_estimate.currency}; "
-                         f"{len(claim.documents)} document entries and {len(claim.images)} images."),
+                summary=(
+                    f"Current claim: {claim.claim_type.value}, incident {claim.incident.date}; "
+                    f"repair estimate {claim.repair_estimate.amount} {claim.repair_estimate.currency}; "
+                    f"{len(claim.documents)} document entries and {len(claim.images)} images."
+                ),
                 structured_data=data,
             )
             return self._observation(tool, data, [evidence])
@@ -152,19 +168,25 @@ class ReadOnlyAgentTools:
             if record is None:
                 return self._missing(tool, "No stored visual assessment is available", unavailable=True)
             visual = record.result
-            observations = [{
-                "image": item.filename,
-                "visual_damage_type": item.visual_damage_type.value,
-                "vehicle_part": item.vehicle_part.value if item.vehicle_part is not None else None,
-                "mapped_damage_type": item.mapped_damage_type.value if item.mapped_damage_type is not None else None,
-                "damage_confidence": item.damage_confidence,
-                "part_confidence": item.part_confidence,
-                "containment_ratio": item.containment_ratio,
-                "association_status": item.association_status.value,
-            } for item in visual.observations[:MAX_SIGNALS]]
+            observations = [
+                {
+                    "image": item.filename,
+                    "visual_damage_type": item.visual_damage_type.value,
+                    "vehicle_part": item.vehicle_part.value if item.vehicle_part is not None else None,
+                    "mapped_damage_type": item.mapped_damage_type.value
+                    if item.mapped_damage_type is not None
+                    else None,
+                    "damage_confidence": item.damage_confidence,
+                    "part_confidence": item.part_confidence,
+                    "containment_ratio": item.containment_ratio,
+                    "association_status": item.association_status.value,
+                }
+                for item in visual.observations[:MAX_SIGNALS]
+            ]
             consistency = visual.consistency.model_dump(mode="json", exclude={"visual_damage_unmapped"})
             data = {
-                "assessment_id": str(record.id), "created_at": record.created_at.isoformat(),
+                "assessment_id": str(record.id),
+                "created_at": record.created_at.isoformat(),
                 "claim_id": visual.claim_id,
                 "consistency": _bounded(consistency),
                 "damage_model_metadata": _bounded(visual.damage_model_metadata.model_dump(mode="json")),
@@ -176,12 +198,16 @@ class ReadOnlyAgentTools:
                 "unmapped_observation_count": len(visual.consistency.visual_damage_unmapped),
             }
             evidence = EvidenceItem(
-                evidence_id=f"vision:{record.id}", source_type=EvidenceSourceType.VISUAL_ASSESSMENT,
-                source_reference=str(record.id), structured_data=data,
-                summary=(f"Stored multimodal perception: {len(visual.observations)} per-photo observations; "
-                         f"{len(visual.consistency.additional_visual_damage)} additional mapped damage categories. "
-                         "Association is geometric. Non-detection is not evidence of absence; "
-                         "positive corroboration does not increase risk."),
+                evidence_id=f"vision:{record.id}",
+                source_type=EvidenceSourceType.VISUAL_ASSESSMENT,
+                source_reference=str(record.id),
+                structured_data=data,
+                summary=(
+                    f"Stored multimodal perception: {len(visual.observations)} per-photo observations; "
+                    f"{len(visual.consistency.additional_visual_damage)} additional mapped damage categories. "
+                    "Association is geometric. Non-detection is not evidence of absence; "
+                    "positive corroboration does not increase risk."
+                ),
             )
             return self._observation(tool, data, [evidence])
         if tool == AgentToolName.GET_HISTORY:
@@ -189,11 +215,14 @@ class ReadOnlyAgentTools:
                 profile = HistoricalClaimRepository(session).get_profile(claim_id)
             data = profile.model_dump(mode="json")
             evidence = EvidenceItem(
-                evidence_id=f"history:{claim_id}", source_type=EvidenceSourceType.HISTORY,
+                evidence_id=f"history:{claim_id}",
+                source_type=EvidenceSourceType.HISTORY,
                 source_reference=claim_id,
-                summary=(f"Incident-time historical aggregate: {profile.previous_claim_count} earlier claims; "
-                         f"{profile.claims_last_30_days} in 30 days, {profile.claims_last_365_days} in 365 days. "
-                         "Prior anomaly flags are statistical model outputs, not established misconduct."),
+                summary=(
+                    f"Incident-time historical aggregate: {profile.previous_claim_count} earlier claims; "
+                    f"{profile.claims_last_30_days} in 30 days, {profile.claims_last_365_days} in 365 days. "
+                    "Prior anomaly flags are statistical model outputs, not established misconduct."
+                ),
                 structured_data=data,
             )
             return self._observation(tool, data, [evidence])
@@ -209,24 +238,36 @@ class ReadOnlyAgentTools:
             if record is None:
                 return self._missing(tool, f"No stored {kind} assessment is available", unavailable=True)
             result = record.result.model_dump(mode="json")
-            data = {"assessment_id": str(record.id), "created_at": record.created_at.isoformat(),
-                    "result": _bounded(result)}
+            data = {
+                "assessment_id": str(record.id),
+                "created_at": record.created_at.isoformat(),
+                "result": _bounded(result),
+            }
             if kind == "investigation":
                 data["signal_count"] = len(record.result.signals)
                 data["omitted_signal_count"] = max(0, len(record.result.signals) - MAX_SIGNALS)
-                summary = (f"Stored deterministic review prioritization: priority {record.result.review_priority.value}, "
-                           f"score {record.result.review_score}; {len(record.result.signals)} signals. "
-                           "This is a human review recommendation, not a fraud determination.")
+                summary = (
+                    f"Stored deterministic review prioritization: priority {record.result.review_priority.value}, "
+                    f"score {record.result.review_score}; {len(record.result.signals)} signals. "
+                    "This is a human review recommendation, not a fraud determination."
+                )
             elif kind == "anomaly":
-                summary = (f"Stored statistical atypicality assessment: is_anomalous="
-                           f"{record.result.assessment.is_anomalous}; "
-                           f"score {record.result.assessment.anomaly_score}. Atypicality does not establish fraud.")
+                summary = (
+                    f"Stored statistical atypicality assessment: is_anomalous="
+                    f"{record.result.assessment.is_anomalous}; "
+                    f"score {record.result.assessment.anomaly_score}. Atypicality does not establish fraud."
+                )
             else:
-                summary = (f"Stored ML workflow recommendation: {record.result.recommended_workflow.value}; "
-                           f"confidence {record.result.confidence}. This is workflow guidance for human review.")
+                summary = (
+                    f"Stored ML workflow recommendation: {record.result.recommended_workflow.value}; "
+                    f"confidence {record.result.confidence}. This is workflow guidance for human review."
+                )
             evidence = EvidenceItem(
-                evidence_id=f"{kind}:{record.id}", source_type=source_type,
-                source_reference=str(record.id), summary=summary, structured_data=data,
+                evidence_id=f"{kind}:{record.id}",
+                source_type=source_type,
+                source_reference=str(record.id),
+                summary=summary,
+                structured_data=data,
             )
             return self._observation(tool, data, [evidence])
         if tool == AgentToolName.FIND_SIMILAR_CLAIMS:
@@ -253,27 +294,36 @@ class ReadOnlyAgentTools:
             raise ValueError("Similar claims response violates current claim scope")
         evidence, results, seen = [], [], set()
         for candidate in response.results:
-            if (candidate.claim_id == claim_id or candidate.claim_id in seen
-                    or candidate.incident_date >= claim.incident.date):
+            if (
+                candidate.claim_id == claim_id
+                or candidate.claim_id in seen
+                or candidate.incident_date >= claim.incident.date
+            ):
                 continue
             seen.add(candidate.claim_id)
             data = _bounded(candidate.model_dump(mode="json"))
             results.append(data)
-            evidence.append(EvidenceItem(
-                evidence_id=f"similar:{candidate.claim_id}", source_type=EvidenceSourceType.SIMILAR_CLAIM,
-                source_reference=candidate.claim_id,
-                summary=(f"Comparative context only: earlier {candidate.claim_type[:100]} claim dated "
-                         f"{candidate.incident_date}, collision {candidate.collision_type[:100]}, "
-                         f"repair {candidate.repair_amount} {candidate.repair_currency[:10]}. "
-                         "Similarity is not evidence of misconduct or a basis for copying a prior decision."),
-                structured_data=data,
-            ))
+            evidence.append(
+                EvidenceItem(
+                    evidence_id=f"similar:{candidate.claim_id}",
+                    source_type=EvidenceSourceType.SIMILAR_CLAIM,
+                    source_reference=candidate.claim_id,
+                    summary=(
+                        f"Comparative context only: earlier {candidate.claim_type[:100]} claim dated "
+                        f"{candidate.incident_date}, collision {candidate.collision_type[:100]}, "
+                        f"repair {candidate.repair_amount} {candidate.repair_currency[:10]}. "
+                        "Similarity is not evidence of misconduct or a basis for copying a prior decision."
+                    ),
+                    structured_data=data,
+                )
+            )
             if len(results) == arguments.limit:
                 break
         if not evidence:
             return self._missing(tool, "No eligible similar claims were retrieved")
-        return self._observation(tool, {"results": results,
-                                       "representation_version": response.representation_version[:100]}, evidence)
+        return self._observation(
+            tool, {"results": results, "representation_version": response.representation_version[:100]}, evidence
+        )
 
     def _knowledge(self, claim_id, tool, arguments):
         claim = self._claim(claim_id)  # Authoritative product/date cannot be set by the planner.
@@ -288,38 +338,54 @@ class ReadOnlyAgentTools:
                 self.knowledge_retriever = retriever
             if retriever is None:
                 return self._missing(tool, "Knowledge retrieval is not configured", unavailable=True)
-            chunks = retriever.search(arguments.query, source_type, product=product,
-                                      as_of_date=as_of_date, limit=arguments.limit)
+            chunks = retriever.search(
+                arguments.query, source_type, product=product, as_of_date=as_of_date, limit=arguments.limit
+            )
         except RetrievalUnavailableError:
             return self._missing(tool, "Knowledge retrieval is unavailable", unavailable=True)
         evidence, summaries, seen = [], [], set()
         for chunk in chunks:
-            if (chunk.source_type != source_type or chunk.chunk_id in seen
-                    or (policy and chunk.product != product) or not applicable_on(chunk, as_of_date)):
+            if (
+                chunk.source_type != source_type
+                or chunk.chunk_id in seen
+                or (policy and chunk.product != product)
+                or not applicable_on(chunk, as_of_date)
+            ):
                 continue
             seen.add(chunk.chunk_id)
             # Preserve exact authoritative citation fields within a finite
             # context; oversized metadata is a source-contract failure.
-            metadata_limits = {"chunk_id": 250, "source_id": 300, "source_version": 100,
-                               "title": 500, "section": 500, "language": 16}
-            if any(len(getattr(chunk, field)) > maximum
-                   for field, maximum in metadata_limits.items()):
+            metadata_limits = {
+                "chunk_id": 250,
+                "source_id": 300,
+                "source_version": 100,
+                "title": 500,
+                "section": 500,
+                "language": 16,
+            }
+            if any(len(getattr(chunk, field)) > maximum for field, maximum in metadata_limits.items()):
                 raise ValueError("Knowledge citation metadata exceeds agent context limits")
             metadata = {
-                "chunk_id": chunk.chunk_id, "source_id": chunk.source_id,
-                "source_version": chunk.source_version, "title": chunk.title,
-                "section": chunk.section, "product": chunk.product[:MAX_VALUE_CHARS] if chunk.product else None,
+                "chunk_id": chunk.chunk_id,
+                "source_id": chunk.source_id,
+                "source_version": chunk.source_version,
+                "title": chunk.title,
+                "section": chunk.section,
+                "product": chunk.product[:MAX_VALUE_CHARS] if chunk.product else None,
                 "language": chunk.language,
                 "effective_from": str(chunk.effective_from) if chunk.effective_from else None,
                 "effective_to": str(chunk.effective_to) if chunk.effective_to else None,
                 "excerpt_truncated": len(chunk.text) > MAX_KNOWLEDGE_EXCERPT_CHARS,
             }
-            evidence.append(EvidenceItem(
-                evidence_id=f"knowledge:{chunk.chunk_id}",
-                source_type=EvidenceSourceType.POLICY_CHUNK if policy else EvidenceSourceType.PROCEDURE_CHUNK,
-                source_reference=chunk.chunk_id,
-                summary=chunk.text[:MAX_KNOWLEDGE_EXCERPT_CHARS], structured_data=metadata,
-            ))
+            evidence.append(
+                EvidenceItem(
+                    evidence_id=f"knowledge:{chunk.chunk_id}",
+                    source_type=EvidenceSourceType.POLICY_CHUNK if policy else EvidenceSourceType.PROCEDURE_CHUNK,
+                    source_reference=chunk.chunk_id,
+                    summary=chunk.text[:MAX_KNOWLEDGE_EXCERPT_CHARS],
+                    structured_data=metadata,
+                )
+            )
             # Ranking depends on the query; keep it in the observation rather
             # than changing a stable chunk's evidence payload between searches.
             summaries.append({**metadata, "similarity_score": chunk.similarity_score})
@@ -327,5 +393,4 @@ class ReadOnlyAgentTools:
                 break
         if not evidence:
             return self._missing(tool, "No applicable knowledge excerpts were retrieved")
-        return self._observation(tool, {"source_type": source_type.value,
-                                       "results": summaries}, evidence)
+        return self._observation(tool, {"source_type": source_type.value, "results": summaries}, evidence)

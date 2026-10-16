@@ -56,9 +56,7 @@ def test_pyfunc_uses_complete_detector_for_every_row() -> None:
         assert bool(actual["is_anomalous"]) == expected.is_anomalous
         assert actual["anomaly_score"] == pytest.approx(expected.anomaly_score)
         assert actual["threshold"] == pytest.approx(expected.threshold)
-        assert actual["reference_percentile"] == pytest.approx(
-            expected.reference_percentile
-        )
+        assert actual["reference_percentile"] == pytest.approx(expected.reference_percentile)
         assert json.loads(actual["statistical_signals"]) == expected.statistical_signals
 
 

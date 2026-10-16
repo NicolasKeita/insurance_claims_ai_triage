@@ -34,6 +34,7 @@ REPAIR_COST_FACTOR = {
     CollisionType.PARKING_DAMAGE: 0.50,
 }
 
+
 def _softmax(
     values: np.ndarray,
 ) -> np.ndarray:
@@ -42,6 +43,7 @@ def _softmax(
     exp_values = np.exp(shifted)
 
     return exp_values / exp_values.sum()
+
 
 def _sample_collision_type(
     rng: np.random.Generator,
@@ -55,12 +57,11 @@ def _sample_collision_type(
 
     return COLLISION_TYPES[index]
 
+
 def _generate_features(
     rng: np.random.Generator,
 ) -> dict:
-    collision_type = (
-        _sample_collision_type(rng)
-    )
+    collision_type = _sample_collision_type(rng)
 
     vehicle_age = int(
         np.clip(
@@ -75,9 +76,7 @@ def _generate_features(
                 mean=np.log(2200),
                 sigma=0.72,
             )
-            * REPAIR_COST_FACTOR[
-                collision_type
-            ],
+            * REPAIR_COST_FACTOR[collision_type],
             150,
             30000,
         )
@@ -89,21 +88,14 @@ def _generate_features(
     )
     declared_damage_count = int(
         np.clip(
-            rng.poisson(
-                1.0
-                + repair_amount / 5000
-            )
-            + 1,
+            rng.poisson(1.0 + repair_amount / 5000) + 1,
             1,
             8,
         )
     )
     additional_damage_count = int(
         np.clip(
-            rng.poisson(
-                0.15
-                + repair_amount / 18000
-            ),
+            rng.poisson(0.15 + repair_amount / 18000),
             0,
             4,
         )
@@ -135,21 +127,12 @@ def _generate_features(
             ),
         )
     )
-    document_completeness_ratio = (
-        document_count
-        - missing_document_count
-    ) / document_count
+    document_completeness_ratio = (document_count - missing_document_count) / document_count
     injury_probability = 0.025
-    if (
-        collision_type
-        == CollisionType.FRONT_COLLISION
-    ):
+    if collision_type == CollisionType.FRONT_COLLISION:
         injury_probability += 0.045
 
-    if (
-        collision_type
-        == CollisionType.SIDE_COLLISION
-    ):
+    if collision_type == CollisionType.SIDE_COLLISION:
         injury_probability += 0.065
     injury_probability += min(
         repair_amount / 50000,
@@ -164,13 +147,7 @@ def _generate_features(
     )
     consistency_issue_count = int(
         np.clip(
-            rng.poisson(
-                0.15
-                + 0.55
-                * additional_damage_count
-                + 0.35
-                * missing_document_count
-            ),
+            rng.poisson(0.15 + 0.55 * additional_damage_count + 0.35 * missing_document_count),
             0,
             6,
         )
@@ -180,52 +157,26 @@ def _generate_features(
         "collision_type": collision_type,
         "vehicle_age": vehicle_age,
         "repair_amount": repair_amount,
-        "declared_damage_count": (
-            declared_damage_count
-        ),
-        "additional_damage_count": (
-            additional_damage_count
-        ),
+        "declared_damage_count": (declared_damage_count),
+        "additional_damage_count": (additional_damage_count),
         "document_count": document_count,
-        "missing_document_count": (
-            missing_document_count
-        ),
-        "document_completeness_ratio": (
-            document_completeness_ratio
-        ),
-        "injuries_declared": (
-            injuries_declared
-        ),
-        "consistency_issue_count": (
-            consistency_issue_count
-        ),
+        "missing_document_count": (missing_document_count),
+        "document_completeness_ratio": (document_completeness_ratio),
+        "injuries_declared": (injuries_declared),
+        "consistency_issue_count": (consistency_issue_count),
     }
+
 
 def _sample_workflow(
     rng: np.random.Generator,
     features: dict,
 ) -> TriageWorkflow:
-    repair_amount = (
-        features["repair_amount"]
-    )
+    repair_amount = features["repair_amount"]
 
-    severity = (
-        np.log1p(repair_amount)
-        / np.log(30001)
-        * 2.0
-    )
-    severity += (
-        1.4
-        if features["injuries_declared"]
-        else 0
-    )
+    severity = np.log1p(repair_amount) / np.log(30001) * 2.0
+    severity += 1.4 if features["injuries_declared"] else 0
 
-    severity += (
-        0.12
-        * features[
-            "declared_damage_count"
-        ]
-    )
+    severity += 0.12 * features["declared_damage_count"]
     collision_bonus = {
         CollisionType.FRONT_COLLISION: 0.12,
         CollisionType.REAR_COLLISION: 0.0,
@@ -233,59 +184,23 @@ def _sample_workflow(
         CollisionType.PARKING_DAMAGE: -0.15,
     }
 
-    severity += collision_bonus[
-        features["collision_type"]
-    ]
+    severity += collision_bonus[features["collision_type"]]
     inconsistency = (
-        0.55
-        * features[
-            "consistency_issue_count"
-        ]
-        + 0.45
-        * features[
-            "additional_damage_count"
-        ]
-        + 0.30
-        * features[
-            "missing_document_count"
-        ]
-        + 0.60
-        * (
-            1
-            - features[
-                "document_completeness_ratio"
-            ]
-        )
+        0.55 * features["consistency_issue_count"]
+        + 0.45 * features["additional_damage_count"]
+        + 0.30 * features["missing_document_count"]
+        + 0.60 * (1 - features["document_completeness_ratio"])
     )
     logits = np.array(
         [
             # FAST_TRACK
-            (
-                2.8
-                - 1.45 * severity
-                - 1.60 * inconsistency
-            ),
-
+            (2.8 - 1.45 * severity - 1.60 * inconsistency),
             # STANDARD
-            (
-                1.1
-                - 0.25 * severity
-                - 0.25 * inconsistency
-            ),
-
+            (1.1 - 0.25 * severity - 0.25 * inconsistency),
             # EXPERT_REVIEW
-            (
-                -1.0
-                + 1.35 * severity
-                + 0.15 * inconsistency
-            ),
-
+            (-1.0 + 1.35 * severity + 0.15 * inconsistency),
             # INVESTIGATION
-            (
-                -1.6
-                + 0.15 * severity
-                + 1.45 * inconsistency
-            ),
+            (-1.6 + 0.15 * severity + 1.45 * inconsistency),
         ],
         dtype=float,
     )
@@ -302,9 +217,7 @@ def _sample_workflow(
         scale=0.45,
         size=4,
     )
-    probabilities = _softmax(
-        logits
-    )
+    probabilities = _softmax(logits)
     workflows = (
         TriageWorkflow.FAST_TRACK,
         TriageWorkflow.STANDARD,
@@ -320,12 +233,11 @@ def _sample_workflow(
 
     return workflows[index]
 
+
 def _generate_example(
     rng: np.random.Generator,
 ) -> TriageTrainingExample:
-    features = _generate_features(
-        rng
-    )
+    features = _generate_features(rng)
 
     workflow = _sample_workflow(
         rng,
@@ -337,32 +249,22 @@ def _generate_example(
         workflow=workflow,
     )
 
+
 def generate_synthetic_triage_dataset(
     sample_count: int = 5000,
     seed: int = 42,
 ) -> pd.DataFrame:
     if sample_count <= 0:
-        raise ValueError(
-            "sample_count must be positive"
-        )
+        raise ValueError("sample_count must be positive")
 
-    rng = np.random.default_rng(
-        seed
-    )
+    rng = np.random.default_rng(seed)
 
-    examples = [
-        _generate_example(rng)
-        for _ in range(sample_count)
-    ]
+    examples = [_generate_example(rng) for _ in range(sample_count)]
 
-    rows = [
-        example.model_dump(
-            mode="json"
-        )
-        for example in examples
-    ]
+    rows = [example.model_dump(mode="json") for example in examples]
 
     return pd.DataFrame(rows)
+
 
 def save_synthetic_triage_dataset(
     dataset: pd.DataFrame,

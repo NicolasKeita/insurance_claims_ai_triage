@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from claims.case import ClaimCase
 from claims.models import Claim
+from investigation.history import HistoricalClaimProfile
 from investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.inference import TriagePrediction
 from persistence.database import transaction
-from persistence.repositories import AssessmentRepository, ClaimNotFoundError, ClaimRepository
 from persistence.history import HistoricalClaimRepository
-from investigation.history import HistoricalClaimProfile
+from persistence.repositories import AssessmentRepository, ClaimNotFoundError, ClaimRepository
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,10 @@ class PersistenceService:
             return HistoricalClaimRepository(session).get_profile(claim_id)
 
     def save_assessments(
-        self, claim_id: str, *, triage: TriagePrediction | None = None,
+        self,
+        claim_id: str,
+        *,
+        triage: TriagePrediction | None = None,
         anomaly: RegisteredAnomalyAssessment | None = None,
         investigation: InvestigationAssessment | None = None,
     ) -> dict:
@@ -62,7 +65,8 @@ class PersistenceService:
                 raise ClaimNotFoundError(f"Claim {claim_id} does not exist")
             repository = AssessmentRepository(session)
             return ClaimHistory(
-                claim, tuple(repository.list_triage_history(claim_id)),
+                claim,
+                tuple(repository.list_triage_history(claim_id)),
                 tuple(repository.list_anomaly_history(claim_id)),
                 tuple(repository.list_investigation_history(claim_id)),
             )

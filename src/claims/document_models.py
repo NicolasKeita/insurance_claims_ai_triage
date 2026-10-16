@@ -1,14 +1,12 @@
+from datetime import date
 from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
 
-from claims.enums import DocumentType
-
-from datetime import date
-
 from claims.enums import (
     CollisionType,
     DamageType,
+    DocumentType,
 )
 
 
@@ -20,14 +18,18 @@ class MoneyAmount(BaseModel):
         pattern=r"^[A-Z]{3}$",
     )
 
+
 class QuoteLineItem(BaseModel):
     description: str
     price: MoneyAmount
+
 
 class DocumentSource(BaseModel):
     document_type: DocumentType
     filename: str
     page: int = Field(ge=1)
+
+
 class GarageQuoteExtraction(BaseModel):
     garage: str
     claim_id: str
@@ -40,33 +42,23 @@ class GarageQuoteExtraction(BaseModel):
 
     @model_validator(mode="after")
     def validate_financials(self):
-        currencies = {
-            item.price.currency
-            for item in self.parts
-        }
+        currencies = {item.price.currency for item in self.parts}
 
         currencies.add(self.labor.currency)
         currencies.add(self.total.currency)
 
         if len(currencies) != 1:
-            raise ValueError(
-                "Quote contains inconsistent currencies"
-            )
+            raise ValueError("Quote contains inconsistent currencies")
 
         calculated_total = sum(
-            (
-                item.price.amount
-                for item in self.parts
-            ),
+            (item.price.amount for item in self.parts),
             Decimal("0"),
         )
 
         calculated_total += self.labor.amount
 
         if calculated_total != self.total.amount:
-            raise ValueError(
-                "Quote total does not match line items"
-            )
+            raise ValueError("Quote total does not match line items")
 
         return self
 
@@ -88,6 +80,7 @@ class ClaimFormExtraction(BaseModel):
 
     source: DocumentSource
 
+
 class AccidentReportExtraction(BaseModel):
     claim_id: str
 
@@ -106,6 +99,7 @@ class AccidentReportExtraction(BaseModel):
 
     source: DocumentSource
 
+
 class GarageQuoteLlmOutput(BaseModel):
     garage: str | None
     claim_id: str | None
@@ -115,6 +109,7 @@ class GarageQuoteLlmOutput(BaseModel):
     labor: LlmMoneyAmount | None
     total: LlmMoneyAmount | None
 
+
 class LlmMoneyAmount(BaseModel):
     amount: float = Field(ge=0)
 
@@ -123,9 +118,12 @@ class LlmMoneyAmount(BaseModel):
         max_length=3,
         pattern=r"^[A-Z]{3}$",
     )
+
+
 class LlmQuoteLineItem(BaseModel):
     description: str
     price: LlmMoneyAmount
+
 
 class ClaimFormLlmOutput(BaseModel):
     claim_id: str | None
@@ -142,6 +140,7 @@ class ClaimFormLlmOutput(BaseModel):
     declared_damage: tuple[DamageType, ...] = ()
 
     injuries_declared: bool | None
+
 
 class AccidentReportLlmOutput(BaseModel):
     claim_id: str | None

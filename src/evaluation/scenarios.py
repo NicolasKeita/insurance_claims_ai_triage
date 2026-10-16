@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from evaluation.models import E2E_BENCHMARK_VERSION, EvaluationScenario
 
-
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCENARIOS_PATH = ROOT / "data/evaluation/e2e_v1/scenarios.json"
 
@@ -21,8 +20,7 @@ class EvaluationBenchmark(BaseModel):
     def supported_and_unique(self):
         if self.benchmark_version != E2E_BENCHMARK_VERSION:
             raise ValueError(
-                f"Unsupported E2E benchmark version {self.benchmark_version!r}; "
-                f"expected {E2E_BENCHMARK_VERSION!r}"
+                f"Unsupported E2E benchmark version {self.benchmark_version!r}; expected {E2E_BENCHMARK_VERSION!r}"
             )
         ids = [scenario.scenario_id for scenario in self.scenarios]
         if len(ids) != len(set(ids)):
@@ -40,9 +38,7 @@ def load_scenarios(
     evaluation. Paths are resolved independently of the caller's directory.
     """
     benchmark_path = DEFAULT_SCENARIOS_PATH if path is None else Path(path)
-    benchmark = EvaluationBenchmark.model_validate_json(
-        benchmark_path.read_text(encoding="utf-8")
-    )
+    benchmark = EvaluationBenchmark.model_validate_json(benchmark_path.read_text(encoding="utf-8"))
     if scenario_ids is None:
         return benchmark.scenarios
     requested = set(scenario_ids)

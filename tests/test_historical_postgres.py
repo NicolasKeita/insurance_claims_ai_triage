@@ -7,6 +7,9 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, func, select
+from test_investigation import make_consistency
+from test_persistence import make_anomaly, make_investigation, reference_claim
+from test_persistence_postgres import factory, postgres_engine
 
 from api.main import create_app
 from investigation.models import SignalCategory
@@ -15,9 +18,6 @@ from persistence.mappers import anomaly_to_row
 from persistence.models import AnomalyAssessmentRow, ClaimRow, InvestigationAssessmentRow
 from persistence.repositories import AssessmentRepository, ClaimNotFoundError, ClaimRepository
 from persistence.service import PersistenceService
-from test_investigation import make_consistency
-from test_persistence import make_anomaly, make_investigation, reference_claim
-from test_persistence_postgres import factory, postgres_engine
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
@@ -50,11 +50,22 @@ def test_temporal_customer_same_day_and_created_at_independence(factory, referen
         assert facts.total_previous_repair_amount == Decimal("100")
 
 
-@pytest.mark.parametrize("offset,counts", [
-    (0, (0, 0, 0)), (1, (1, 1, 1)), (29, (1, 1, 1)), (30, (1, 1, 1)),
-    (31, (0, 1, 1)), (89, (0, 1, 1)), (90, (0, 1, 1)), (91, (0, 0, 1)),
-    (364, (0, 0, 1)), (365, (0, 0, 1)), (366, (0, 0, 0)),
-])
+@pytest.mark.parametrize(
+    "offset,counts",
+    [
+        (0, (0, 0, 0)),
+        (1, (1, 1, 1)),
+        (29, (1, 1, 1)),
+        (30, (1, 1, 1)),
+        (31, (0, 1, 1)),
+        (89, (0, 1, 1)),
+        (90, (0, 1, 1)),
+        (91, (0, 0, 1)),
+        (364, (0, 0, 1)),
+        (365, (0, 0, 1)),
+        (366, (0, 0, 0)),
+    ],
+)
 def test_precise_window_boundaries(factory, reference_claim, offset, counts):
     with factory.begin() as session:
         ClaimRepository(session).add(reference_claim)
@@ -133,7 +144,9 @@ def test_latest_anomaly_timestamp_precedes_counter(factory, reference_claim):
             row.created_at = datetime(year, 1, 1, tzinfo=timezone.utc)
             session.add(row)
             session.flush()
-        assert HistoricalClaimRepository(session).get_profile(reference_claim.claim_id).previous_anomalous_claim_count == 1
+        assert (
+            HistoricalClaimRepository(session).get_profile(reference_claim.claim_id).previous_anomalous_claim_count == 1
+        )
 
 
 def test_empty_history_unknown_claim_and_two_queries_independent_of_volume(factory, reference_claim):
@@ -196,10 +209,18 @@ def test_api_history_and_persisted_v2_signals_snapshot(factory, reference_claim)
         assert response.json()["previous_anomalous_claim_count"] == 2
         assert calls == []
         assert client.get("/v1/claims/unknown/history").status_code == 404
-        assert client.post("/v1/claims/unknown/investigation/assess",
-                           json={"consistency": make_consistency().model_dump(mode="json")}).status_code == 404
+        assert (
+            client.post(
+                "/v1/claims/unknown/investigation/assess",
+                json={"consistency": make_consistency().model_dump(mode="json")},
+            ).status_code
+            == 404
+        )
         payload = {"consistency": make_consistency().model_dump(mode="json")}
-        assert client.post(path + "/investigation/assess", json={**payload, "previous_claim_count": 999}).status_code == 422
+        assert (
+            client.post(path + "/investigation/assess", json={**payload, "previous_claim_count": 999}).status_code
+            == 422
+        )
         response = client.post(path + "/investigation/assess", json=payload)
         assert response.status_code == 200
         body = response.json()
@@ -252,8 +273,10 @@ def test_api_rolls_back_anomaly_if_investigation_write_fails(factory, reference_
     monkeypatch.setattr(AssessmentRepository, "add_investigation", fail)
     app = create_app(anomaly_predictor_loader=lambda: Predictor(), session_factory=factory)
     with TestClient(app) as client:
-        result = client.post(f"/v1/claims/{reference_claim.claim_id}/investigation/assess",
-                             json={"consistency": make_consistency().model_dump(mode="json")})
+        result = client.post(
+            f"/v1/claims/{reference_claim.claim_id}/investigation/assess",
+            json={"consistency": make_consistency().model_dump(mode="json")},
+        )
         assert result.status_code == 503
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(AnomalyAssessmentRow)) == 0
@@ -262,6 +285,7 @@ def test_api_rolls_back_anomaly_if_investigation_write_fails(factory, reference_
 
 def test_migration_backfills_legacy_rows_and_advances_identity(factory, reference_claim):
     from pathlib import Path
+
     from alembic import command
     from alembic.config import Config
     from sqlalchemy import text
@@ -279,7 +303,9 @@ def test_migration_backfills_legacy_rows_and_advances_identity(factory, referenc
         cfg.attributes["connection"] = session.connection()
         command.downgrade(cfg, "0001")
         command.upgrade(cfg, "head")
-        old = list(session.execute(text("SELECT id, insertion_order FROM anomaly_assessments ORDER BY insertion_order")))
+        old = list(
+            session.execute(text("SELECT id, insertion_order FROM anomaly_assessments ORDER BY insertion_order"))
+        )
         assert old == [(UUID(int=1), 1), (UUID(int=2), 2)]
         row = anomaly_to_row(pk, make_anomaly("new"))
         row.created_at = timestamp

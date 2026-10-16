@@ -2,10 +2,10 @@
 
 import os
 import re
-from ipaddress import ip_address
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from ipaddress import ip_address
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import URL, make_url
@@ -34,9 +34,7 @@ class DatabaseConfig:
         except Exception as error:
             raise DatabaseConfigurationError("Invalid database URL") from error
         if url.drivername != "postgresql+psycopg" or not url.database:
-            raise DatabaseConfigurationError(
-                "A postgresql+psycopg URL with an explicit database is required"
-            )
+            raise DatabaseConfigurationError("A postgresql+psycopg URL with an explicit database is required")
         return cls(url)
 
 
@@ -87,9 +85,19 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
     if target.port is not None and not 1 <= target.port <= 65535:
         raise DatabaseConfigurationError("TEST_DATABASE_URL port must be between 1 and 65535")
     for key, entry in target.query.items():
-        if key != "sslmode" or not isinstance(entry, str) or entry not in {
-            "disable", "allow", "prefer", "require", "verify-ca", "verify-full",
-        }:
+        if (
+            key != "sslmode"
+            or not isinstance(entry, str)
+            or entry
+            not in {
+                "disable",
+                "allow",
+                "prefer",
+                "require",
+                "verify-ca",
+                "verify-full",
+            }
+        ):
             raise DatabaseConfigurationError(
                 "TEST_DATABASE_URL query only permits one sslmode value; "
                 "connection, driver, database and search_path overrides are forbidden"

@@ -5,11 +5,11 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
+from test_multimodal_investigation import make_visual_assessment
 
 from api.main import create_app
 from persistence.repositories import ClaimNotFoundError
 from persistence.vision_assessments import StoredVisionAssessment
-from test_multimodal_investigation import make_visual_assessment
 
 
 def test_stored_vision_read_loads_once_without_any_predictor():
@@ -29,8 +29,9 @@ def test_stored_vision_read_loads_once_without_any_predictor():
         loaded.append(factory)
         return Store()
 
-    with TestClient(create_app(predictor_loader=forbidden, anomaly_predictor_loader=forbidden,
-                              vision_store_loader=loader)) as client:
+    with TestClient(
+        create_app(predictor_loader=forbidden, anomaly_predictor_loader=forbidden, vision_store_loader=loader)
+    ) as client:
         for _ in range(2):
             response = client.get("/v1/claims/CLAIM-2026-00001/vision/latest")
             assert response.status_code == 200

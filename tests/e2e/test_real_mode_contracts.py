@@ -11,22 +11,43 @@ from evaluation.scenarios import load_scenarios
 
 @pytest.mark.parametrize("unavailable_policy, expected_status", [("SKIP", "SKIP"), ("FAIL", "FAIL")])
 def test_unavailable_real_dependencies_never_become_fake_predictions(
-    tmp_path, monkeypatch, unavailable_policy, expected_status,
+    tmp_path,
+    monkeypatch,
+    unavailable_policy,
+    expected_status,
 ):
     def forbid_fake(*args, **kwargs):
         raise AssertionError("A real evaluation called a deterministic predictor")
 
     monkeypatch.setattr(fakes.FakeTriagePredictor, "predict", forbid_fake)
     monkeypatch.setattr(fakes.FakeAnomalyPredictor, "assess", forbid_fake)
-    preflight = PreflightReport(rows=[
-        {"component": component, "status": unavailable_policy, "reason": "Controlled unavailable dependency", "version": None}
-        for component in ["postgresql", "qdrant", "knowledge_collections", "similar_claims_collection",
-                          "embeddings", "ollama", "triage", "anomaly", "damage_vision", "part_vision"]
-    ])
+    preflight = PreflightReport(
+        rows=[
+            {
+                "component": component,
+                "status": unavailable_policy,
+                "reason": "Controlled unavailable dependency",
+                "version": None,
+            }
+            for component in [
+                "postgresql",
+                "qdrant",
+                "knowledge_collections",
+                "similar_claims_collection",
+                "embeddings",
+                "ollama",
+                "triage",
+                "anomaly",
+                "damage_vision",
+                "part_vision",
+            ]
+        ]
+    )
     config = RealEvaluationConfig(fixture_dir=tmp_path / "fixtures", dependency_unavailable=unavailable_policy)
     pipeline = RealClaimsEvaluationPipeline(config, preflight)
-    report = evaluate_scenarios(load_scenarios(scenario_ids=["policy_answerable"]), pipeline,
-                                mode="real", preflight=preflight.rows)
+    report = evaluate_scenarios(
+        load_scenarios(scenario_ids=["policy_answerable"]), pipeline, mode="real", preflight=preflight.rows
+    )
     assert report.full_stack_status == "PARTIAL"
     assert report.results[0].status == expected_status
     observed = report.results[0].observation

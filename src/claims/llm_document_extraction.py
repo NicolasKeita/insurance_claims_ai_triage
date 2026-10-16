@@ -23,6 +23,7 @@ from claims.document_models import (
 from claims.enums import DocumentType
 from claims.llm import StructuredLlm
 
+
 def build_garage_quote_prompt(
     extraction: PdfTextExtraction,
 ) -> str:
@@ -60,6 +61,7 @@ DOCUMENT:
 {extraction.text}
 """.strip()
 
+
 def build_garage_quote_retry_prompt(
     extraction: PdfTextExtraction,
     missing_fields: list[str],
@@ -95,6 +97,7 @@ DOCUMENT:
 {extraction.text}
 """.strip()
 
+
 def _missing_quote_fields(
     result: GarageQuoteLlmOutput,
 ) -> list[str]:
@@ -111,26 +114,18 @@ def _missing_quote_fields(
 
     return missing_fields
 
+
 def extract_garage_quote_with_llm(
     extraction: PdfTextExtraction,
     llm: StructuredLlm,
 ) -> GarageQuoteExtraction:
-    if (
-        extraction.asset.type
-        != DocumentType.REPAIR_QUOTE
-    ):
-        raise DocumentExtractionError(
-            "Expected a repair quote document"
-        )
+    if extraction.asset.type != DocumentType.REPAIR_QUOTE:
+        raise DocumentExtractionError("Expected a repair quote document")
 
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Repair quote contains no extractable text"
-        )
+        raise DocumentExtractionError("Repair quote contains no extractable text")
     result = llm.generate(
-        prompt=build_garage_quote_prompt(
-            extraction
-        ),
+        prompt=build_garage_quote_prompt(extraction),
         response_model=GarageQuoteLlmOutput,
     )
 
@@ -159,19 +154,13 @@ def extract_garage_quote_with_llm(
     parts = tuple(
         QuoteLineItem(
             description=item.description,
-            price=_to_money_amount(
-                item.price
-            ),
+            price=_to_money_amount(item.price),
         )
         for item in result.parts
     )
-    labor = _to_money_amount(
-        result.labor
-    )
+    labor = _to_money_amount(result.labor)
 
-    total = _to_money_amount(
-        result.total
-    )
+    total = _to_money_amount(result.total)
 
     try:
         return GarageQuoteExtraction(
@@ -189,30 +178,15 @@ def extract_garage_quote_with_llm(
 
     except ValidationError as error:
         parts_total = sum(
-            (
-                item.price.amount
-                for item in result.parts
-            ),
+            (item.price.amount for item in result.parts),
             Decimal("0"),
         )
 
-        labor_amount = (
-            Decimal(str(result.labor.amount))
-            if result.labor is not None
-            else None
-        )
+        labor_amount = Decimal(str(result.labor.amount)) if result.labor is not None else None
 
-        declared_total = (
-            Decimal(str(result.total.amount))
-            if result.total is not None
-            else None
-        )
+        declared_total = Decimal(str(result.total.amount)) if result.total is not None else None
 
-        calculated_total = (
-            parts_total + labor_amount
-            if labor_amount is not None
-            else None
-        )
+        calculated_total = parts_total + labor_amount if labor_amount is not None else None
 
         raise DocumentExtractionError(
             "LLM produced an invalid garage quote.\n\n"
@@ -225,6 +199,7 @@ def extract_garage_quote_with_llm(
             f"VALIDATION ERROR:\n{error}"
         ) from error
 
+
 def _to_money_amount(
     value,
 ) -> MoneyAmount:
@@ -233,6 +208,7 @@ def _to_money_amount(
         currency=value.currency,
     )
 
+
 def _parse_llm_date(
     value: str,
 ) -> date:
@@ -240,9 +216,7 @@ def _parse_llm_date(
         return date.fromisoformat(value)
 
     except ValueError as error:
-        raise DocumentExtractionError(
-            f"Invalid LLM date: {value}"
-        ) from error
+        raise DocumentExtractionError(f"Invalid LLM date: {value}") from error
 
 
 def build_claim_form_prompt(
@@ -266,26 +240,18 @@ DOCUMENT:
 {extraction.text}
 """.strip()
 
+
 def extract_claim_form_with_llm(
     extraction: PdfTextExtraction,
     llm: StructuredLlm,
 ) -> ClaimFormExtraction:
-    if (
-        extraction.asset.type
-        != DocumentType.CLAIM_FORM
-    ):
-        raise DocumentExtractionError(
-            "Expected a claim form document"
-        )
+    if extraction.asset.type != DocumentType.CLAIM_FORM:
+        raise DocumentExtractionError("Expected a claim form document")
 
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Claim form contains no extractable text"
-        )
+        raise DocumentExtractionError("Claim form contains no extractable text")
     result = llm.generate(
-        prompt=build_claim_form_prompt(
-            extraction
-        ),
+        prompt=build_claim_form_prompt(extraction),
         response_model=ClaimFormLlmOutput,
     )
     required_fields = {
@@ -299,22 +265,13 @@ def extract_claim_form_with_llm(
         "injuries_declared": result.injuries_declared,
     }
 
-    missing_fields = [
-        field
-        for field, value in required_fields.items()
-        if value is None
-    ]
+    missing_fields = [field for field, value in required_fields.items() if value is None]
 
     if missing_fields:
-        raise DocumentExtractionError(
-            "Missing required claim form fields: "
-            + ", ".join(missing_fields)
-        )
+        raise DocumentExtractionError("Missing required claim form fields: " + ", ".join(missing_fields))
     return ClaimFormExtraction(
         claim_id=result.claim_id,
-        incident_date=_parse_llm_date(
-            result.incident_date
-        ),
+        incident_date=_parse_llm_date(result.incident_date),
         location=result.location,
         vehicle_make=result.vehicle_make,
         vehicle_model=result.vehicle_model,
@@ -328,6 +285,7 @@ def extract_claim_form_with_llm(
             page=1,
         ),
     )
+
 
 def build_accident_report_prompt(
     extraction: PdfTextExtraction,
@@ -351,26 +309,18 @@ DOCUMENT:
 {extraction.text}
 """.strip()
 
+
 def extract_accident_report_with_llm(
     extraction: PdfTextExtraction,
     llm: StructuredLlm,
 ) -> AccidentReportExtraction:
-    if (
-        extraction.asset.type
-        != DocumentType.ACCIDENT_REPORT
-    ):
-        raise DocumentExtractionError(
-            "Expected an accident report document"
-        )
+    if extraction.asset.type != DocumentType.ACCIDENT_REPORT:
+        raise DocumentExtractionError("Expected an accident report document")
 
     if not extraction.has_text:
-        raise DocumentExtractionError(
-            "Accident report contains no extractable text"
-        )
+        raise DocumentExtractionError("Accident report contains no extractable text")
     result = llm.generate(
-        prompt=build_accident_report_prompt(
-            extraction
-        ),
+        prompt=build_accident_report_prompt(extraction),
         response_model=AccidentReportLlmOutput,
     )
     required_fields = {
@@ -384,22 +334,13 @@ def extract_accident_report_with_llm(
         "injuries_declared": result.injuries_declared,
     }
 
-    missing_fields = [
-        field
-        for field, value in required_fields.items()
-        if value is None
-    ]
+    missing_fields = [field for field, value in required_fields.items() if value is None]
 
     if missing_fields:
-        raise DocumentExtractionError(
-            "Missing required accident report fields: "
-            + ", ".join(missing_fields)
-        )
+        raise DocumentExtractionError("Missing required accident report fields: " + ", ".join(missing_fields))
     return AccidentReportExtraction(
         claim_id=result.claim_id,
-        incident_date=_parse_llm_date(
-            result.incident_date
-        ),
+        incident_date=_parse_llm_date(result.incident_date),
         location=result.location,
         vehicle_make=result.vehicle_make,
         vehicle_model=result.vehicle_model,
@@ -414,11 +355,9 @@ def extract_accident_report_with_llm(
         ),
     )
 
-LlmDocumentExtraction = (
-    ClaimFormExtraction
-    | AccidentReportExtraction
-    | GarageQuoteExtraction
-)
+
+LlmDocumentExtraction = ClaimFormExtraction | AccidentReportExtraction | GarageQuoteExtraction
+
 
 def extract_document_with_llm(
     extraction: PdfTextExtraction,
@@ -444,7 +383,4 @@ def extract_document_with_llm(
             )
 
         case _:
-            raise DocumentExtractionError(
-                "Unsupported document type: "
-                f"{extraction.asset.type}"
-            )
+            raise DocumentExtractionError(f"Unsupported document type: {extraction.asset.type}")

@@ -12,11 +12,14 @@ from pydantic import ValidationError
 
 from vision.config import DEFAULT_CONFIDENCE_THRESHOLD, ROOT, VisionSettings
 from vision.detector import (
-    DamageDetectorError, DetectorOutputError, extract_ultralytics_rows,
-    local_model_metadata, normalized_detection_geometry,
+    DamageDetectorError,
+    DetectorOutputError,
+    extract_ultralytics_rows,
+    local_model_metadata,
+    normalized_detection_geometry,
 )
-from vision.images import load_validated_image
 from vision.geometry import PolygonGeometryError, validated_polygon_geometry
+from vision.images import load_validated_image
 from vision.models import ImagePartAssessment, VehiclePartDetection, VisionModelMetadata
 from vision.taxonomy import CARPARTS_CLASS_TO_PART, VehiclePartType, map_vehicle_part_category_name
 
@@ -74,8 +77,13 @@ def part_mapping_from_model_names(names: Any, *, require_complete: bool = False)
 
 
 def map_ultralytics_part_result(
-    result: Any, *, filename: str, width: int, height: int,
-    confidence_threshold: float, model_metadata: VisionModelMetadata,
+    result: Any,
+    *,
+    filename: str,
+    width: int,
+    height: int,
+    confidence_threshold: float,
+    model_metadata: VisionModelMetadata,
 ) -> ImagePartAssessment:
     """No torch or Ultralytics import is needed to map framework-like output."""
     VehiclePartSettings(confidence_threshold=confidence_threshold)
@@ -83,15 +91,26 @@ def map_ultralytics_part_result(
     coordinates, classes, confidences, polygons = extract_ultralytics_rows(result, width=width, height=height)
     detections, warnings = [], []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
-        if (isinstance(class_id, bool) or not isinstance(class_id, (int, float))
-                or not math.isfinite(class_id) or class_id != int(class_id) or int(class_id) not in mapping):
+        if (
+            isinstance(class_id, bool)
+            or not isinstance(class_id, (int, float))
+            or not math.isfinite(class_id)
+            or class_id != int(class_id)
+            or int(class_id) not in mapping
+        ):
             raise DetectorOutputError(f"Unknown or invalid predicted vehicle part class: {class_id!r}")
-        if (isinstance(confidence, bool) or not isinstance(confidence, (int, float))
-                or not math.isfinite(confidence) or not 0 <= confidence <= 1):
+        if (
+            isinstance(confidence, bool)
+            or not isinstance(confidence, (int, float))
+            or not math.isfinite(confidence)
+            or not 0 <= confidence <= 1
+        ):
             raise DetectorOutputError("Predicted confidence must be finite and between 0 and 1")
         try:
             bounding_box, polygon, geometry_warnings = normalized_detection_geometry(
-                box, polygons[index] if polygons is not None else None, index,
+                box,
+                polygons[index] if polygons is not None else None,
+                index,
             )
             if polygon is not None:
                 validated_polygon_geometry(polygon)
@@ -99,18 +118,28 @@ def map_ultralytics_part_result(
             if polygons is not None and polygons[index] is None:
                 warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
             if confidence >= confidence_threshold:
-                detections.append(VehiclePartDetection(
-                    part_type=mapping[int(class_id)], confidence=confidence,
-                    bounding_box=bounding_box, polygon=polygon,
-                    model_identifier=model_metadata.identifier, model_version=model_metadata.version,
-                ))
+                detections.append(
+                    VehiclePartDetection(
+                        part_type=mapping[int(class_id)],
+                        confidence=confidence,
+                        bounding_box=bounding_box,
+                        polygon=polygon,
+                        model_identifier=model_metadata.identifier,
+                        model_version=model_metadata.version,
+                    )
+                )
         except (ValidationError, PolygonGeometryError) as error:
             raise DetectorOutputError("Detector returned invalid normalized vehicle part geometry") from error
     if polygons is None and detections:
         warnings.append("Segmentation masks unavailable for these detections; bounding boxes retained.")
     return ImagePartAssessment(
-        filename=filename, width=width, height=height, detections=detections,
-        warnings=warnings, model_metadata=model_metadata, confidence_threshold=confidence_threshold,
+        filename=filename,
+        width=width,
+        height=height,
+        detections=detections,
+        warnings=warnings,
+        model_metadata=model_metadata,
+        confidence_threshold=confidence_threshold,
     )
 
 
@@ -148,7 +177,9 @@ class UltralyticsVehiclePartDetector:
                 try:
                     from ultralytics import YOLO
                 except ImportError as error:
-                    raise VehiclePartDetectorError("Install the optional vision extra: python -m pip install -e '.[vision]'") from error
+                    raise VehiclePartDetectorError(
+                        "Install the optional vision extra: python -m pip install -e '.[vision]'"
+                    ) from error
                 factory = YOLO
             try:
                 model = factory(str(checkpoint.resolve()))
@@ -175,8 +206,12 @@ class UltralyticsVehiclePartDetector:
             if getattr(result, "orig_shape", (image.height, image.width)) != (image.height, image.width):
                 raise DetectorOutputError("Detector result dimensions differ from the EXIF-oriented image")
             assessment = map_ultralytics_part_result(
-                result, filename=path.name, width=image.width, height=image.height,
-                confidence_threshold=self.confidence_threshold, model_metadata=self.model_metadata,
+                result,
+                filename=path.name,
+                width=image.width,
+                height=image.height,
+                confidence_threshold=self.confidence_threshold,
+                model_metadata=self.model_metadata,
             )
             return assessment.model_copy(update={"asset_reference": str(path)})
         finally:
@@ -187,8 +222,10 @@ class FakeVehiclePartDetector:
     """Synthetic part observations for tests, never pretrained model output."""
 
     def __init__(
-        self, detections_by_filename: Mapping[str, list[VehiclePartDetection]] | None = None,
-        *, confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
+        self,
+        detections_by_filename: Mapping[str, list[VehiclePartDetection]] | None = None,
+        *,
+        confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
     ):
         self.settings = VehiclePartSettings(confidence_threshold=confidence_threshold)
         self.detections_by_filename = dict(detections_by_filename or {})
@@ -208,9 +245,17 @@ class FakeVehiclePartDetector:
         try:
             self.calls.append(path)
             return ImagePartAssessment(
-                filename=path.name, asset_reference=str(path), width=image.width, height=image.height,
-                detections=[item for item in self.detections_by_filename.get(path.name, []) if item.confidence >= self.confidence_threshold],
-                model_metadata=self.model_metadata, confidence_threshold=self.confidence_threshold,
+                filename=path.name,
+                asset_reference=str(path),
+                width=image.width,
+                height=image.height,
+                detections=[
+                    item
+                    for item in self.detections_by_filename.get(path.name, [])
+                    if item.confidence >= self.confidence_threshold
+                ],
+                model_metadata=self.model_metadata,
+                confidence_threshold=self.confidence_threshold,
             )
         finally:
             image.close()

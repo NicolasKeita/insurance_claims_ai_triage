@@ -25,12 +25,14 @@ def features_from_stored_claim(claim: Claim, consistency: ClaimConsistencyReport
     count = len(claim.documents)
     missing = sum(not document.available for document in claim.documents)
     return TriageFeatures(
-        claim_type=claim.claim_type, collision_type=claim.incident.collision_type,
+        claim_type=claim.claim_type,
+        collision_type=claim.incident.collision_type,
         vehicle_age=calculate_vehicle_age(claim.vehicle.year, claim.incident.date.year),
         repair_amount=float(claim.repair_estimate.amount),
         declared_damage_count=len(claim.declared_damage),
         additional_damage_count=len(consistency.additional_quote_damage),
-        document_count=count, missing_document_count=missing,
+        document_count=count,
+        missing_document_count=missing,
         document_completeness_ratio=(count - missing) / count if count else 1.0,
         injuries_declared=claim.incident.injuries_declared,
         consistency_issue_count=count_consistency_issues(consistency),
@@ -38,7 +40,9 @@ def features_from_stored_claim(claim: Claim, consistency: ClaimConsistencyReport
 
 
 def assess_stored_claim(
-    session: Session, claim_id: str, consistency: ClaimConsistencyReport,
+    session: Session,
+    claim_id: str,
+    consistency: ClaimConsistencyReport,
     anomaly_assessor: Callable[[TriageFeatures], RegisteredAnomalyAssessment],
 ):
     """Append current anomaly and v2 investigation atomically; caller commits."""
@@ -49,8 +53,11 @@ def assess_stored_claim(
     features = features_from_stored_claim(claim, consistency)
     anomaly = anomaly_assessor(features)
     result = assess_investigation(
-        consistency=consistency, anomaly=anomaly.assessment, features=features,
-        history=history, policy=INVESTIGATION_POLICY_V2,
+        consistency=consistency,
+        anomaly=anomaly.assessment,
+        features=features,
+        history=history,
+        policy=INVESTIGATION_POLICY_V2,
     )
     repository = AssessmentRepository(session)
     repository.add_anomaly(claim_id, anomaly)
@@ -58,7 +65,9 @@ def assess_stored_claim(
 
 
 def assess_stored_claim_multimodal(
-    session: Session, claim_id: str, consistency: ClaimConsistencyReport,
+    session: Session,
+    claim_id: str,
+    consistency: ClaimConsistencyReport,
     anomaly_assessor: Callable[[TriageFeatures], RegisteredAnomalyAssessment],
     visual_assessment: ClaimMultimodalVisionAssessment,
 ):
@@ -78,8 +87,11 @@ def assess_stored_claim_multimodal(
     features = features_from_stored_claim(claim, consistency)
     anomaly = anomaly_assessor(features)
     result = assess_investigation(
-        consistency=consistency, anomaly=anomaly.assessment, features=features,
-        history=history, policy=INVESTIGATION_POLICY_V3,
+        consistency=consistency,
+        anomaly=anomaly.assessment,
+        features=features,
+        history=history,
+        policy=INVESTIGATION_POLICY_V3,
         visual_assessment=visual_assessment,
     )
     VisionAssessmentRepository(session).add(visual_assessment)

@@ -9,12 +9,17 @@ from pydantic import ValidationError
 from evaluation import E2E_BENCHMARK_VERSION
 from evaluation.scenarios import DEFAULT_SCENARIOS_PATH, load_scenarios
 
-
 EXPECTED_IDS = {
-    "simple_coherent_claim", "additional_quote_damage", "missing_documents",
-    "recent_claim_history", "statistically_unusual_claim", "policy_answerable",
-    "policy_insufficient_evidence", "agent_missing_tool_data",
-    "visual_additional_damage", "visual_non_detection",
+    "simple_coherent_claim",
+    "additional_quote_damage",
+    "missing_documents",
+    "recent_claim_history",
+    "statistically_unusual_claim",
+    "policy_answerable",
+    "policy_insufficient_evidence",
+    "agent_missing_tool_data",
+    "visual_additional_damage",
+    "visual_non_detection",
 }
 
 

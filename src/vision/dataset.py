@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SPLITS = ("train", "val", "test")
 PREPARATION_VERSION = "cardd_yolo_segmentation_v1"
@@ -113,7 +112,9 @@ def _discover_path(root: Path, candidates: list[str], kind: str, split: str) -> 
     found = [root / candidate for candidate in candidates if (root / candidate).exists()]
     if len(found) != 1:
         detail = "none found" if not found else "ambiguous: " + ", ".join(str(p) for p in found)
-        raise DatasetValidationError(f"CarDD {split} {kind}: {detail}. Expected one of {candidates}; use explicit path mappings for a custom layout.")
+        raise DatasetValidationError(
+            f"CarDD {split} {kind}: {detail}. Expected one of {candidates}; use explicit path mappings for a custom layout."
+        )
     return found[0].resolve()
 
 
@@ -126,10 +127,14 @@ def discover_cardd_dataset(
     """Read official CarDD_COCO layout, require all splits, and reject leakage."""
     configured = dataset_dir if dataset_dir is not None else os.environ.get("CARDD_DATASET_DIR")
     if not configured:
-        raise DatasetValidationError("CarDD dataset unavailable. Obtain CarDD manually from its official site under its conditions, then set CARDD_DATASET_DIR to the CarDD_COCO directory. No automatic download is performed.")
+        raise DatasetValidationError(
+            "CarDD dataset unavailable. Obtain CarDD manually from its official site under its conditions, then set CARDD_DATASET_DIR to the CarDD_COCO directory. No automatic download is performed."
+        )
     root = Path(configured).expanduser().resolve()
     if not root.is_dir():
-        raise DatasetValidationError(f"CARDD_DATASET_DIR does not exist or is not a directory: {root}. Set it to the manually obtained CarDD_COCO directory.")
+        raise DatasetValidationError(
+            f"CARDD_DATASET_DIR does not exist or is not a directory: {root}. Set it to the manually obtained CarDD_COCO directory."
+        )
     for mapping in (annotation_files, image_directories):
         if mapping is not None and set(mapping) != set(SPLITS):
             raise DatasetValidationError("Explicit split paths must define exactly train, val and test")
@@ -139,13 +144,20 @@ def discover_cardd_dataset(
     seen_names: set[str] = set()
     for split in SPLITS:
         if annotation_files is None:
-            annotation_path = _discover_path(root, [f"annotations/instances_{split}2017.json", f"annotations/instances_{split}.json"], "annotations", split)
+            annotation_path = _discover_path(
+                root,
+                [f"annotations/instances_{split}2017.json", f"annotations/instances_{split}.json"],
+                "annotations",
+                split,
+            )
         else:
             annotation_path = (root / annotation_files[split]).resolve()
         if not annotation_path.is_file():
             raise DatasetValidationError(f"CarDD {split} annotation file is missing: {annotation_path}")
         if image_directories is None:
-            image_dir = _discover_path(root, [f"{split}2017", f"images/{split}2017", f"images/{split}", split], "image directory", split)
+            image_dir = _discover_path(
+                root, [f"{split}2017", f"images/{split}2017", f"images/{split}", split], "image directory", split
+            )
         else:
             image_dir = (root / image_directories[split]).resolve()
         if not image_dir.is_dir():
@@ -225,15 +237,26 @@ def inspect_cardd_dataset(dataset: CarddDataset) -> dict[str, Any]:
             "images_per_category": {key: len(value) for key, value in images_per_category.items()},
             "images_without_annotations": len(split.document["images"]) - len(annotated),
         }
-    return {"category_mapping": [dict(item) for item in mapping], "splits": split_counts, "annotation_hashes": {name: annotation_hash(split.annotation_path) for name, split in dataset.splits.items()}, "split_overlap_check": "passed: image IDs and case-insensitive filenames are disjoint"}
+    return {
+        "category_mapping": [dict(item) for item in mapping],
+        "splits": split_counts,
+        "annotation_hashes": {name: annotation_hash(split.annotation_path) for name, split in dataset.splits.items()},
+        "split_overlap_check": "passed: image IDs and case-insensitive filenames are disjoint",
+    }
 
 
 def build_dataset_manifest(dataset: CarddDataset) -> dict[str, Any]:
     result = inspect_cardd_dataset(dataset)
     result["preparation_version"] = PREPARATION_VERSION
     result["timestamp"] = datetime.now(timezone.utc).isoformat()
-    stable = {"annotation_hashes": result["annotation_hashes"], "category_mapping": result["category_mapping"], "preparation_version": PREPARATION_VERSION}
-    result["dataset_fingerprint"] = hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    stable = {
+        "annotation_hashes": result["annotation_hashes"],
+        "category_mapping": result["category_mapping"],
+        "preparation_version": PREPARATION_VERSION,
+    }
+    result["dataset_fingerprint"] = hashlib.sha256(
+        json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     return result
 
 
@@ -252,14 +275,24 @@ def _polygon(annotation: dict[str, Any], width: int, height: int) -> tuple[list[
     for values in segmentation:
         if len(values) < 6 or len(values) % 2:
             return None, "invalid_polygon"
-        if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for value in values):
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
+            for value in values
+        ):
             return None, "invalid_coordinates"
         points = [(float(values[i]), float(values[i + 1])) for i in range(0, len(values), 2)]
         if any(not 0 <= x <= width or not 0 <= y <= height for x, y in points):
             return None, "invalid_coordinates"
         if points[0] == points[-1]:
             points.pop()
-        area = sum(x * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * y for i, (x, y) in enumerate(points)) if points else 0
+        area = (
+            sum(
+                x * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * y
+                for i, (x, y) in enumerate(points)
+            )
+            if points
+            else 0
+        )
         if len(set(points)) < 3 or abs(area) < 1e-9:
             return None, "degenerate_polygon"
         parts.append(points)
@@ -272,13 +305,17 @@ def _polygon(annotation: dict[str, Any], width: int, height: int) -> tuple[list[
     for component, area in zip(parts[1:], areas[1:]):
         if area * areas[0] < 0:
             component = component[::-1]
-        _, left, right = min(((x - a) ** 2 + (y - b) ** 2, i, j) for i, (x, y) in enumerate(points) for j, (a, b) in enumerate(component))
+        _, left, right = min(
+            ((x - a) ** 2 + (y - b) ** 2, i, j) for i, (x, y) in enumerate(points) for j, (a, b) in enumerate(component)
+        )
         rotated = component[right:] + component[:right]
-        points = points[:left + 1] + rotated + [rotated[0], points[left]] + points[left + 1:]
+        points = points[: left + 1] + rotated + [rotated[0], points[left]] + points[left + 1 :]
     return [value for x, y in points for value in (x / width, y / height)], None
 
 
-def validate_segmentation_label(path: Path, *, class_count: int, expected_count: int | None = None) -> list[tuple[int, list[float]]]:
+def validate_segmentation_label(
+    path: Path, *, class_count: int, expected_count: int | None = None
+) -> list[tuple[int, list[float]]]:
     """Validate YOLO polygon labels; a five-field bounding box is never accepted."""
     if not path.is_file():
         raise DatasetValidationError(f"Missing prepared label: {path}")
@@ -296,7 +333,9 @@ def validate_segmentation_label(path: Path, *, class_count: int, expected_count:
         if not 0 <= class_id < class_count or len(coordinates) < 6 or len(coordinates) % 2:
             raise DatasetValidationError(f"Invalid class ID or polygon vertex count at {path}:{line_number}")
         if any(not math.isfinite(value) or not 0 <= value <= 1 for value in coordinates):
-            raise DatasetValidationError(f"Polygon coordinates must be finite and normalized to [0,1] at {path}:{line_number}")
+            raise DatasetValidationError(
+                f"Polygon coordinates must be finite and normalized to [0,1] at {path}:{line_number}"
+            )
         polygon, reason = _polygon({"segmentation": [coordinates]}, 1, 1)
         if reason or polygon is None:
             raise DatasetValidationError(f"Invalid polygon ({reason}) at {path}:{line_number}")
@@ -322,7 +361,9 @@ def _check_image(path: Path, width: int, height: int) -> None:
             if image.size != (width, height):
                 raise DatasetValidationError(f"Image dimensions disagree with COCO/prepared metadata: {path}")
             if image.getexif().get(274, 1) not in (None, 1):
-                raise DatasetValidationError(f"EXIF orientation would change annotation coordinates: {path}; source needs correctly oriented COCO annotations")
+                raise DatasetValidationError(
+                    f"EXIF orientation would change annotation coordinates: {path}; source needs correctly oriented COCO annotations"
+                )
             image.load()
     except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
         raise DatasetValidationError(f"Image is not decodable: {path}: {exc}") from exc
@@ -358,7 +399,10 @@ def _try_ultralytics_conversion(
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("", encoding="utf-8")
             rows = validate_segmentation_label(path, class_count=class_count, expected_count=len(expected_rows))
-            if len(rows) != len(expected_rows) or any(a[0] != b[0] or len(a[1]) != len(b[1]) or any(abs(x - y) > 1e-5 for x, y in zip(a[1], b[1])) for a, b in zip(rows, expected_rows)):
+            if len(rows) != len(expected_rows) or any(
+                a[0] != b[0] or len(a[1]) != len(b[1]) or any(abs(x - y) > 1e-5 for x, y in zip(a[1], b[1]))
+                for a, b in zip(rows, expected_rows)
+            ):
                 raise DatasetValidationError(f"Official converter changed polygon geometry/class mapping: {path}")
             validated_files.append((path, stage / "labels" / split / PurePosixPath(filename).with_suffix(".txt")))
     for source, destination in validated_files:
@@ -385,13 +429,24 @@ def prepare_cardd_yolo(
     if unsupported not in ("error", "skip") or converter not in ("auto", "native", "ultralytics"):
         raise DatasetValidationError("Invalid unsupported annotation policy or converter")
     output = Path(output_dir).resolve()
-    source_locations = [dataset.root, *(split.image_dir for split in dataset.splits.values()), *(split.annotation_path.parent for split in dataset.splits.values())]
-    if any(output == source or output.is_relative_to(source) or source.is_relative_to(output) for source in source_locations):
+    source_locations = [
+        dataset.root,
+        *(split.image_dir for split in dataset.splits.values()),
+        *(split.annotation_path.parent for split in dataset.splits.values()),
+    ]
+    if any(
+        output == source or output.is_relative_to(source) or source.is_relative_to(output)
+        for source in source_locations
+    ):
         raise DatasetValidationError("Prepared output must be outside and separate from the source dataset")
-    if manifest_path is not None and any(Path(manifest_path).resolve().is_relative_to(source) for source in source_locations):
+    if manifest_path is not None and any(
+        Path(manifest_path).resolve().is_relative_to(source) for source in source_locations
+    ):
         raise DatasetValidationError("Generated manifest must be outside the source dataset")
     if output.exists():
-        raise DatasetValidationError(f"Prepared output already exists: {output}. Choose a new versioned --output-dir; existing data is never overwritten.")
+        raise DatasetValidationError(
+            f"Prepared output already exists: {output}. Choose a new versioned --output-dir; existing data is never overwritten."
+        )
     from vision.taxonomy import map_category_name
 
     manifest = build_dataset_manifest(dataset)
@@ -430,13 +485,33 @@ def prepare_cardd_yolo(
                     skipped[reason] += 1
                     skipped_by_class[class_names[annotation["category_id"]]] += 1
                     if unsupported == "error":
-                        raise DatasetValidationError(f"{split_name} annotation {annotation['id']}: unusable segmentation ({reason}). Fix the source annotations or explicitly choose --unsupported skip to measure and exclude it; no bounding-box fallback.")
+                        raise DatasetValidationError(
+                            f"{split_name} annotation {annotation['id']}: unusable segmentation ({reason}). Fix the source annotations or explicitly choose --unsupported skip to measure and exclude it; no bounding-box fallback."
+                        )
                     continue
                 stitched_multipart_count += len(annotation.get("segmentation", [])) > 1
                 rows[annotation["image_id"]].append((class_id, polygon or []))
                 xs = (polygon or [])[::2]
                 ys = (polygon or [])[1::2]
-                normalized_annotations.append(dict(annotation, category_id=class_id + 1, iscrowd=0, segmentation=[[value * (image["width"] if i % 2 == 0 else image["height"]) for i, value in enumerate(polygon or [])]], bbox=[min(xs) * image["width"], min(ys) * image["height"], (max(xs) - min(xs)) * image["width"], (max(ys) - min(ys)) * image["height"]]))
+                normalized_annotations.append(
+                    dict(
+                        annotation,
+                        category_id=class_id + 1,
+                        iscrowd=0,
+                        segmentation=[
+                            [
+                                value * (image["width"] if i % 2 == 0 else image["height"])
+                                for i, value in enumerate(polygon or [])
+                            ]
+                        ],
+                        bbox=[
+                            min(xs) * image["width"],
+                            min(ys) * image["height"],
+                            (max(xs) - min(xs)) * image["width"],
+                            (max(ys) - min(ys)) * image["height"],
+                        ],
+                    )
+                )
             expected[split_name] = {}
             prepared_files = []
             for image_id, image in images.items():
@@ -446,35 +521,88 @@ def prepare_cardd_yolo(
                 image_path = stage / "images" / split_name / filename
                 image_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, image_path)
-                label_relative = (PurePosixPath("labels") / split_name / PurePosixPath(filename).with_suffix(".txt")).as_posix()
+                label_relative = (
+                    PurePosixPath("labels") / split_name / PurePosixPath(filename).with_suffix(".txt")
+                ).as_posix()
                 label_path = stage / label_relative
                 label_path.parent.mkdir(parents=True, exist_ok=True)
-                label_path.write_text("".join(str(class_id) + " " + " ".join(format(value, ".12g") for value in polygon) + "\n" for class_id, polygon in rows[image_id]), encoding="utf-8")
+                label_path.write_text(
+                    "".join(
+                        str(class_id) + " " + " ".join(format(value, ".12g") for value in polygon) + "\n"
+                        for class_id, polygon in rows[image_id]
+                    ),
+                    encoding="utf-8",
+                )
                 expected[split_name][filename] = rows[image_id]
-                prepared_files.append({"image": (PurePosixPath("images") / split_name / filename).as_posix(), "label": label_relative, "image_id": image_id, "width": image["width"], "height": image["height"], "row_count": len(rows[image_id]), "class_counts": dict(Counter(str(row[0]) for row in rows[image_id]))})
+                prepared_files.append(
+                    {
+                        "image": (PurePosixPath("images") / split_name / filename).as_posix(),
+                        "label": label_relative,
+                        "image_id": image_id,
+                        "width": image["width"],
+                        "height": image["height"],
+                        "row_count": len(rows[image_id]),
+                        "class_counts": dict(Counter(str(row[0]) for row in rows[image_id])),
+                    }
+                )
             manifest["prepared_files"][split_name] = prepared_files
             counts = manifest["splits"][split_name]
-            counts.update(converted_annotation_count=sum(len(value) for value in rows.values()), skipped_annotations=dict(skipped), skipped_annotations_per_category=dict(skipped_by_class), stitched_multipart_annotations=stitched_multipart_count, label_count=len(images), images_without_converted_annotations=sum(not value for value in rows.values()))
+            counts.update(
+                converted_annotation_count=sum(len(value) for value in rows.values()),
+                skipped_annotations=dict(skipped),
+                skipped_annotations_per_category=dict(skipped_by_class),
+                stitched_multipart_annotations=stitched_multipart_count,
+                label_count=len(images),
+                images_without_converted_annotations=sum(not value for value in rows.values()),
+            )
             converted_counts = Counter(class_id for values in rows.values() for class_id, _ in values)
             converted_images = Counter(class_id for values in rows.values() for class_id in {row[0] for row in values})
-            counts["converted_annotations_per_category"] = {item["name"]: converted_counts[item["yolo_class_id"]] for item in manifest["category_mapping"]}
-            counts["converted_images_per_category"] = {item["name"]: converted_images[item["yolo_class_id"]] for item in manifest["category_mapping"]}
-            documents[split_name] = {"images": list(images.values()), "annotations": normalized_annotations, "categories": [{"id": item["yolo_class_id"] + 1, "name": item["name"]} for item in manifest["category_mapping"]]}
-        conversion = {"backend": "native_polygon", "unsupported_policy": unsupported, "segmentation_enabled": True, "bbox_fallback": False, "multipart_policy": "preserve component vertices using retraced nearest-vertex bridges", "multipart_limitation": "YOLO uses one polygon per instance; disconnected topology and holes cannot be represented exactly, and rasterization may include bridge pixels", "use_segments": True, "cls91to80": False}
+            counts["converted_annotations_per_category"] = {
+                item["name"]: converted_counts[item["yolo_class_id"]] for item in manifest["category_mapping"]
+            }
+            counts["converted_images_per_category"] = {
+                item["name"]: converted_images[item["yolo_class_id"]] for item in manifest["category_mapping"]
+            }
+            documents[split_name] = {
+                "images": list(images.values()),
+                "annotations": normalized_annotations,
+                "categories": [
+                    {"id": item["yolo_class_id"] + 1, "name": item["name"]} for item in manifest["category_mapping"]
+                ],
+            }
+        conversion = {
+            "backend": "native_polygon",
+            "unsupported_policy": unsupported,
+            "segmentation_enabled": True,
+            "bbox_fallback": False,
+            "multipart_policy": "preserve component vertices using retraced nearest-vertex bridges",
+            "multipart_limitation": "YOLO uses one polygon per instance; disconnected topology and holes cannot be represented exactly, and rasterization may include bridge pixels",
+            "use_segments": True,
+            "cls91to80": False,
+        }
         if converter != "native":
             try:
                 _try_ultralytics_conversion(stage, documents, expected, len(class_ids))
                 conversion["backend"] = "ultralytics.convert_coco"
             except Exception as exc:
                 if converter == "ultralytics":
-                    raise DatasetValidationError(f"Official COCO segmentation conversion failed validation: {exc}") from exc
-                conversion["fallback_reason"] = f"{type(exc).__name__}: official converter unavailable, incompatible, or failed strict polygon validation"
+                    raise DatasetValidationError(
+                        f"Official COCO segmentation conversion failed validation: {exc}"
+                    ) from exc
+                conversion["fallback_reason"] = (
+                    f"{type(exc).__name__}: official converter unavailable, incompatible, or failed strict polygon validation"
+                )
         manifest["conversion"] = conversion
         for files in manifest["prepared_files"].values():
             for entry in files:
                 entry["label_sha256"] = annotation_hash(stage / entry["label"])
         # JSON is valid YAML and avoids a YAML dependency for preparation.
-        dataset_yaml = {"path": str(stage), **{name: f"images/{name}" for name in SPLITS}, "names": [item["name"] for item in manifest["category_mapping"]], "nc": len(class_ids)}
+        dataset_yaml = {
+            "path": str(stage),
+            **{name: f"images/{name}" for name in SPLITS},
+            "names": [item["name"] for item in manifest["category_mapping"]],
+            "nc": len(class_ids),
+        }
         _write_json(stage / "dataset.yaml", dataset_yaml)
         _write_json(stage / PREPARED_MANIFEST_NAME, manifest)
         load_prepared_dataset(stage / "dataset.yaml")
@@ -496,7 +624,9 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
     """Verify dataset/manifest, actual images, labels, counts and split isolation."""
     yaml_path = Path(dataset_yaml).resolve()
     if not yaml_path.is_file():
-        raise DatasetValidationError(f"Prepared dataset YAML is missing: {yaml_path}. Run scripts/prepare_cardd_yolo.py first.")
+        raise DatasetValidationError(
+            f"Prepared dataset YAML is missing: {yaml_path}. Run scripts/prepare_cardd_yolo.py first."
+        )
     try:
         document = json.loads(yaml_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
@@ -527,21 +657,36 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
     try:
         from vision.taxonomy import map_category_name
 
-        valid_mapping = read_category_mapping({"categories": [{"id": item["category_id"], "name": item["name"]} for item in mapping]})
+        valid_mapping = read_category_mapping(
+            {"categories": [{"id": item["category_id"], "name": item["name"]} for item in mapping]}
+        )
         expected_mapping = [dict(item, damage_type=map_category_name(item["name"]).value) for item in valid_mapping]
     except (KeyError, TypeError, ValueError) as exc:
         raise DatasetValidationError(f"Invalid prepared category mapping: {exc}") from exc
     if mapping != expected_mapping:
         raise DatasetValidationError("Prepared category mapping is not contiguous or has inconsistent domain types")
     hashes = manifest.get("annotation_hashes", {})
-    if not isinstance(hashes, dict) or set(hashes) != set(SPLITS) or any(not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value) for value in hashes.values()):
+    if (
+        not isinstance(hashes, dict)
+        or set(hashes) != set(SPLITS)
+        or any(
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value)
+            for value in hashes.values()
+        )
+    ):
         raise DatasetValidationError("Prepared manifest must contain SHA-256 annotation hashes for all splits")
     if is_hf_mirror:
         from vision.cardd_hf_preparation import hf_prepared_fingerprint
 
         fingerprint = hf_prepared_fingerprint(manifest, valid_mapping)
     else:
-        stable = {"annotation_hashes": hashes, "category_mapping": valid_mapping, "preparation_version": PREPARATION_VERSION}
+        stable = {
+            "annotation_hashes": hashes,
+            "category_mapping": valid_mapping,
+            "preparation_version": PREPARATION_VERSION,
+        }
         fingerprint = hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if manifest.get("dataset_fingerprint") != fingerprint:
         raise DatasetValidationError("Prepared manifest fingerprint disagrees with categories/annotation hashes")
@@ -574,7 +719,11 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
                 count = _integer(entry["row_count"], "Prepared label count", minimum=0)
             except (KeyError, TypeError) as exc:
                 raise DatasetValidationError("Invalid prepared image/label metadata") from exc
-            if not image_name.startswith(f"images/{split}/") or not label_name.startswith(f"labels/{split}/") or PurePosixPath(image_name).with_suffix(".txt").parts[2:] != PurePosixPath(label_name).parts[2:]:
+            if (
+                not image_name.startswith(f"images/{split}/")
+                or not label_name.startswith(f"labels/{split}/")
+                or PurePosixPath(image_name).with_suffix(".txt").parts[2:] != PurePosixPath(label_name).parts[2:]
+            ):
                 raise DatasetValidationError("Prepared label does not reference a corresponding split image")
             image_path = _contained_file(dataset_root, image_name)
             label_path = _contained_file(dataset_root, label_name)
@@ -582,10 +731,19 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
             if is_hf_mirror and annotation_hash(image_path) != entry.get("image_sha256"):
                 raise DatasetValidationError(f"Prepared HF image content changed: {image_path}")
             rows = validate_segmentation_label(label_path, class_count=len(mapping), expected_count=count)
-            if dict(Counter(str(row[0]) for row in rows)) != entry.get("class_counts") or annotation_hash(label_path) != entry.get("label_sha256"):
-                raise DatasetValidationError(f"Prepared labels changed or class counts disagree with manifest: {label_path}")
+            if dict(Counter(str(row[0]) for row in rows)) != entry.get("class_counts") or annotation_hash(
+                label_path
+            ) != entry.get("label_sha256"):
+                raise DatasetValidationError(
+                    f"Prepared labels changed or class counts disagree with manifest: {label_path}"
+                )
             filename = PurePosixPath(image_name).relative_to(PurePosixPath("images") / split).as_posix().casefold()
-            if image_id in split_ids or filename in split_names or image_path in expected_images or label_path in expected_labels:
+            if (
+                image_id in split_ids
+                or filename in split_names
+                or image_path in expected_images
+                or label_path in expected_labels
+            ):
                 raise DatasetValidationError(f"Duplicate prepared image or label metadata in {split}")
             split_ids.add(image_id)
             split_names.add(filename)
@@ -603,11 +761,23 @@ def load_prepared_dataset(dataset_yaml: Path) -> dict[str, Any]:
         if actual_images != expected_images or actual_labels != expected_labels:
             raise DatasetValidationError(f"Unexpected or missing files in prepared {split} split")
         counts = manifest["splits"][split]
-        if counts.get("image_count") != len(entries) or counts.get("label_count") != len(entries) or counts.get("converted_annotation_count") != row_count:
+        if (
+            counts.get("image_count") != len(entries)
+            or counts.get("label_count") != len(entries)
+            or counts.get("converted_annotation_count") != row_count
+        ):
             raise DatasetValidationError(f"Prepared {split} counts disagree with actual labels/images")
         skipped = counts.get("skipped_annotations", {})
-        if not isinstance(skipped, dict) or any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in skipped.values()) or counts.get("annotation_count") != row_count + sum(skipped.values()):
+        if (
+            not isinstance(skipped, dict)
+            or any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in skipped.values())
+            or counts.get("annotation_count") != row_count + sum(skipped.values())
+        ):
             raise DatasetValidationError(f"Prepared {split} annotation/skip counts are inconsistent")
-        if counts.get("converted_annotations_per_category") != {item["name"]: actual_class_counts[item["yolo_class_id"]] for item in mapping} or counts.get("converted_images_per_category") != {item["name"]: actual_class_images[item["yolo_class_id"]] for item in mapping}:
+        if counts.get("converted_annotations_per_category") != {
+            item["name"]: actual_class_counts[item["yolo_class_id"]] for item in mapping
+        } or counts.get("converted_images_per_category") != {
+            item["name"]: actual_class_images[item["yolo_class_id"]] for item in mapping
+        }:
             raise DatasetValidationError(f"Prepared {split} category distribution disagrees with actual labels")
     return manifest

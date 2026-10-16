@@ -18,9 +18,12 @@ class ClaimVisionService:
             if not asset.path.resolve().is_relative_to(image_root):
                 raise ImageValidationError(f"Claim image is outside the claim image directory: {asset.filename}")
             assessment = self.detector.assess_image(asset.path)
-            images.append(assessment.model_copy(update={"filename": asset.filename, "asset_reference": str(asset.path)}))
+            images.append(
+                assessment.model_copy(update={"filename": asset.filename, "asset_reference": str(asset.path)})
+            )
         return ClaimVisionAssessment(
-            claim_id=case.claim.claim_id, images=images,
+            claim_id=case.claim.claim_id,
+            images=images,
             model_metadata=self.detector.model_metadata,
             confidence_threshold=self.detector.confidence_threshold,
         )

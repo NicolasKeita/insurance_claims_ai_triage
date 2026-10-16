@@ -5,12 +5,12 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from test_agent_tools import configured, plan
+from test_multimodal_investigation import make_visual_assessment
 
 import agent.tools as adapters
 from agent.tools import ReadOnlyAgentTools
 from persistence.vision_assessments import StoredVisionAssessment
-from test_agent_tools import configured, plan
-from test_multimodal_investigation import make_visual_assessment
 
 
 @pytest.mark.parametrize("available", [True, False])

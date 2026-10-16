@@ -10,11 +10,11 @@ import pytest
 from PIL import Image
 
 from vision.cardd_hf import (
-    _PinnedHub,
     _area,
     _contains,
     _mask_polygons,
     _official_load,
+    _PinnedHub,
     default_hf_cache_dir,
     inspect_cardd_hf,
     load_cardd_hf,
@@ -26,7 +26,12 @@ from vision.dataset import DatasetValidationError
 class FixtureDataset:
     def __init__(self, samples, schema=None):
         self.samples = samples
-        self.schema = schema or {"filepath": "StringField", "coco_id": "IntField", "boxes": "EmbeddedDocumentField(Detections)", "damage_regions": "EmbeddedDocumentField(Detections)"}
+        self.schema = schema or {
+            "filepath": "StringField",
+            "coco_id": "IntField",
+            "boxes": "EmbeddedDocumentField(Detections)",
+            "damage_regions": "EmbeddedDocumentField(Detections)",
+        }
 
     def get_field_schema(self):
         return self.schema
@@ -38,8 +43,20 @@ class FixtureDataset:
 def fixture(tmp_path: Path):
     image = tmp_path / "actual_image.png"
     Image.new("RGB", (20, 10), color="red").save(image)
-    label = {"_cls": "Detection", "label": "glass shatter", "bounding_box": [0.1, 0.2, 0.5, 0.6], "mask": np.ones((3, 5), dtype=bool)}
-    sample = {"filepath": str(image), "_id": "unstable-local-database-id", "coco_id": 7, "metadata": {"width": 20, "height": 10}, "boxes": {"_cls": "Detections", "detections": [dict(label, mask=None)]}, "damage_regions": {"_cls": "Detections", "detections": [label]}}
+    label = {
+        "_cls": "Detection",
+        "label": "glass shatter",
+        "bounding_box": [0.1, 0.2, 0.5, 0.6],
+        "mask": np.ones((3, 5), dtype=bool),
+    }
+    sample = {
+        "filepath": str(image),
+        "_id": "unstable-local-database-id",
+        "coco_id": 7,
+        "metadata": {"width": 20, "height": 10},
+        "boxes": {"_cls": "Detections", "detections": [dict(label, mask=None)]},
+        "damage_regions": {"_cls": "Detections", "detections": [label]},
+    }
     return FixtureDataset([sample]), sample, label
 
 
@@ -88,13 +105,26 @@ def test_actual_closed_filled_polyline_vertices_are_preserved(tmp_path):
     raw, sample, _ = fixture(tmp_path)
     raw.schema = {"boundaries": "EmbeddedDocumentField(Polylines)"}
     points = [[0.1, 0.2], [0.8, 0.2], [0.5, 0.7]]
-    sample["boundaries"] = {"_cls": "Polylines", "polylines": [{"_cls": "Polyline", "label": "scratch", "closed": True, "filled": True, "points": [points]}]}
+    sample["boundaries"] = {
+        "_cls": "Polylines",
+        "polylines": [{"_cls": "Polyline", "label": "scratch", "closed": True, "filled": True, "points": [points]}],
+    }
     dataset = normalize_fiftyone_dataset(raw, "owner/subset", None)
     assert dataset.samples[0].instances[0].polygons == (tuple(map(tuple, points)),)
     assert inspect_cardd_hf(dataset)["segmentation"]["polylines"] == 1
 
 
-@pytest.mark.parametrize("change,match", [(lambda label: label.update(label="vehicle"), "Unsupported visual damage category"), (lambda label: label.update(mask=np.zeros((3, 5))), "no foreground"), (lambda label: label.update(mask=np.array([[0, 2], [1, 0]])), "binary pixels"), (lambda label: label.update(bounding_box=[0.9, 0.2, 0.5, 0.6]), "outside normalized"), (lambda label: label.update(mask=np.ones((3, 5, 1))), "2D binary"), (lambda label: label.update(iscrowd=1), "Crowd")])
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        (lambda label: label.update(label="vehicle"), "Unsupported visual damage category"),
+        (lambda label: label.update(mask=np.zeros((3, 5))), "no foreground"),
+        (lambda label: label.update(mask=np.array([[0, 2], [1, 0]])), "binary pixels"),
+        (lambda label: label.update(bounding_box=[0.9, 0.2, 0.5, 0.6]), "outside normalized"),
+        (lambda label: label.update(mask=np.ones((3, 5, 1))), "2D binary"),
+        (lambda label: label.update(iscrowd=1), "Crowd"),
+    ],
+)
 def test_invalid_instance_geometry_fails_without_fake_masks(tmp_path, change, match):
     raw, _, label = fixture(tmp_path)
     change(label)
@@ -124,7 +154,9 @@ def test_mask_components_and_holes_preserve_foreground_area_and_centers():
     assert sum(_area(polygon) for polygon in polygons) == pytest.approx(mask.sum() / mask.size)
     for row in range(7):
         for col in range(9):
-            assert any(_contains(polygon, ((col + 0.5) / 9, (row + 0.5) / 7)) for polygon in polygons) == bool(mask[row, col])
+            assert any(_contains(polygon, ((col + 0.5) / 9, (row + 0.5) / 7)) for polygon in polygons) == bool(
+                mask[row, col]
+            )
 
 
 def test_diagonally_touching_mask_pixels_use_eight_connected_foreground():
@@ -136,13 +168,15 @@ def test_diagonally_touching_mask_pixels_use_eight_connected_foreground():
 
 def test_all_small_binary_masks_preserve_area_and_pixel_membership():
     # Exhaustive small masks exercise diagonal contacts, holes and components.
-    for bits in range(1, 2 ** 9):
+    for bits in range(1, 2**9):
         mask = np.array([(bits >> offset) & 1 for offset in range(9)], dtype=bool).reshape(3, 3)
         polygons, _ = _mask_polygons(mask, [0, 0, 1, 1])
         assert sum(_area(polygon) for polygon in polygons) == pytest.approx(mask.sum() / mask.size)
         for row in range(3):
             for col in range(3):
-                assert any(_contains(polygon, ((col + 0.5) / 3, (row + 0.5) / 3)) for polygon in polygons) == bool(mask[row, col])
+                assert any(_contains(polygon, ((col + 0.5) / 3, (row + 0.5) / 3)) for polygon in polygons) == bool(
+                    mask[row, col]
+                )
 
 
 def test_multiple_usable_fields_require_explicit_choice(tmp_path):
@@ -154,7 +188,14 @@ def test_multiple_usable_fields_require_explicit_choice(tmp_path):
     assert result.annotation_fields == ("damage_regions",)
 
 
-@pytest.mark.parametrize("what,match", [("duplicate", "Duplicate stable sample ID"), ("dimension", "dimensions disagree"), ("missing", "Downloaded image is missing")])
+@pytest.mark.parametrize(
+    "what,match",
+    [
+        ("duplicate", "Duplicate stable sample ID"),
+        ("dimension", "dimensions disagree"),
+        ("missing", "Downloaded image is missing"),
+    ],
+)
 def test_image_identity_and_actual_image_metadata_are_checked(tmp_path, what, match):
     raw, sample, _ = fixture(tmp_path)
     if what == "duplicate":
@@ -172,12 +213,15 @@ def test_loader_uses_env_source_and_pinned_revision_offline(tmp_path, monkeypatc
     monkeypatch.setenv("CARDD_HF_DATASET", "owner/subset")
     monkeypatch.setenv("CARDD_HF_REVISION", "tag")
     calls = []
+
     def resolve(repo, revision):
         calls.append(("resolve", repo, revision))
         return "b" * 40
+
     def load(repo, **kwargs):
         calls.append(("load", repo, kwargs))
         return raw
+
     result = load_cardd_hf(cache_dir=tmp_path / "cache", loader=load, revision_resolver=resolve)
     assert result.revision == "b" * 40
     assert calls == [("resolve", "owner/subset", "tag"), ("load", "owner/subset", {"revision": "b" * 40})]
@@ -189,7 +233,9 @@ def test_pin_facade_forwards_sha_cache_and_rejects_wrong_revision(tmp_path):
     delegate = SimpleNamespace(snapshot_download=lambda **kwargs: calls.append(kwargs), marker="original")
     proxy = _PinnedHub(delegate, "b" * 40, tmp_path)
     proxy.snapshot_download(repo_id="owner/subset", repo_type="dataset")
-    assert calls == [{"repo_id": "owner/subset", "repo_type": "dataset", "revision": "b" * 40, "cache_dir": str(tmp_path)}]
+    assert calls == [
+        {"repo_id": "owner/subset", "repo_type": "dataset", "revision": "b" * 40, "cache_dir": str(tmp_path)}
+    ]
     assert proxy.marker == "original"
     with pytest.raises(DatasetValidationError, match="different HF revision"):
         proxy.snapshot_download(revision="c" * 40)
@@ -203,16 +249,20 @@ def test_failed_official_load_removes_only_its_new_db_entry_and_restores_config(
     entries, deleted = set(), []
     fo.config = SimpleNamespace(default_dataset_dir="unrelated_original_directory")
     fo.dataset_exists = lambda name: name in entries
+
     def delete(name):
         deleted.append(name)
         entries.remove(name)
+
     fo.delete_dataset = delete
     hub.hfh = original_hub
+
     def failing(repo, **kwargs):
         entries.add(kwargs["name"])
         assert isinstance(hub.hfh, _PinnedHub)
         assert fo.config.default_dataset_dir.startswith(str(tmp_path))
         raise RuntimeError("synthetic interrupted download")
+
     hub.load_from_hub = failing
     fo.utils, utils.huggingface = utils, hub
     for name, module in [("fiftyone", fo), ("fiftyone.utils", utils), ("fiftyone.utils.huggingface", hub)]:

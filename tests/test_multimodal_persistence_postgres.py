@@ -5,15 +5,16 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
+from test_multimodal_investigation import make_visual_assessment
+from test_persistence import reference_claim
+from test_persistence_postgres import factory, postgres_engine
 
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
 from persistence.service import PersistenceService
 from persistence.vision_assessments import (
-    VisionAssessmentStore, vision_assessment_to_row,
+    VisionAssessmentStore,
+    vision_assessment_to_row,
 )
-from test_multimodal_investigation import make_visual_assessment
-from test_persistence import reference_claim
-from test_persistence_postgres import factory, postgres_engine
 
 pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
@@ -40,10 +41,13 @@ def test_vision_append_round_trip_and_latest_timestamp_tie(factory, reference_cl
     assert store.latest_for_claim(reference_claim.claim_id).id == second_id
 
 
-@pytest.mark.parametrize("statement", [
-    "UPDATE vision_assessments SET part_model_version='changed' WHERE id=:id",
-    "DELETE FROM vision_assessments WHERE id=:id",
-])
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE vision_assessments SET part_model_version='changed' WHERE id=:id",
+        "DELETE FROM vision_assessments WHERE id=:id",
+    ],
+)
 def test_vision_trigger_forbids_update_delete(factory, reference_claim, statement):
     PersistenceService(factory).import_claim(reference_claim)
     store = VisionAssessmentStore(factory)

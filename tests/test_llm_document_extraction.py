@@ -1,12 +1,17 @@
 from decimal import Decimal
+from pathlib import Path
 from typing import TypeVar
 
+import pytest
 from pydantic import BaseModel
-from pathlib import Path
 
 from claims.assets import resolve_document_assets
+from claims.document_extraction import (
+    DocumentExtractionError,
+)
 from claims.document_ingestion import extract_pdf_text
-from claims.enums import DocumentType
+from claims.document_models import ClaimFormExtraction
+from claims.enums import DamageType, DocumentType
 from claims.llm_document_extraction import (
     extract_accident_report_with_llm,
     extract_claim_form_with_llm,
@@ -14,13 +19,6 @@ from claims.llm_document_extraction import (
     extract_garage_quote_with_llm,
 )
 from claims.loader import load_claim_case
-import pytest
-
-from claims.document_extraction import (
-    DocumentExtractionError,
-)
-from claims.document_models import ClaimFormExtraction
-from claims.enums import DamageType
 
 T = TypeVar(
     "T",
@@ -51,22 +49,15 @@ class FakeStructuredLlm:
         )
         self.call_count += 1
         self.prompts.append(prompt)
-        return response_model.model_validate(
-            self.payloads[index]
-        )
+        return response_model.model_validate(self.payloads[index])
+
 
 def test_extract_garage_quote_with_llm():
-    case = load_claim_case(
-        Path("data/CLAIM-2026-00001")
-    )
+    case = load_claim_case(Path("data/CLAIM-2026-00001"))
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.REPAIR_QUOTE
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.REPAIR_QUOTE)
 
     extraction = extract_pdf_text(asset)
 
@@ -116,14 +107,9 @@ def test_extract_garage_quote_with_llm():
     assert quote.garage == "GARAGE-42"
     assert quote.claim_id == "CLAIM-2026-00001"
     assert len(quote.parts) == 3
-    assert quote.source.filename == (
-        "garage_quote.pdf"
-    )
+    assert quote.source.filename == ("garage_quote.pdf")
 
-    assert (
-        quote.source.document_type
-        == DocumentType.REPAIR_QUOTE
-    )
+    assert quote.source.document_type == DocumentType.REPAIR_QUOTE
     assert llm.call_count == 1
     llm = FakeStructuredLlm(
         {
@@ -151,13 +137,10 @@ def test_extract_garage_quote_with_llm():
         )
     assert llm.call_count == 2
 
+
 def test_garage_quote_retries_missing_fields():
     case = load_claim_case(Path("data/CLAIM-2026-00001"))
-    asset = next(
-        asset
-        for asset in resolve_document_assets(case)
-        if asset.type == DocumentType.REPAIR_QUOTE
-    )
+    asset = next(asset for asset in resolve_document_assets(case) if asset.type == DocumentType.REPAIR_QUOTE)
     extraction = extract_pdf_text(asset)
 
     parts = [
@@ -171,22 +154,24 @@ def test_garage_quote_retries_missing_fields():
             ("Hood", 840),
         )
     ]
-    llm = FakeStructuredLlm([
-        {
-            "garage": "GARAGE-42",
-            "claim_id": "CLAIM-2026-00001",
-            "parts": parts,
-            "labor": None,
-            "total": None,
-        },
-        {
-            "garage": "GARAGE-42",
-            "claim_id": "CLAIM-2026-00001",
-            "parts": parts,
-            "labor": {"amount": 920, "currency": "EUR"},
-            "total": {"amount": 3160, "currency": "EUR"},
-        },
-    ])
+    llm = FakeStructuredLlm(
+        [
+            {
+                "garage": "GARAGE-42",
+                "claim_id": "CLAIM-2026-00001",
+                "parts": parts,
+                "labor": None,
+                "total": None,
+            },
+            {
+                "garage": "GARAGE-42",
+                "claim_id": "CLAIM-2026-00001",
+                "parts": parts,
+                "labor": {"amount": 920, "currency": "EUR"},
+                "total": {"amount": 3160, "currency": "EUR"},
+            },
+        ]
+    )
 
     quote = extract_garage_quote_with_llm(extraction, llm)
 
@@ -196,18 +181,13 @@ def test_garage_quote_retries_missing_fields():
     assert quote.labor.amount == Decimal("920")
     assert quote.total.amount == Decimal("3160")
 
+
 def test_extract_claim_form_with_llm():
-    case = load_claim_case(
-        Path("data/CLAIM-2026-00001")
-    )
+    case = load_claim_case(Path("data/CLAIM-2026-00001"))
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.CLAIM_FORM
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.CLAIM_FORM)
 
     extraction = extract_pdf_text(asset)
 
@@ -233,9 +213,7 @@ def test_extract_claim_form_with_llm():
         llm,
     )
 
-    assert result.claim_id == (
-        "CLAIM-2026-00001"
-    )
+    assert result.claim_id == ("CLAIM-2026-00001")
 
     assert result.vehicle_make == "Renault"
 
@@ -244,18 +222,13 @@ def test_extract_claim_form_with_llm():
         DamageType.LEFT_HEADLIGHT,
     )
 
+
 def test_extract_accident_report_with_llm():
-    case = load_claim_case(
-        Path("data/CLAIM-2026-00001")
-    )
+    case = load_claim_case(Path("data/CLAIM-2026-00001"))
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.ACCIDENT_REPORT
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.ACCIDENT_REPORT)
 
     extraction = extract_pdf_text(asset)
 
@@ -288,18 +261,13 @@ def test_extract_accident_report_with_llm():
         DamageType.LEFT_HEADLIGHT,
     )
 
+
 def test_llm_document_dispatcher():
-    case = load_claim_case(
-        Path("data/CLAIM-2026-00001")
-    )
+    case = load_claim_case(Path("data/CLAIM-2026-00001"))
 
     assets = resolve_document_assets(case)
 
-    asset = next(
-        asset
-        for asset in assets
-        if asset.type == DocumentType.CLAIM_FORM
-    )
+    asset = next(asset for asset in assets if asset.type == DocumentType.CLAIM_FORM)
 
     extraction = extract_pdf_text(asset)
 

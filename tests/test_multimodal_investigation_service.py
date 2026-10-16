@@ -4,13 +4,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from claims.loader import load_claim_case
-import investigation.service as service
-from investigation.history import HistoricalClaimProfile
 from test_investigation import make_consistency
 from test_multimodal_investigation import make_visual_assessment
 from test_persistence import make_anomaly
+
+import investigation.service as service
+from claims.loader import load_claim_case
+from investigation.history import HistoricalClaimProfile
 
 
 def configure(monkeypatch):
@@ -51,8 +51,12 @@ def configure(monkeypatch):
             calls.append("append_investigation")
             return SimpleNamespace(result=result)
 
-    for name, value in (("ClaimRepository", Claims), ("HistoricalClaimRepository", History),
-                        ("VisionAssessmentRepository", Vision), ("AssessmentRepository", Assessments)):
+    for name, value in (
+        ("ClaimRepository", Claims),
+        ("HistoricalClaimRepository", History),
+        ("VisionAssessmentRepository", Vision),
+        ("AssessmentRepository", Assessments),
+    ):
         monkeypatch.setattr(service, name, value)
 
     def anomaly(features):
@@ -66,7 +70,11 @@ def test_multimodal_service_appends_completed_vision_and_v3_in_same_unit_of_work
     claim, calls, anomaly = configure(monkeypatch)
     visual = make_visual_assessment(declared=claim.declared_damage)
     result = service.assess_stored_claim_multimodal(
-        object(), claim.claim_id, make_consistency(), anomaly, visual,
+        object(),
+        claim.claim_id,
+        make_consistency(),
+        anomaly,
+        visual,
     )
     assert result.policy_version == "investigation_policy_v3"
     assert calls == ["claim", "history", "anomaly", "append_vision", "append_anomaly", "append_investigation"]

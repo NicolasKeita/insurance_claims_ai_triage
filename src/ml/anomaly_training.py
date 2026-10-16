@@ -16,13 +16,10 @@ from ml.training import (
     build_preprocessor,
 )
 
-
 # This is the complete model input. Workflow and synthetic benchmark labels are
 # intentionally absent, even when they are present in a source DataFrame.
 ANOMALY_FEATURE_COLUMNS = tuple(CATEGORICAL_FEATURES + NUMERICAL_FEATURES)
-ANOMALY_NUMERICAL_FEATURES = tuple(
-    column for column in NUMERICAL_FEATURES if column != "injuries_declared"
-)
+ANOMALY_NUMERICAL_FEATURES = tuple(column for column in NUMERICAL_FEATURES if column != "injuries_declared")
 
 
 class AnomalyAssessment(BaseModel):
@@ -37,9 +34,7 @@ def select_anomaly_features(dataset: pd.DataFrame) -> pd.DataFrame:
     """Select only the eleven observed claim features used for novelty detection."""
     missing = set(ANOMALY_FEATURE_COLUMNS) - set(dataset.columns)
     if missing:
-        raise ValueError(
-            "Dataset is missing anomaly features: " + ", ".join(sorted(missing))
-        )
+        raise ValueError("Dataset is missing anomaly features: " + ", ".join(sorted(missing)))
     if dataset.empty:
         raise ValueError("Dataset is empty")
 
@@ -109,9 +104,7 @@ class AnomalyDetector:
             anomaly_score=score,
             threshold=self.threshold,
             reference_percentile=percentile,
-            statistical_signals=(
-                self._statistical_signals(frame.iloc[0]) if is_anomalous else []
-            ),
+            statistical_signals=(self._statistical_signals(frame.iloc[0]) if is_anomalous else []),
         )
 
 
@@ -147,9 +140,7 @@ def train_anomaly_detector(
         ]
     )
     pipeline.fit(features)
-    reference_scores = np.sort(
-        -np.asarray(pipeline.score_samples(features), dtype=float)
-    )
+    reference_scores = np.sort(-np.asarray(pipeline.score_samples(features), dtype=float))
     threshold = float(np.quantile(reference_scores, threshold_percentile))
     numerical_reference_bounds = {
         name: (

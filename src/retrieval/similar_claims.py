@@ -13,7 +13,10 @@ from qdrant_client import QdrantClient
 from retrieval.config import DEFAULT_LIMIT, RetrievalConfig, validate_limit
 from retrieval.embeddings import EmbeddingProvider, SentenceTransformerEmbeddingProvider
 from retrieval.models import (
-    RetrievalUnavailableError, SimilarClaim, SimilarClaimsResponse, StoredRetrievalClaim,
+    RetrievalUnavailableError,
+    SimilarClaim,
+    SimilarClaimsResponse,
+    StoredRetrievalClaim,
 )
 from retrieval.qdrant_store import QdrantClaimStore
 from retrieval.representation import build_retrieval_document
@@ -36,8 +39,13 @@ class IndexingStats:
 
 
 class SimilarClaimsIndexer:
-    def __init__(self, repository: RetrievalRepository, embeddings: EmbeddingProvider,
-                 store: QdrantClaimStore, batch_size: int = 32):
+    def __init__(
+        self,
+        repository: RetrievalRepository,
+        embeddings: EmbeddingProvider,
+        store: QdrantClaimStore,
+        batch_size: int = 32,
+    ):
         if not 1 <= batch_size <= 1024:
             raise ValueError("batch_size must be between 1 and 1024")
         self.repository, self.embeddings, self.store = repository, embeddings, store
@@ -64,7 +72,8 @@ class SimilarClaimsIndexer:
 
     def write_manifest(self, path: Path, stats: IndexingStats) -> dict:
         manifest = {
-            "collection_name": self.store.collection, **self.store.contract(),
+            "collection_name": self.store.collection,
+            **self.store.contract(),
             "indexed_claim_count": self.store.count(),
             "generation_timestamp": datetime.now(timezone.utc).isoformat(),
             "last_run": asdict(stats),
@@ -77,8 +86,14 @@ class SimilarClaimsIndexer:
 
 
 class SimilarClaimsService:
-    def __init__(self, repository: RetrievalRepository, embeddings: EmbeddingProvider,
-                 store: QdrantClaimStore, *, same_claim_type: bool = True):
+    def __init__(
+        self,
+        repository: RetrievalRepository,
+        embeddings: EmbeddingProvider,
+        store: QdrantClaimStore,
+        *,
+        same_claim_type: bool = True,
+    ):
         self.repository, self.embeddings, self.store = repository, embeddings, store
         self.same_claim_type = same_claim_type
 
@@ -96,9 +111,9 @@ class SimilarClaimsService:
         page_size = max(20, limit * 4)
         for offset in range(0, MAX_CANDIDATES, page_size):
             size = min(page_size, MAX_CANDIDATES - offset)
-            page = self.store.query(vector, current.incident_date,
-                                    current.facts.claim_type if self.same_claim_type else None,
-                                    size, offset)
+            page = self.store.query(
+                vector, current.incident_date, current.facts.claim_type if self.same_claim_type else None, size, offset
+            )
             authoritative = self.repository.get_many([hit.point_id for hit in page.hits])
             for hit in page.hits:
                 candidate = authoritative.get(hit.point_id)
@@ -109,19 +124,24 @@ class SimilarClaimsService:
                     continue
                 if self.same_claim_type and candidate.facts.claim_type != current.facts.claim_type:
                     continue
-                results.append(SimilarClaim(
-                    claim_id=candidate.claim_id, similarity_score=hit.similarity_score,
-                    incident_date=candidate.incident_date, claim_type=candidate.facts.claim_type,
-                    collision_type=candidate.facts.collision_type,
-                    repair_amount=candidate.facts.repair_amount,
-                    repair_currency=candidate.facts.repair_currency,
-                ))
+                results.append(
+                    SimilarClaim(
+                        claim_id=candidate.claim_id,
+                        similarity_score=hit.similarity_score,
+                        incident_date=candidate.incident_date,
+                        claim_type=candidate.facts.claim_type,
+                        collision_type=candidate.facts.collision_type,
+                        repair_amount=candidate.facts.repair_amount,
+                        repair_currency=candidate.facts.repair_currency,
+                    )
+                )
                 if len(results) == limit:
                     break
             if len(results) == limit or page.exhausted:
                 break
         return SimilarClaimsResponse(
-            claim_id=current.claim_id, representation_version=document.representation_version,
+            claim_id=current.claim_id,
+            representation_version=document.representation_version,
             results=results,
         )
 

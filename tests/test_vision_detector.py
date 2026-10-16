@@ -9,8 +9,11 @@ from PIL import Image
 
 from vision.config import VisionSettings
 from vision.detector import (
-    DamageDetectorError, DetectorOutputError, UltralyticsDamageDetector,
-    category_mapping_from_model_names, map_ultralytics_result,
+    DamageDetectorError,
+    DetectorOutputError,
+    UltralyticsDamageDetector,
+    category_mapping_from_model_names,
+    map_ultralytics_result,
 )
 from vision.images import ImageValidationError
 from vision.taxonomy import VisualDamageType
@@ -20,14 +23,22 @@ NAMES = {0: "scratch", 1: "dent", 2: "crack", 3: "glass shatter", 4: "lamp broke
 
 def framework_result(*, confidence=0.8, class_id=1, box=None, polygon=None):
     return SimpleNamespace(
-        names=NAMES, orig_shape=(12, 20),
+        names=NAMES,
+        orig_shape=(12, 20),
         boxes=SimpleNamespace(xyxyn=[box or [0.1, 0.2, 0.8, 0.9]], cls=[class_id], conf=[confidence]),
         masks=SimpleNamespace(xyn=[polygon or [[0.1, 0.2], [0.8, 0.2], [0.8, 0.9]]]),
     )
 
 
 def convert(result, threshold=0.25):
-    return map_ultralytics_result(result, filename="synthetic.png", width=20, height=12, confidence_threshold=threshold, model_identifier="test-only")
+    return map_ultralytics_result(
+        result,
+        filename="synthetic.png",
+        width=20,
+        height=12,
+        confidence_threshold=threshold,
+        model_identifier="test-only",
+    )
 
 
 def test_framework_adapter_uses_names_and_compact_normalized_polygons():
@@ -49,13 +60,18 @@ def test_threshold_filter_and_missing_mask_semantics():
     assert "unavailable" in assessment.warnings[0]
 
 
-@pytest.mark.parametrize("result", [
-    framework_result(confidence=float("nan")), framework_result(confidence=1.1),
-    framework_result(class_id=1.5), framework_result(class_id=99),
-    framework_result(box=[-0.1, 0.2, 0.8, 0.9]),
-    framework_result(polygon=[[0.1, 0.1], [float("nan"), 0.2], [0.3, 0.3]]),
-    framework_result(polygon=[[0.1, 0.1], [1.1, 0.2], [0.3, 0.3]]),
-])
+@pytest.mark.parametrize(
+    "result",
+    [
+        framework_result(confidence=float("nan")),
+        framework_result(confidence=1.1),
+        framework_result(class_id=1.5),
+        framework_result(class_id=99),
+        framework_result(box=[-0.1, 0.2, 0.8, 0.9]),
+        framework_result(polygon=[[0.1, 0.1], [float("nan"), 0.2], [0.3, 0.3]]),
+        framework_result(polygon=[[0.1, 0.1], [1.1, 0.2], [0.3, 0.3]]),
+    ],
+)
 def test_invalid_framework_output_is_rejected(result):
     with pytest.raises(DetectorOutputError):
         convert(result)
@@ -76,9 +92,16 @@ def test_thin_v_mask_contour_keeps_detection_and_box_with_explicit_warning():
 @pytest.mark.parametrize("point_count", [2, 4])
 def test_invalid_coordinates_do_not_degrade_as_zero_area_contours(invalid_coordinate, point_count):
     with pytest.raises(DetectorOutputError, match="invalid normalized damage geometry"):
-        convert(framework_result(polygon=[
-            [0.1, 0.1], [invalid_coordinate, 0.2], [0.3, 0.3], [invalid_coordinate, 0.2],
-        ][:point_count]))
+        convert(
+            framework_result(
+                polygon=[
+                    [0.1, 0.1],
+                    [invalid_coordinate, 0.2],
+                    [0.3, 0.3],
+                    [invalid_coordinate, 0.2],
+                ][:point_count]
+            )
+        )
 
 
 def test_mapping_rejects_generic_coco_unknown_classes_and_duplicates():
@@ -96,12 +119,15 @@ def test_lazy_detector_loads_once_and_passes_explicit_device(tmp_path):
     path = tmp_path / "synthetic.png"
     Image.new("RGB", (20, 12), "white").save(path)
     calls, predictions = [], []
+
     def predict(**kwargs):
         predictions.append((kwargs["source"].size, kwargs["conf"], kwargs["device"]))
         return [framework_result()]
+
     def factory(checkpoint_path):
         calls.append(checkpoint_path)
         return SimpleNamespace(task="segment", names=NAMES, predict=predict)
+
     detector = UltralyticsDamageDetector(VisionSettings(model_path=checkpoint, device="cpu"), model_factory=factory)
     assert calls == []
     detector.assess_image(path)
@@ -112,7 +138,9 @@ def test_lazy_detector_loads_once_and_passes_explicit_device(tmp_path):
 
 def test_missing_checkpoint_and_invalid_image_never_invoke_model_factory(tmp_path):
     calls = []
-    detector = UltralyticsDamageDetector(VisionSettings(model_path=tmp_path / "missing.pt"), model_factory=lambda path: calls.append(path))
+    detector = UltralyticsDamageDetector(
+        VisionSettings(model_path=tmp_path / "missing.pt"), model_factory=lambda path: calls.append(path)
+    )
     image = tmp_path / "synthetic.png"
     Image.new("RGB", (20, 12)).save(image)
     with pytest.raises(DamageDetectorError, match="No weights were downloaded"):
@@ -139,8 +167,13 @@ def test_detector_rejects_wrong_task_and_generic_pretrained_taxonomy(tmp_path, t
 
 def test_domain_imports_do_not_import_ultralytics_or_torch():
     result = subprocess.run(
-        [sys.executable, "-c", "import sys; import vision; import vision.detector; import vision.service; assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            "-c",
+            "import sys; import vision; import vision.detector; import vision.service; assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr
 

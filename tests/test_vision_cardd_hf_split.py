@@ -8,8 +8,11 @@ from pathlib import Path
 import pytest
 
 from vision.cardd_hf_split import (
-    ALGORITHM, DEFAULT_SPLIT_MANIFEST_PATH, SPLIT_VERSION,
-    create_or_load_cardd_hf_split, validate_cardd_hf_split,
+    ALGORITHM,
+    DEFAULT_SPLIT_MANIFEST_PATH,
+    SPLIT_VERSION,
+    create_or_load_cardd_hf_split,
+    validate_cardd_hf_split,
 )
 from vision.dataset import DatasetValidationError
 
@@ -54,7 +57,16 @@ def fixture(tmp_path, count=100):
             labels.append("scratch")
         if index % 5 == 0:
             labels.append("crack")
-        samples.append(Sample(str(index), path, 100, 80, tuple(Instance(label) for label in labels), hashlib.sha256(content).hexdigest()))
+        samples.append(
+            Sample(
+                str(index),
+                path,
+                100,
+                80,
+                tuple(Instance(label) for label in labels),
+                hashlib.sha256(content).hexdigest(),
+            )
+        )
     return Dataset(tuple(samples), field_schema={"ground_truth": "Polylines"})
 
 
@@ -114,10 +126,17 @@ def test_existing_v1_manifest_stays_valid_and_immutable_after_v2_upgrade(tmp_pat
     legacy = create_or_load_cardd_hf_split(dataset, tmp_path / "initial.json")
     legacy["split_version"] = "cardd_hf_split_v1"
     legacy["algorithm"] = "deterministic_multilabel_greedy_grouped_v1"
-    stable = {"source_fingerprint": legacy["source_fingerprint"], "sample_ids": legacy["sample_ids"],
-              "split_version": legacy["split_version"], "algorithm": legacy["algorithm"],
-              "seed": legacy["seed"], "ratios": legacy["ratios"]}
-    legacy["dataset_fingerprint"] = hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    stable = {
+        "source_fingerprint": legacy["source_fingerprint"],
+        "sample_ids": legacy["sample_ids"],
+        "split_version": legacy["split_version"],
+        "algorithm": legacy["algorithm"],
+        "seed": legacy["seed"],
+        "ratios": legacy["ratios"],
+    }
+    legacy["dataset_fingerprint"] = hashlib.sha256(
+        json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     path.write_text(json.dumps(legacy), encoding="utf-8")
     before = path.read_bytes(), path.stat().st_mtime_ns
     monkeypatch.setattr(module, "_assign", lambda *args: pytest.fail("The legacy frozen split must be reused"))
@@ -129,20 +148,32 @@ def test_common_cooccurring_class_stays_balanced_after_rare_label_assignment(tmp
     # Many common-only images and rare class combinations can cause a naive
     # rare-first greedy allocation to reserve most common images for train.
     patterns = [
-        (("scratch",), 70), (("glass_shatter",), 40),
-        (("dent", "scratch"), 36), (("dent",), 36), (("tire_flat",), 17),
-        (("dent", "lamp_broken", "scratch"), 10), (("dent", "lamp_broken"), 9),
-        (("crack", "dent", "scratch"), 8), (("crack", "scratch"), 7),
+        (("scratch",), 70),
+        (("glass_shatter",), 40),
+        (("dent", "scratch"), 36),
+        (("dent",), 36),
+        (("tire_flat",), 17),
+        (("dent", "lamp_broken", "scratch"), 10),
+        (("dent", "lamp_broken"), 9),
+        (("crack", "dent", "scratch"), 8),
+        (("crack", "scratch"), 7),
         (("crack", "dent", "lamp_broken", "scratch"), 7),
-        (("lamp_broken",), 7), (("crack",), 6), (("lamp_broken", "scratch"), 6),
-        (("dent", "glass_shatter"), 5), (("crack", "dent"), 4),
+        (("lamp_broken",), 7),
+        (("crack",), 6),
+        (("lamp_broken", "scratch"), 6),
+        (("dent", "glass_shatter"), 5),
+        (("crack", "dent"), 4),
         (("crack", "dent", "lamp_broken"), 4),
-        (("crack", "lamp_broken", "scratch"), 2), (("crack", "lamp_broken"), 2),
+        (("crack", "lamp_broken", "scratch"), 2),
+        (("crack", "lamp_broken"), 2),
     ]
     labels = [pattern for pattern, count in patterns for _ in range(count)]
     dataset = fixture(tmp_path, count=len(labels))
     classes = tuple(sorted({label for pattern in labels for label in pattern}))
-    samples = tuple(replace(sample, instances=tuple(Instance(label) for label in pattern)) for sample, pattern in zip(dataset.samples, labels))
+    samples = tuple(
+        replace(sample, instances=tuple(Instance(label) for label in pattern))
+        for sample, pattern in zip(dataset.samples, labels)
+    )
     dataset = replace(dataset, samples=samples, classes=classes)
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     for name in ("train", "val", "test"):
@@ -155,15 +186,28 @@ def test_common_cooccurring_class_stays_balanced_after_rare_label_assignment(tmp
     assert validate_cardd_hf_split(dataset, manifest) == manifest
 
 
-@pytest.mark.parametrize("change", [
-    lambda dataset: replace(dataset, revision="b" * 40),
-    lambda dataset: replace(dataset, repository="other/mirror"),
-    lambda dataset: replace(dataset, classes=tuple(reversed(dataset.classes))),
-    lambda dataset: replace(dataset, samples=dataset.samples[:-1]),
-    lambda dataset: replace(dataset, samples=(replace(dataset.samples[0], instances=(Instance("dent", polygons=(((0.2, 0.2), (0.9, 0.2), (0.9, 0.9)),)),)), *dataset.samples[1:])),
-    lambda dataset: replace(dataset, annotation_fields=("other_field",)),
-    lambda dataset: replace(dataset, samples=(replace(dataset.samples[0], sample_id="other-id"), *dataset.samples[1:])),
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda dataset: replace(dataset, revision="b" * 40),
+        lambda dataset: replace(dataset, repository="other/mirror"),
+        lambda dataset: replace(dataset, classes=tuple(reversed(dataset.classes))),
+        lambda dataset: replace(dataset, samples=dataset.samples[:-1]),
+        lambda dataset: replace(
+            dataset,
+            samples=(
+                replace(
+                    dataset.samples[0], instances=(Instance("dent", polygons=(((0.2, 0.2), (0.9, 0.2), (0.9, 0.9)),)),)
+                ),
+                *dataset.samples[1:],
+            ),
+        ),
+        lambda dataset: replace(dataset, annotation_fields=("other_field",)),
+        lambda dataset: replace(
+            dataset, samples=(replace(dataset.samples[0], sample_id="other-id"), *dataset.samples[1:])
+        ),
+    ],
+)
 def test_frozen_manifest_rejects_changed_source_without_replacement(tmp_path, change):
     dataset = fixture(tmp_path)
     path = tmp_path / "split.json"
@@ -197,7 +241,13 @@ def test_changed_content_with_updated_hash_rejects_frozen_manifest(tmp_path):
     path = tmp_path / "split.json"
     create_or_load_cardd_hf_split(dataset, path)
     dataset.samples[0].filepath.write_bytes(b"changed pixels")
-    dataset = replace(dataset, samples=(replace(dataset.samples[0], image_sha256=hashlib.sha256(b"changed pixels").hexdigest()), *dataset.samples[1:]))
+    dataset = replace(
+        dataset,
+        samples=(
+            replace(dataset.samples[0], image_sha256=hashlib.sha256(b"changed pixels").hexdigest()),
+            *dataset.samples[1:],
+        ),
+    )
     with pytest.raises(DatasetValidationError, match="inconsistent"):
         create_or_load_cardd_hf_split(dataset, path)
 
@@ -207,7 +257,9 @@ def test_byte_identical_images_are_kept_together_without_losing_samples(tmp_path
     original = dataset.samples[0]
     duplicate = dataset.samples[1]
     duplicate.filepath.write_bytes(original.filepath.read_bytes())
-    dataset = replace(dataset, samples=(original, replace(duplicate, image_sha256=original.image_sha256), *dataset.samples[2:]))
+    dataset = replace(
+        dataset, samples=(original, replace(duplicate, image_sha256=original.image_sha256), *dataset.samples[2:])
+    )
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     assert assigned(manifest, original.sample_id) == assigned(manifest, duplicate.sample_id)
     assert manifest["duplicate_grouping"]["duplicate_image_sha256_groups"] == 1
@@ -219,7 +271,14 @@ def test_byte_identical_images_are_kept_together_without_losing_samples(tmp_path
 def test_same_filepath_different_ids_are_kept_together(tmp_path):
     dataset = fixture(tmp_path)
     original = dataset.samples[0]
-    dataset = replace(dataset, samples=(original, replace(dataset.samples[1], filepath=original.filepath, image_sha256=original.image_sha256), *dataset.samples[2:]))
+    dataset = replace(
+        dataset,
+        samples=(
+            original,
+            replace(dataset.samples[1], filepath=original.filepath, image_sha256=original.image_sha256),
+            *dataset.samples[2:],
+        ),
+    )
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     assert assigned(manifest, "0") == assigned(manifest, "1")
     assert manifest["duplicate_grouping"]["duplicate_filepath_groups"] == 1
@@ -229,7 +288,9 @@ def test_frozen_split_detects_identical_bytes_crossing_splits_after_id_swap(tmp_
     dataset = fixture(tmp_path)
     original, duplicate = dataset.samples[:2]
     duplicate.filepath.write_bytes(original.filepath.read_bytes())
-    dataset = replace(dataset, samples=(original, replace(duplicate, image_sha256=original.image_sha256), *dataset.samples[2:]))
+    dataset = replace(
+        dataset, samples=(original, replace(duplicate, image_sha256=original.image_sha256), *dataset.samples[2:])
+    )
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     original_split = assigned(manifest, "0")
     other_split = next(name for name in ("train", "val", "test") if name != original_split)
@@ -257,7 +318,9 @@ def test_duplicate_groups_incompatible_with_exact_sizes_fail_cleanly(tmp_path):
 
 def test_duplicate_sample_ids_are_rejected(tmp_path):
     dataset = fixture(tmp_path)
-    dataset = replace(dataset, samples=(dataset.samples[0], replace(dataset.samples[1], sample_id="0"), *dataset.samples[2:]))
+    dataset = replace(
+        dataset, samples=(dataset.samples[0], replace(dataset.samples[1], sample_id="0"), *dataset.samples[2:])
+    )
     with pytest.raises(DatasetValidationError, match="duplicate sample ID"):
         create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
 
@@ -276,7 +339,10 @@ def test_manifest_sample_overlap_and_distribution_tampering_rejected(tmp_path):
 
 def test_three_rare_class_images_represented_in_each_split(tmp_path):
     dataset = fixture(tmp_path)
-    samples = tuple(replace(sample, instances=(Instance("dent"),) + ((Instance("crack"),) if int(sample.sample_id) < 3 else ())) for sample in dataset.samples)
+    samples = tuple(
+        replace(sample, instances=(Instance("dent"),) + ((Instance("crack"),) if int(sample.sample_id) < 3 else ()))
+        for sample in dataset.samples
+    )
     dataset = replace(dataset, samples=samples, classes=("dent", "crack"))
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     assert [manifest["splits"][name]["images_per_category"]["crack"] for name in ("train", "val", "test")] == [1, 1, 1]
@@ -285,8 +351,13 @@ def test_three_rare_class_images_represented_in_each_split(tmp_path):
 
 def test_impossible_rare_class_coverage_is_explicit(tmp_path):
     dataset = fixture(tmp_path)
-    samples = tuple(replace(sample, instances=(Instance("dent"),) + ((Instance("crack"),) if sample.sample_id == "0" else ())) for sample in dataset.samples)
-    manifest = create_or_load_cardd_hf_split(replace(dataset, samples=samples, classes=("dent", "crack")), tmp_path / "split.json")
+    samples = tuple(
+        replace(sample, instances=(Instance("dent"),) + ((Instance("crack"),) if sample.sample_id == "0" else ()))
+        for sample in dataset.samples
+    )
+    manifest = create_or_load_cardd_hf_split(
+        replace(dataset, samples=samples, classes=("dent", "crack")), tmp_path / "split.json"
+    )
     assert any("'crack'" in warning and "impossible" in warning for warning in manifest["warnings"])
 
 
@@ -299,7 +370,16 @@ def test_corrupt_existing_manifest_is_never_silently_regenerated(tmp_path):
     assert path.read_text() == "partial JSON"
 
 
-@pytest.mark.parametrize("kwargs", [{"seed": True}, {"ratios": {"train": 0.7, "val": 0.3}}, {"ratios": {"train": 0.5, "val": 0.1, "test": 0.1}}, {"ratios": {"train": 0.7, "val": 0.3, "test": 0}}, {"ratios": {"train": float("nan"), "val": 0.15, "test": 0.15}}])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"seed": True},
+        {"ratios": {"train": 0.7, "val": 0.3}},
+        {"ratios": {"train": 0.5, "val": 0.1, "test": 0.1}},
+        {"ratios": {"train": 0.7, "val": 0.3, "test": 0}},
+        {"ratios": {"train": float("nan"), "val": 0.15, "test": 0.15}},
+    ],
+)
 def test_invalid_split_parameters_rejected(tmp_path, kwargs):
     with pytest.raises(DatasetValidationError):
         create_or_load_cardd_hf_split(fixture(tmp_path), tmp_path / "split.json", **kwargs)

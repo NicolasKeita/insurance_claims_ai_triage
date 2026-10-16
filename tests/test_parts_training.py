@@ -16,7 +16,15 @@ from vision.parts_training import load_parts_training_config, require_requested_
 
 def test_frozen_part_baseline_independent_coco_and_experiment():
     config = load_parts_training_config()
-    assert (config.epochs, config.imgsz, config.batch, config.patience, config.seed, config.device, config.workers) == (100, 640, 8, 20, 42, "0", 0)
+    assert (config.epochs, config.imgsz, config.batch, config.patience, config.seed, config.device, config.workers) == (
+        100,
+        640,
+        8,
+        20,
+        42,
+        "0",
+        0,
+    )
     assert config.base_model == "yolo26n-seg.pt" and config.confidence_threshold == 0.25
     assert config.experiment_name == "insurance-claims-vision-parts"
     with pytest.raises(ValueError, match="independent COCO"):
@@ -26,9 +34,16 @@ def test_frozen_part_baseline_independent_coco_and_experiment():
 def test_gpu_request_refuses_cpu_build_before_model_loading(tmp_path):
     config = replace(load_parts_training_config(), dataset_yaml=tmp_path / "dataset.yaml", output_dir=tmp_path / "run")
     with pytest.raises(RuntimeError, match="CPU fallback is forbidden"):
-        run_parts_training(config, model_factory=lambda _: pytest.fail("must not load model"),
-                           environment_provider=lambda: {"cuda_available": False, "python_executable": "cpu-python", "torch_version": "cpu"},
-                           dataset_loader=lambda _: {})
+        run_parts_training(
+            config,
+            model_factory=lambda _: pytest.fail("must not load model"),
+            environment_provider=lambda: {
+                "cuda_available": False,
+                "python_executable": "cpu-python",
+                "torch_version": "cpu",
+            },
+            dataset_loader=lambda _: {},
+        )
     assert not config.output_dir.exists()
 
 
@@ -57,8 +72,15 @@ class PartStub:
         best.write_bytes(b"parts-selected-on-VAL-fixture")
         last = best.with_name("last.pt")
         last.write_bytes(b"parts-last-fixture")
-        self.trainer = SimpleNamespace(best=best, last=last, device="cpu", epoch=99,
-                                       fitness=0.4, best_fitness=0.4, stopper=SimpleNamespace(best_epoch=100))
+        self.trainer = SimpleNamespace(
+            best=best,
+            last=last,
+            device="cpu",
+            epoch=99,
+            fitness=0.4,
+            best_fitness=0.4,
+            stopper=SimpleNamespace(best_epoch=100),
+        )
         for callback in self.callbacks["on_model_save"]:
             callback(self.trainer)
         return SimpleNamespace()
@@ -73,7 +95,12 @@ class PartStub:
 
 
 def test_cuda_available_but_framework_cpu_device_is_rejected(tmp_path):
-    config = replace(load_parts_training_config(), dataset_yaml=tmp_path / "dataset.yaml", output_dir=tmp_path / "run", track_mlflow=False)
+    config = replace(
+        load_parts_training_config(),
+        dataset_yaml=tmp_path / "dataset.yaml",
+        output_dir=tmp_path / "run",
+        track_mlflow=False,
+    )
     config.dataset_yaml.write_text("{}")
     (tmp_path / MANIFEST_NAME).write_text("{}")
     model = PartStub()
@@ -85,22 +112,40 @@ def test_cuda_available_but_framework_cpu_device_is_rejected(tmp_path):
 
     model.train = train
     with pytest.raises(RuntimeError, match="unexpected trainer device"):
-        run_parts_training(config, model_factory=lambda _: model,
-                           environment_provider=lambda: {"cuda_available": True}, dataset_loader=lambda _: {},
-                           tracking_factory=lambda *_args, **_kwargs: nullcontext(None))
+        run_parts_training(
+            config,
+            model_factory=lambda _: model,
+            environment_provider=lambda: {"cuda_available": True},
+            dataset_loader=lambda _: {},
+            tracking_factory=lambda *_args, **_kwargs: nullcontext(None),
+        )
 
 
 def test_reused_pipeline_preserves_train_val_and_final_test_once(tmp_path, monkeypatch):
     monkeypatch.delenv("DAMAGE_CONFIDENCE_THRESHOLD", raising=False)
-    config = replace(load_parts_training_config(), dataset_yaml=tmp_path / "dataset.yaml", output_dir=tmp_path / "run", device="cpu", track_mlflow=False)
+    config = replace(
+        load_parts_training_config(),
+        dataset_yaml=tmp_path / "dataset.yaml",
+        output_dir=tmp_path / "run",
+        device="cpu",
+        track_mlflow=False,
+    )
     config.dataset_yaml.write_text("{}")
-    manifest = {"category_mapping": [{"yolo_class_id": 0, "category_id": 0, "name": "hood"}],
-                "annotation_hashes": {split: "a" * 64 for split in ("train", "val", "test")},
-                "splits": {split: {"image_count": 1, "annotations_per_category": {"hood": 1}} for split in ("train", "val", "test")}}
+    manifest = {
+        "category_mapping": [{"yolo_class_id": 0, "category_id": 0, "name": "hood"}],
+        "annotation_hashes": {split: "a" * 64 for split in ("train", "val", "test")},
+        "splits": {
+            split: {"image_count": 1, "annotations_per_category": {"hood": 1}} for split in ("train", "val", "test")
+        },
+    }
     (tmp_path / MANIFEST_NAME).write_text(json.dumps(manifest))
     model = PartStub()
-    kwargs = {"model_factory": lambda _: model, "environment_provider": lambda: {"cuda_available": False},
-              "dataset_loader": lambda _: manifest, "tracking_factory": lambda *_args, **_kwargs: nullcontext(None)}
+    kwargs = {
+        "model_factory": lambda _: model,
+        "environment_provider": lambda: {"cuda_available": False},
+        "dataset_loader": lambda _: manifest,
+        "tracking_factory": lambda *_args, **_kwargs: nullcontext(None),
+    }
     summary = run_parts_training(config, **kwargs)
     assert model.train_arguments["split"] == "val" and summary["test_used_during_training"] is False
     # Independent part threshold cannot accidentally read the damage environment.
@@ -113,12 +158,22 @@ def test_reused_pipeline_preserves_train_val_and_final_test_once(tmp_path, monke
 
 
 def test_wrong_part_and_incomplete_masks_are_honest_separate_diagnostics():
-    full = ((0., 0.), (1., 0.), (1., 1.), (0., 1.))
-    half = ((0., 0.), (0.5, 0.), (0.5, 1.), (0., 1.))
-    wrong = analyze_instances([ErrorInstance(1, (0, 0, 1, 1), .9, full)], [ErrorInstance(0, (0, 0, 1, 1), polygon=full)],
-                              confidence_threshold=.25, image_size=(100, 100), include_part_errors=True)
+    full = ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))
+    half = ((0.0, 0.0), (0.5, 0.0), (0.5, 1.0), (0.0, 1.0))
+    wrong = analyze_instances(
+        [ErrorInstance(1, (0, 0, 1, 1), 0.9, full)],
+        [ErrorInstance(0, (0, 0, 1, 1), polygon=full)],
+        confidence_threshold=0.25,
+        image_size=(100, 100),
+        include_part_errors=True,
+    )
     assert len(wrong["wrong_parts"]) == 1 and wrong["matches"] == []
-    incomplete = analyze_instances([ErrorInstance(0, (0, 0, 1, 1), .9, half)], [ErrorInstance(0, (0, 0, 1, 1), polygon=full)],
-                                   confidence_threshold=.25, image_size=(100, 100), include_part_errors=True)
+    incomplete = analyze_instances(
+        [ErrorInstance(0, (0, 0, 1, 1), 0.9, half)],
+        [ErrorInstance(0, (0, 0, 1, 1), polygon=full)],
+        confidence_threshold=0.25,
+        image_size=(100, 100),
+        include_part_errors=True,
+    )
     assert len(incomplete["incomplete_masks"]) == 1
-    assert incomplete["incomplete_masks"][0]["truth_mask_coverage"] == pytest.approx(.51)
+    assert incomplete["incomplete_masks"][0]["truth_mask_coverage"] == pytest.approx(0.51)

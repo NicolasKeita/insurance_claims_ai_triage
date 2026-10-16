@@ -5,28 +5,31 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from test_multimodal_investigation import make_visual_assessment
 
 from persistence.vision_assessments import vision_assessment_to_row
-from test_multimodal_investigation import make_visual_assessment
 from vision.geometry import PolygonGeometryError, validated_polygon_geometry
 from vision.models import ClaimMultimodalVisionAssessment, ImageVisualAssessment, NormalizedPolygon
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda payload: payload["damage_model_metadata"].update(version="different-damage-version"),
-    lambda payload: payload["part_model_metadata"].update(version="different-part-version"),
-    lambda payload: payload["fusion_policy"].update(ambiguity_margin=0.02),
-    lambda payload: payload["images"][0]["part_assessment"].update(filename="different-image.png"),
-    lambda payload: payload["images"][0]["part_assessment"].update(width=50),
-    lambda payload: payload["images"][0]["damage_assessment"].update(detections=[]),
-    lambda payload: payload["images"][0].update(evidence=[]),
-    lambda payload: payload["images"][0]["evidence"].append(copy.deepcopy(payload["images"][0]["evidence"][0])),
-    lambda payload: payload["images"][0]["part_assessment"]["detections"][0].update(confidence=0.95),
-    lambda payload: payload["consistency"].update(additional_visual_damage=[]),
-    lambda payload: payload["consistency"].update(visually_supported_declared_damage=["FRONT_BUMPER"]),
-    lambda payload: payload["consistency"].update(visually_supported_quote_damage=[]),
-    lambda payload: payload["consistency"].update(declared_damage_not_visually_confirmed=[]),
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda payload: payload["damage_model_metadata"].update(version="different-damage-version"),
+        lambda payload: payload["part_model_metadata"].update(version="different-part-version"),
+        lambda payload: payload["fusion_policy"].update(ambiguity_margin=0.02),
+        lambda payload: payload["images"][0]["part_assessment"].update(filename="different-image.png"),
+        lambda payload: payload["images"][0]["part_assessment"].update(width=50),
+        lambda payload: payload["images"][0]["damage_assessment"].update(detections=[]),
+        lambda payload: payload["images"][0].update(evidence=[]),
+        lambda payload: payload["images"][0]["evidence"].append(copy.deepcopy(payload["images"][0]["evidence"][0])),
+        lambda payload: payload["images"][0]["part_assessment"]["detections"][0].update(confidence=0.95),
+        lambda payload: payload["consistency"].update(additional_visual_damage=[]),
+        lambda payload: payload["consistency"].update(visually_supported_declared_damage=["FRONT_BUMPER"]),
+        lambda payload: payload["consistency"].update(visually_supported_quote_damage=[]),
+        lambda payload: payload["consistency"].update(declared_damage_not_visually_confirmed=[]),
+    ],
+)
 def test_tampered_domain_graph_is_rejected_before_persistence(mutation):
     payload = make_visual_assessment().model_dump(round_trip=True)
     mutation(payload)
@@ -96,8 +99,12 @@ def test_forced_assignment_of_ambiguous_masks_is_rejected():
     evidence = payload["evidence"][0]
     primary = copy.deepcopy(evidence["associations"][0])
     evidence.update(
-        association_status="assigned", primary_association=primary,
-        vehicle_part="hood", mapped_damage_type="HOOD", part_confidence=0.9, containment_ratio=1,
+        association_status="assigned",
+        primary_association=primary,
+        vehicle_part="hood",
+        mapped_damage_type="HOOD",
+        part_confidence=0.9,
+        containment_ratio=1,
     )
     with pytest.raises(ValidationError, match="ranking and ambiguity"):
         ImageVisualAssessment.model_validate(payload)
@@ -105,29 +112,37 @@ def test_forced_assignment_of_ambiguous_masks_is_rejected():
 
 def test_lower_containment_primary_cannot_replace_the_clear_best_part():
     from test_vision_fusion import damage, fused, part, rectangle
+
     from vision.taxonomy import VehiclePartType
 
-    payload = fused([damage(rectangle(0.1, 0.1, 0.3, 0.3))], [
-        part(), part(rectangle(0.1, 0.1, 0.26, 0.3), kind=VehiclePartType.FRONT_BUMPER),
-    ]).model_dump(round_trip=True)
+    payload = fused(
+        [damage(rectangle(0.1, 0.1, 0.3, 0.3))],
+        [
+            part(),
+            part(rectangle(0.1, 0.1, 0.26, 0.3), kind=VehiclePartType.FRONT_BUMPER),
+        ],
+    ).model_dump(round_trip=True)
     evidence = payload["evidence"][0]
     primary = copy.deepcopy(evidence["associations"][1])
     evidence.update(
-        primary_association=primary, vehicle_part="front_bumper", mapped_damage_type="FRONT_BUMPER",
-        part_confidence=primary["part_confidence"], containment_ratio=primary["damage_containment_ratio"],
+        primary_association=primary,
+        vehicle_part="front_bumper",
+        mapped_damage_type="FRONT_BUMPER",
+        part_confidence=primary["part_confidence"],
+        containment_ratio=primary["damage_containment_ratio"],
     )
     with pytest.raises(ValidationError, match="ranking and ambiguity"):
         ImageVisualAssessment.model_validate(payload)
 
 
 def points(x_min, y_min, x_max, y_max):
-    return [{"x": x_min, "y": y_min}, {"x": x_max, "y": y_min},
-            {"x": x_max, "y": y_max}, {"x": x_min, "y": y_max}]
+    return [{"x": x_min, "y": y_min}, {"x": x_max, "y": y_min}, {"x": x_max, "y": y_max}, {"x": x_min, "y": y_max}]
 
 
 def test_polygon_representation_preserves_holes_and_disconnected_components():
     polygon = NormalizedPolygon(
-        points=points(0, 0, 0.5, 0.5), holes=[points(0.1, 0.1, 0.2, 0.2)],
+        points=points(0, 0, 0.5, 0.5),
+        holes=[points(0.1, 0.1, 0.2, 0.2)],
         components=[NormalizedPolygon(points=points(0.8, 0.8, 1, 1))],
     )
     geometry = validated_polygon_geometry(polygon)
@@ -139,7 +154,9 @@ def test_polygon_representation_preserves_holes_and_disconnected_components():
 
 def test_overlapping_components_and_hole_outside_exterior_are_rejected():
     for polygon in [
-        NormalizedPolygon(points=points(0, 0, 0.5, 0.5), components=[NormalizedPolygon(points=points(0.2, 0.2, 0.8, 0.8))]),
+        NormalizedPolygon(
+            points=points(0, 0, 0.5, 0.5), components=[NormalizedPolygon(points=points(0.2, 0.2, 0.8, 0.8))]
+        ),
         NormalizedPolygon(points=points(0, 0, 0.5, 0.5), holes=[points(0.6, 0.6, 0.7, 0.7)]),
     ]:
         with pytest.raises(PolygonGeometryError, match="Invalid polygon topology"):

@@ -4,9 +4,9 @@ No detector is constructed here. The JSONB snapshot contains normalized geometry
 and model/fusion metadata, rather than raster masks or dataset images.
 """
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
-import json
 from uuid import UUID
 
 from sqlalchemy import select
@@ -25,15 +25,17 @@ class StoredVisionAssessment:
 
 
 def vision_assessment_to_row(
-    claim_pk: UUID, result: ClaimMultimodalVisionAssessment,
+    claim_pk: UUID,
+    result: ClaimMultimodalVisionAssessment,
 ) -> VisionAssessmentRow:
-    checked = ClaimMultimodalVisionAssessment.model_validate(
-        result.model_dump(round_trip=True)
-    )
+    checked = ClaimMultimodalVisionAssessment.model_validate(result.model_dump(round_trip=True))
     json.dumps(checked.model_dump(round_trip=True), default=str, allow_nan=False)
-    payload = json.loads(json.dumps(
-        checked.model_dump(mode="json", round_trip=True), allow_nan=False,
-    ))
+    payload = json.loads(
+        json.dumps(
+            checked.model_dump(mode="json", round_trip=True),
+            allow_nan=False,
+        )
+    )
     return VisionAssessmentRow(
         claim_pk=claim_pk,
         damage_model_identifier=checked.damage_model_metadata.identifier,
@@ -46,7 +48,9 @@ def vision_assessment_to_row(
 
 
 def vision_assessment_from_row(
-    row: VisionAssessmentRow, *, expected_claim_id: str | None = None,
+    row: VisionAssessmentRow,
+    *,
+    expected_claim_id: str | None = None,
 ) -> StoredVisionAssessment:
     result = ClaimMultimodalVisionAssessment.model_validate(row.structured_results)
     if expected_claim_id is not None and result.claim_id != expected_claim_id:
@@ -80,7 +84,8 @@ class VisionAssessmentRepository:
             raise ValueError("Vision assessment list limit must be between 1 and 100")
         pk = self.claims.require_pk(claim_id)
         rows = self.session.scalars(
-            select(VisionAssessmentRow).where(VisionAssessmentRow.claim_pk == pk)
+            select(VisionAssessmentRow)
+            .where(VisionAssessmentRow.claim_pk == pk)
             .order_by(VisionAssessmentRow.created_at.desc(), VisionAssessmentRow.insertion_order.desc())
             .limit(limit)
         )

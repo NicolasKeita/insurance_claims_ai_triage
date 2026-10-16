@@ -1,16 +1,19 @@
 """Data-safety regressions for test setup; no external services are contacted."""
 
-from contextlib import contextmanager
 import re
-
-import pytest
-from sqlalchemy.exc import OperationalError
+from contextlib import contextmanager
 
 import integration_support
+import pytest
 from integration_support import (
-    DEFAULT_TEST_DATABASE_URL, DEFAULT_TEST_QDRANT_URL,
-    get_test_database_config, get_test_qdrant_url, isolated_postgres_schema,
+    DEFAULT_TEST_DATABASE_URL,
+    DEFAULT_TEST_QDRANT_URL,
+    get_test_database_config,
+    get_test_qdrant_url,
+    isolated_postgres_schema,
 )
+from sqlalchemy.exc import OperationalError
+
 from persistence.database import DatabaseConfigurationError, require_test_database
 
 pytestmark = pytest.mark.unit
@@ -40,38 +43,69 @@ def test_ci_can_override_dedicated_test_services(monkeypatch):
     assert get_test_qdrant_url() == "http://ci-qdrant:6333"
 
 
-@pytest.mark.parametrize("database", [
-    "insurance_claims", "postgres", "template0", "template1", "production",
-    "test", "insurance_claims_test_backup", "public/claims_test", "claims%255Ftest",
-    "claims_test;dbname=insurance_claims", "claims_test#fragment", "Claims_test",
-    "x" * 60 + "_test",
-])
+@pytest.mark.parametrize(
+    "database",
+    [
+        "insurance_claims",
+        "postgres",
+        "template0",
+        "template1",
+        "production",
+        "test",
+        "insurance_claims_test_backup",
+        "public/claims_test",
+        "claims%255Ftest",
+        "claims_test;dbname=insurance_claims",
+        "claims_test#fragment",
+        "Claims_test",
+        "x" * 60 + "_test",
+    ],
+)
 def test_database_guard_rejects_unsafe_or_ambiguous_names(database):
     with pytest.raises(DatabaseConfigurationError):
         require_test_database(f"postgresql+psycopg://claims:secret@localhost:5434/{database}")
 
 
-@pytest.mark.parametrize("query", [
-    "dbname=insurance_claims", "database=insurance_claims", "host=production",
-    "hostaddr=10.0.0.1", "port=5432", "user=postgres", "service=production",
-    "options=-csearch_path%3Dpublic", "options=-crole%3Dpostgres", "search_path=public",
-    "connect_timeout=600", "driver=psycopg2", "schema=public",
-    "sslmode=require&sslmode=disable", "sslmode=anything", "SSLMODE=require",
-])
+@pytest.mark.parametrize(
+    "query",
+    [
+        "dbname=insurance_claims",
+        "database=insurance_claims",
+        "host=production",
+        "hostaddr=10.0.0.1",
+        "port=5432",
+        "user=postgres",
+        "service=production",
+        "options=-csearch_path%3Dpublic",
+        "options=-crole%3Dpostgres",
+        "search_path=public",
+        "connect_timeout=600",
+        "driver=psycopg2",
+        "schema=public",
+        "sslmode=require&sslmode=disable",
+        "sslmode=anything",
+        "SSLMODE=require",
+    ],
+)
 def test_database_guard_blocks_libpq_connection_and_schema_overrides(query):
     with pytest.raises(DatabaseConfigurationError):
         require_test_database(DEFAULT_TEST_DATABASE_URL + "?" + query)
 
 
-@pytest.mark.parametrize("url", [
-    "postgresql://localhost/claims_test", "postgresql+psycopg2://localhost/claims_test",
-    "sqlite:///claims_test", "postgresql+psycopg:///claims_test",
-    "postgresql+psycopg://host1,host2/claims_test",
-    "postgresql+psycopg://local%68ost/claims_test",
-    "postgresql+psycopg://localhost:0/claims_test",
-    "postgresql+psycopg://localhost:65536/claims_test",
-    "postgresql+psycopg://localhost:invalid/claims_test",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "postgresql://localhost/claims_test",
+        "postgresql+psycopg2://localhost/claims_test",
+        "sqlite:///claims_test",
+        "postgresql+psycopg:///claims_test",
+        "postgresql+psycopg://host1,host2/claims_test",
+        "postgresql+psycopg://local%68ost/claims_test",
+        "postgresql+psycopg://localhost:0/claims_test",
+        "postgresql+psycopg://localhost:65536/claims_test",
+        "postgresql+psycopg://localhost:invalid/claims_test",
+    ],
+)
 def test_database_guard_rejects_implicit_or_ambiguous_connection_targets(url):
     with pytest.raises(DatabaseConfigurationError):
         require_test_database(url)

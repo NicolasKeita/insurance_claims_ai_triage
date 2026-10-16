@@ -40,9 +40,16 @@ class VisionMLflowTracking:
         params.update({f"environment.{key}": json.dumps(value) for key, value in summary["environment"].items()})
         params.update({f"dataset.{split}.sha256": value for split, value in dataset["annotation_hashes"].items()})
         for key in (
-            "source_name", "source_repository", "source_revision", "actual_sample_count",
-            "official_splits_used", "split_version", "split_manifest_sha256",
-            "preparation_version", "prepared_manifest_sha256", "dataset_yaml_sha256",
+            "source_name",
+            "source_repository",
+            "source_revision",
+            "actual_sample_count",
+            "official_splits_used",
+            "split_version",
+            "split_manifest_sha256",
+            "preparation_version",
+            "prepared_manifest_sha256",
+            "dataset_yaml_sha256",
         ):
             if dataset.get(key) is not None:
                 params[f"dataset.{key}"] = dataset[key]
@@ -65,7 +72,9 @@ class VisionMLflowTracking:
         if summary.get("best_epoch") is not None:
             params["training.best_epoch"] = summary["best_epoch"]
         self.mlflow.log_params(params)
-        self.mlflow.set_tags({"task": "instance-segmentation", "checkpoint_selection_split": "val", "registry_status": "deferred"})
+        self.mlflow.set_tags(
+            {"task": "instance-segmentation", "checkpoint_selection_split": "val", "registry_status": "deferred"}
+        )
         if dataset.get("metrics_scope"):
             self.mlflow.set_tag("metrics_scope", dataset["metrics_scope"])
         metrics = _flatten_metrics(summary["validation_metrics"], "validation")
@@ -100,22 +109,31 @@ class VisionMLflowTracking:
 
 @contextmanager
 def vision_tracking_run(
-    config: DamageTrainingConfig, *, run_id: str | None = None,
+    config: DamageTrainingConfig,
+    *,
+    run_id: str | None = None,
 ) -> Iterator[VisionMLflowTracking | None]:
     if not (config.track_mlflow or os.environ.get("MLFLOW_TRACKING_URI")):
         yield None
         return
     if not os.environ.get("MLFLOW_TRACKING_URI"):
-        warnings.warn("Vision MLflow tracking unavailable: MLFLOW_TRACKING_URI is not configured; continuing CV without tracking.", RuntimeWarning)
+        warnings.warn(
+            "Vision MLflow tracking unavailable: MLFLOW_TRACKING_URI is not configured; continuing CV without tracking.",
+            RuntimeWarning,
+        )
         yield None
         return
     # Reuse the repository's tracking configuration, without imports when off.
     try:
         import mlflow
         from mlflow.exceptions import MlflowException
+
         from ml.tracking import configure_mlflow_tracking
     except ImportError:
-        warnings.warn("Vision MLflow tracking unavailable: dependency import failed; continuing CV without tracking.", RuntimeWarning)
+        warnings.warn(
+            "Vision MLflow tracking unavailable: dependency import failed; continuing CV without tracking.",
+            RuntimeWarning,
+        )
         yield None
         return
     try:
@@ -126,7 +144,10 @@ def vision_tracking_run(
     except MlflowException:
         # Never catch the training body: a CV failure must still propagate.
         # Avoid printing an exception containing credentials from a server URI.
-        warnings.warn("Vision MLflow tracking unavailable: server run initialization failed; continuing CV without tracking.", RuntimeWarning)
+        warnings.warn(
+            "Vision MLflow tracking unavailable: server run initialization failed; continuing CV without tracking.",
+            RuntimeWarning,
+        )
         yield None
         return
     with active_run as run:

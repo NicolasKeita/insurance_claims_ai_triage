@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
-
 from pydantic import BaseModel
-
 from sklearn.inspection import (
     permutation_importance,
 )
@@ -15,6 +13,7 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 
+
 class CrossValidationMetrics(BaseModel):
     model_name: str
 
@@ -25,6 +24,7 @@ class CrossValidationMetrics(BaseModel):
 
     balanced_accuracy_mean: float
     balanced_accuracy_std: float
+
 
 def cross_validate_model(
     *,
@@ -47,9 +47,7 @@ def cross_validate_model(
         cv=cv,
         scoring={
             "f1_macro": "f1_macro",
-            "balanced_accuracy": (
-                "balanced_accuracy"
-            ),
+            "balanced_accuracy": ("balanced_accuracy"),
         },
         n_jobs=-1,
         return_train_score=False,
@@ -57,35 +55,12 @@ def cross_validate_model(
     return CrossValidationMetrics(
         model_name=name,
         folds=folds,
-
-        f1_macro_mean=float(
-            np.mean(
-                scores["test_f1_macro"]
-            )
-        ),
-
-        f1_macro_std=float(
-            np.std(
-                scores["test_f1_macro"]
-            )
-        ),
-
-        balanced_accuracy_mean=float(
-            np.mean(
-                scores[
-                    "test_balanced_accuracy"
-                ]
-            )
-        ),
-
-        balanced_accuracy_std=float(
-            np.std(
-                scores[
-                    "test_balanced_accuracy"
-                ]
-            )
-        ),
+        f1_macro_mean=float(np.mean(scores["test_f1_macro"])),
+        f1_macro_std=float(np.std(scores["test_f1_macro"])),
+        balanced_accuracy_mean=float(np.mean(scores["test_balanced_accuracy"])),
+        balanced_accuracy_std=float(np.std(scores["test_balanced_accuracy"])),
     )
+
 
 def cross_validate_models(
     *,
@@ -109,34 +84,24 @@ def cross_validate_models(
 
     return sorted(
         results,
-        key=lambda item: (
-            item.f1_macro_mean
-        ),
+        key=lambda item: item.f1_macro_mean,
         reverse=True,
     )
 
+
 def select_candidate_model(
-    results: list[
-        CrossValidationMetrics
-    ],
+    results: list[CrossValidationMetrics],
 ) -> str:
-    non_dummy = [
-        result
-        for result in results
-        if result.model_name != "dummy"
-    ]
+    non_dummy = [result for result in results if result.model_name != "dummy"]
 
     if not non_dummy:
-        raise ValueError(
-            "No non-dummy model available"
-        )
+        raise ValueError("No non-dummy model available")
 
     return max(
         non_dummy,
-        key=lambda result: (
-            result.f1_macro_mean
-        ),
+        key=lambda result: result.f1_macro_mean,
     ).model_name
+
 
 def build_classification_report(
     *,
@@ -144,9 +109,7 @@ def build_classification_report(
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> pd.DataFrame:
-    predictions = model.predict(
-        X_test
-    )
+    predictions = model.predict(X_test)
 
     report = classification_report(
         y_test,
@@ -155,10 +118,8 @@ def build_classification_report(
         zero_division=0,
     )
 
-    return (
-        pd.DataFrame(report)
-        .transpose()
-    )
+    return pd.DataFrame(report).transpose()
+
 
 def build_error_analysis(
     *,
@@ -166,38 +127,22 @@ def build_error_analysis(
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> pd.DataFrame:
-    predictions = model.predict(
-        X_test
-    )
+    predictions = model.predict(X_test)
 
-    probabilities = (
-        model.predict_proba(
-            X_test
-        )
-    )
+    probabilities = model.predict_proba(X_test)
     result = X_test.copy()
 
-    result["actual"] = (
-        y_test.to_numpy()
-    )
+    result["actual"] = y_test.to_numpy()
 
-    result["predicted"] = (
-        predictions
-    )
+    result["predicted"] = predictions
 
-    result[
-        "prediction_confidence"
-    ] = probabilities.max(
-        axis=1
-    )
-    errors = result[
-        result["actual"]
-        != result["predicted"]
-    ].copy()
+    result["prediction_confidence"] = probabilities.max(axis=1)
+    errors = result[result["actual"] != result["predicted"]].copy()
     return errors.sort_values(
         by="prediction_confidence",
         ascending=False,
     )
+
 
 def compute_permutation_importance(
     *,
@@ -217,15 +162,9 @@ def compute_permutation_importance(
     )
     importance = pd.DataFrame(
         {
-            "feature": (
-                X_test.columns
-            ),
-            "importance_mean": (
-                result.importances_mean
-            ),
-            "importance_std": (
-                result.importances_std
-            ),
+            "feature": (X_test.columns),
+            "importance_mean": (result.importances_mean),
+            "importance_std": (result.importances_std),
         }
     )
 

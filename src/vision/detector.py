@@ -1,7 +1,7 @@
 """Lazy Ultralytics adapter and a deterministic fake for dataset-free tests."""
 
-import math
 import hashlib
+import math
 from collections.abc import Callable, Mapping
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -13,8 +13,12 @@ from pydantic import ValidationError
 from vision.config import VisionSettings
 from vision.images import load_validated_image
 from vision.models import (
-    ImageDamageAssessment, NormalizedBoundingBox, NormalizedPoint,
-    NormalizedPolygon, VisualDamageDetection, VisionModelMetadata,
+    ImageDamageAssessment,
+    NormalizedBoundingBox,
+    NormalizedPoint,
+    NormalizedPolygon,
+    VisionModelMetadata,
+    VisualDamageDetection,
 )
 from vision.taxonomy import VisualDamageType, map_category_name
 
@@ -75,7 +79,10 @@ def local_model_metadata(path: Path) -> VisionModelMetadata:
     except PackageNotFoundError:
         library_version = None
     return VisionModelMetadata(
-        identifier=str(path), version=digest, framework="ultralytics", framework_version=library_version,
+        identifier=str(path),
+        version=digest,
+        framework="ultralytics",
+        framework_version=library_version,
     )
 
 
@@ -91,6 +98,7 @@ def extract_ultralytics_rows(result: Any, *, width: int, height: int) -> tuple[l
     data = getattr(masks, "data", None) if masks is not None else None
     if data is not None:
         from vision.masks import BinaryMaskGeometryError, native_mask_polygons
+
         try:
             polygons = native_mask_polygons(data, count=len(coordinates), width=width, height=height)
         except BinaryMaskGeometryError as error:
@@ -157,8 +165,14 @@ def category_mapping_from_model_names(names: Any, *, require_complete: bool = Fa
 
 
 def map_ultralytics_result(
-    result: Any, *, filename: str, width: int, height: int,
-    confidence_threshold: float, model_identifier: str, model_version: str | None = None,
+    result: Any,
+    *,
+    filename: str,
+    width: int,
+    height: int,
+    confidence_threshold: float,
+    model_identifier: str,
+    model_version: str | None = None,
 ) -> ImageDamageAssessment:
     """Convert framework-like values without importing Ultralytics or torch."""
     VisionSettings(confidence_threshold=confidence_threshold)
@@ -167,31 +181,51 @@ def map_ultralytics_result(
     detections = []
     assessment_warnings = []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
-        if (isinstance(class_id, bool) or not isinstance(class_id, (int, float))
-                or not math.isfinite(class_id) or class_id != int(class_id) or int(class_id) not in mapping):
+        if (
+            isinstance(class_id, bool)
+            or not isinstance(class_id, (int, float))
+            or not math.isfinite(class_id)
+            or class_id != int(class_id)
+            or int(class_id) not in mapping
+        ):
             raise DetectorOutputError(f"Unknown or invalid predicted damage class: {class_id!r}")
-        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not math.isfinite(confidence) or not 0 <= confidence <= 1:
+        if (
+            isinstance(confidence, bool)
+            or not isinstance(confidence, (int, float))
+            or not math.isfinite(confidence)
+            or not 0 <= confidence <= 1
+        ):
             raise DetectorOutputError("Predicted confidence must be finite and between 0 and 1")
         try:
             bounding_box, polygon, warnings = normalized_detection_geometry(
-                box, polygons[index] if polygons is not None else None, index,
+                box,
+                polygons[index] if polygons is not None else None,
+                index,
             )
             assessment_warnings.extend(warnings)
             if polygons is not None and polygons[index] is None:
                 assessment_warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
             if confidence >= confidence_threshold:
-                detections.append(VisualDamageDetection(
-                    damage_type=mapping[int(class_id)], confidence=confidence,
-                    bounding_box=bounding_box, polygon=polygon,
-                    model_identifier=model_identifier, model_version=model_version,
-                ))
+                detections.append(
+                    VisualDamageDetection(
+                        damage_type=mapping[int(class_id)],
+                        confidence=confidence,
+                        bounding_box=bounding_box,
+                        polygon=polygon,
+                        model_identifier=model_identifier,
+                        model_version=model_version,
+                    )
+                )
         except ValidationError as error:
             raise DetectorOutputError("Detector returned invalid normalized damage geometry") from error
     if polygons is None and detections:
         assessment_warnings.append("Segmentation masks unavailable for these detections; bounding boxes retained.")
     return ImageDamageAssessment(
-        filename=filename, width=width, height=height,
-        detections=detections, warnings=assessment_warnings,
+        filename=filename,
+        width=width,
+        height=height,
+        detections=detections,
+        warnings=assessment_warnings,
     )
 
 
@@ -223,7 +257,9 @@ class UltralyticsDamageDetector:
                 try:
                     from ultralytics import YOLO
                 except ImportError as error:
-                    raise DamageDetectorError("Install the optional vision extra: python -m pip install -e '.[vision]'") from error
+                    raise DamageDetectorError(
+                        "Install the optional vision extra: python -m pip install -e '.[vision]'"
+                    ) from error
                 factory = YOLO
             try:
                 model = factory(str(checkpoint))
@@ -252,9 +288,13 @@ class UltralyticsDamageDetector:
                 raise DetectorOutputError("Detector result dimensions differ from the EXIF-oriented image")
             metadata = self.model_metadata
             assessment = map_ultralytics_result(
-                result, filename=path.name, width=image.width, height=image.height,
+                result,
+                filename=path.name,
+                width=image.width,
+                height=image.height,
                 confidence_threshold=self.confidence_threshold,
-                model_identifier=metadata.identifier, model_version=metadata.version,
+                model_identifier=metadata.identifier,
+                model_version=metadata.version,
             )
             return assessment.model_copy(update={"asset_reference": str(path)})
         finally:
@@ -265,8 +305,10 @@ class FakeDamageDetector:
     """Explicit synthetic observations for tests; never a real damage model."""
 
     def __init__(
-        self, detections_by_filename: Mapping[str, list[VisualDamageDetection]] | None = None,
-        *, confidence_threshold: float = 0.25,
+        self,
+        detections_by_filename: Mapping[str, list[VisualDamageDetection]] | None = None,
+        *,
+        confidence_threshold: float = 0.25,
     ):
         self.settings = VisionSettings(confidence_threshold=confidence_threshold)
         self.detections_by_filename = dict(detections_by_filename or {})
@@ -286,8 +328,15 @@ class FakeDamageDetector:
         try:
             self.calls.append(path)
             return ImageDamageAssessment(
-                filename=path.name, asset_reference=str(path), width=image.width, height=image.height,
-                detections=[item for item in self.detections_by_filename.get(path.name, []) if item.confidence >= self.confidence_threshold],
+                filename=path.name,
+                asset_reference=str(path),
+                width=image.width,
+                height=image.height,
+                detections=[
+                    item
+                    for item in self.detections_by_filename.get(path.name, [])
+                    if item.confidence >= self.confidence_threshold
+                ],
             )
         finally:
             image.close()

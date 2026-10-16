@@ -4,8 +4,8 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-
 import qdrant_integration_support as support
+
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
 

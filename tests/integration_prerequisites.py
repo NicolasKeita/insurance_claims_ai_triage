@@ -2,10 +2,10 @@
 
 import json
 import os
-from pathlib import Path
 import shutil
 import socket
 import subprocess
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -18,15 +18,13 @@ class PrerequisiteError(RuntimeError):
 def service_hint(*services):
     return (
         "\n\nStart the test containers manually:\n\n"
-        "docker compose --profile test up -d --no-deps --wait "
-        + " ".join(services) + "\n\nRetry your pytest command."
+        "docker compose --profile test up -d --no-deps --wait " + " ".join(services) + "\n\nRetry your pytest command."
     )
 
 
 def _docker_read(arguments, root):
     try:
-        return subprocess.run(arguments, cwd=root, capture_output=True, text=True,
-                              timeout=10, check=False)
+        return subprocess.run(arguments, cwd=root, capture_output=True, text=True, timeout=10, check=False)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise PrerequisiteError(f"Docker inspection failed: {error}") from None
 
@@ -40,8 +38,7 @@ def require_compose_services(services, root):
         raise PrerequisiteError(
             "Docker CLI is not installed or is not on PATH.\n\n"
             "Docker is required for the selected local service integrations. "
-            "Install/configure Docker Desktop on Windows/macOS or Docker on Linux."
-            + service_hint(*services)
+            "Install/configure Docker Desktop on Windows/macOS or Docker on Linux." + service_hint(*services)
         )
     info = _docker_read([docker, "info", "--format", "{{.ServerVersion}}"], root)
     if info.returncode:
@@ -49,17 +46,28 @@ def require_compose_services(services, root):
             "Docker Engine is not available.\n\n"
             "Docker is required for the selected local service integrations.\n\n"
             "Start Docker Desktop on Windows/macOS, or start your Docker service on Linux."
-            + service_hint(*services) + f"\n\nDocker diagnostic: {info.stderr.strip()}"
+            + service_hint(*services)
+            + f"\n\nDocker diagnostic: {info.stderr.strip()}"
         )
     for service in services:
         containers = _docker_read(
-            [docker, "compose", "--file", str(Path(root) / "compose.yaml"), "--profile", "test",
-             "ps", "--all", "--quiet", service], root,
+            [
+                docker,
+                "compose",
+                "--file",
+                str(Path(root) / "compose.yaml"),
+                "--profile",
+                "test",
+                "ps",
+                "--all",
+                "--quiet",
+                service,
+            ],
+            root,
         )
         if containers.returncode:
             raise PrerequisiteError(
-                f"Docker Compose could not inspect {service}: {containers.stderr.strip()}"
-                + service_hint(service)
+                f"Docker Compose could not inspect {service}: {containers.stderr.strip()}" + service_hint(service)
             )
         ids = containers.stdout.split()
         if not ids:
@@ -96,13 +104,13 @@ def require_postgres_connection(config):
             pass
     except ConnectionRefusedError:
         raise PrerequisiteError(
-            f"PostgreSQL connection refused at {endpoint}. Check TEST_DATABASE_URL."
-            + service_hint("postgres-test")
+            f"PostgreSQL connection refused at {endpoint}. Check TEST_DATABASE_URL." + service_hint("postgres-test")
         ) from None
     except OSError as error:
         raise PrerequisiteError(f"PostgreSQL connection unavailable at {endpoint}: {error}") from None
-    engine = create_engine(config.url, hide_parameters=True,
-                           connect_args={"connect_timeout": 3, "options": "-csearch_path=pg_catalog"})
+    engine = create_engine(
+        config.url, hide_parameters=True, connect_args={"connect_timeout": 3, "options": "-csearch_path=pg_catalog"}
+    )
     try:
         with engine.connect() as connection:
             actual = connection.scalar(text("SELECT current_database()"))
@@ -144,6 +152,7 @@ def require_qdrant_connection(url):
 
 def require_cached_rag_model():
     from huggingface_hub import try_to_load_from_cache
+
     from retrieval.config import DEFAULT_EMBEDDING_MODEL
 
     def cached(filename):
@@ -153,8 +162,9 @@ def require_cached_rag_model():
             raise PrerequisiteError(f"RAG embedding cache cannot be read: {error}") from None
         return isinstance(result, str) and Path(result).is_file()
 
-    if (not all(cached(name) for name in ("modules.json", "config.json"))
-            or not any(cached(name) for name in ("model.safetensors", "pytorch_model.bin"))):
+    if not all(cached(name) for name in ("modules.json", "config.json")) or not any(
+        cached(name) for name in ("model.safetensors", "pytorch_model.bin")
+    ):
         raise PrerequisiteError(
             f"RAG embedding model is not present in the local cache: {DEFAULT_EMBEDDING_MODEL}.\n"
             "Populate its cache deliberately before running pytest -m rag. "
@@ -172,9 +182,12 @@ def check_selected_prerequisites(markers, root):
     if not needs_postgres and not needs_qdrant:
         return  # Unit and vision selections must not even inspect Docker.
     from integration_support import (
-        DEFAULT_TEST_DATABASE_URL, DEFAULT_TEST_QDRANT_URL,
-        get_test_database_config, get_test_qdrant_url,
+        DEFAULT_TEST_DATABASE_URL,
+        DEFAULT_TEST_QDRANT_URL,
+        get_test_database_config,
+        get_test_qdrant_url,
     )
+
     from persistence.database import DatabaseConfig
 
     try:
