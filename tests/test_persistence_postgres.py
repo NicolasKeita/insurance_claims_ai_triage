@@ -13,7 +13,7 @@ from integration_support import isolated_postgres_schema, migrate_test_schema
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
-from test_persistence import make_anomaly, make_investigation, make_triage, reference_claim
+from test_persistence import make_anomaly, make_investigation, make_triage
 
 from persistence.models import (
     ClaimRow,

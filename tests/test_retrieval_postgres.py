@@ -5,8 +5,6 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, select
-from test_persistence_postgres import factory, postgres_engine, reference_claim
-from test_retrieval_qdrant import remote_store
 
 from api.main import create_app
 from persistence.models import ClaimRow

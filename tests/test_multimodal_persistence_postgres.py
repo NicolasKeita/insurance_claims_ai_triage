@@ -6,8 +6,6 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from test_multimodal_investigation import make_visual_assessment
-from test_persistence import reference_claim
-from test_persistence_postgres import factory, postgres_engine
 
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
 from persistence.service import PersistenceService

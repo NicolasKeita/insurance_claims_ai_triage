@@ -8,8 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, func, select
 from test_investigation import make_consistency
-from test_persistence import make_anomaly, make_investigation, reference_claim
-from test_persistence_postgres import factory, postgres_engine
+from test_persistence import make_anomaly, make_investigation
 
 from api.main import create_app
 from investigation.models import SignalCategory

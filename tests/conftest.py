@@ -1,6 +1,12 @@
 """Classify tests and check only the prerequisites of the selected integrations."""
 
 import pytest
+from test_agent_tools import configured
+from test_persistence import reference_claim
+from test_persistence_postgres import factory, postgres_engine
+from test_retrieval_qdrant import remote_store
+
+__all__ = ["configured", "factory", "postgres_engine", "reference_claim", "remote_store"]
 
 INTEGRATION_MARKERS = ("postgres", "qdrant", "rag", "vision")
 

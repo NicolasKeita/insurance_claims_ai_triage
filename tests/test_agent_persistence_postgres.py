@@ -6,8 +6,6 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 from test_agent_persistence import add_policy_evidence, make_agent_run
-from test_persistence import reference_claim
-from test_persistence_postgres import factory, postgres_engine
 
 from persistence.agent_runs import AgentRunAlreadyExistsError, AgentRunStore
 from persistence.models import (

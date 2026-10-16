@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from test_agent_tools import configured, plan
+from test_agent_tools import plan
 from test_multimodal_investigation import make_visual_assessment
 
 import agent.tools as adapters
