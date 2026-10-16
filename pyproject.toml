@@ -48,7 +48,7 @@ vision = [
 ]
 dev = [
     "pytest>=8",
-    "nk-python-style==0.1.0",
+    "nk-python-style",
 ]
 
 [tool.setuptools.packages.find]
