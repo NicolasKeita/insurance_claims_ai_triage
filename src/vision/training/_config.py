@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
-import tomllib
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, TypeVar
+
+import tomllib
 
 from vision.config import ROOT
 

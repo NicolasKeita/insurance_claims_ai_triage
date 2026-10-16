@@ -13,16 +13,18 @@ from vision.training._config import (
     REPO_ROOT,
     DamageTrainingConfig,
     TrainingHooks,
+    build_hooks,
     load_training_config,
 )
+from vision.training._flow import run_training
 from vision.training._resume import load_resume_metadata, validate_resume_checkpoint
-from vision.training._runner import run_training
 
 __all__ = [
     "DEFAULT_TRAINING_CONFIG",
     "REPO_ROOT",
     "DamageTrainingConfig",
     "TrainingHooks",
+    "build_hooks",
     "dataset_provenance",
     "disable_builtin_mlflow_callbacks",
     "file_sha256",

@@ -94,4 +94,3 @@ def disable_builtin_mlflow_callbacks(trainer: Any) -> None:
             for callback in callbacks
             if not getattr(callback, "__module__", "").startswith("ultralytics.utils.callbacks.mlflow")
         ]
-        raise ValueError("Checkpoint class names/order do not match the prepared dataset taxonomy")

@@ -77,5 +77,8 @@ class ClaimMultimodalVisionService:
         if damage.filename != asset.path.name or parts.filename != asset.path.name:
             raise ImageValidationError("Detector assessment filename does not match the requested image")
         for assessment in (damage, parts):
-            if assessment.asset_reference is not None and Path(assessment.asset_reference).resolve() != asset.path.resolve():
+            if (
+                assessment.asset_reference is not None
+                and Path(assessment.asset_reference).resolve() != asset.path.resolve()
+            ):
                 raise ImageValidationError("Detector assessment asset reference does not match the requested image")

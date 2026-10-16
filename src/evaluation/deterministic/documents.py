@@ -51,8 +51,7 @@ def document_texts(payload, inputs, quoted, amount):
         "ACCIDENT_REPORT": f"DEMO SYNTHETIC ACCIDENT REPORT\nClaim ID: {claim_id}\nDate: {date}\n"
         f"Location: {payload['incident']['location']}\nVehicle:\n{vehicle}\n"
         f"Collision type: Front collision\nReported damage:\n{damage}\nPassengers: 1\nInjuries: {injuries}",
-        "POLICE_REPORT": f"DEMO SYNTHETIC SUPPORTING RECORD\nClaim ID: {claim_id}\n"
-        "No inference of misconduct is made.",
+        "POLICE_REPORT": f"DEMO SYNTHETIC SUPPORTING RECORD\nClaim ID: {claim_id}\nNo inference of misconduct is made.",
     }
     part_amount = (Decimal(amount) / Decimal(max(1, len(quoted) + 1))).quantize(Decimal("0.01"))
     labor = Decimal(amount) - part_amount * len(quoted)

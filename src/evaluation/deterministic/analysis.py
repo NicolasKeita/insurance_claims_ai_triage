@@ -1,9 +1,6 @@
-"""Model scoring, vision observation and investigation stages."""
-
-from hashlib import sha256
+"""Model scoring, investigation and agent review stages."""
 
 from evaluation.fakes import FakeAnomalyPredictor, FakeTriagePredictor
-from evaluation.models import ComponentResult, TraceEvent
 
 
 def score_models(run):
@@ -13,9 +10,9 @@ def score_models(run):
     )
     run.anomaly = run.recorder.record(
         "anomaly",
-        lambda: (
-            run.anomaly_predictor or FakeAnomalyPredictor(run.scenario.inputs.get("anomaly_fixture"))
-        ).assess(run.features),
+        lambda: (run.anomaly_predictor or FakeAnomalyPredictor(run.scenario.inputs.get("anomaly_fixture"))).assess(
+            run.features
+        ),
     )
     run.output.facts["triage"] = run.triage.model_dump(mode="json")
     run.output.facts["anomaly"] = {
@@ -23,53 +20,6 @@ def score_models(run):
         **run.anomaly.model_dump(mode="json", exclude={"assessment"}),
     }
     run.output.model_versions.update(triage=run.triage.model_version, anomaly=run.anomaly.model_version)
-
-
-def _skip_vision(run, reason):
-    run.output.components["vision"] = ComponentResult(status="SKIP", reason=reason, metadata={"applicable": False})
-    run.output.trace.append(TraceEvent(component="vision", status="SKIP", outputs={"reason": reason}))
-
-
-def _image_provenance(run):
-    return [
-        {
-            "filename": filename,
-            "synthetic": True,
-            "asset_sha256": sha256(run.case.image_path(filename).read_bytes()).hexdigest(),
-            "description": "Generated geometry-only pixels; "
-            "detector observations supplied explicitly by the scenario.",
-        }
-        for filename in run.case.claim.images
-    ]
-
-
-def assess_vision(run):
-    """Record explicit vision observations, or an explicit non-applicable skip."""
-    if not run.scenario.vision_required:
-        _skip_vision(run, "Document-centric scenario; no vision fixture requested.")
-        return
-    from claims.consistency import map_quote_damage_types
-
-    from evaluation.deterministic.vision import fake_vision_service
-
-    output = run.output
-    run.visual = run.recorder.record(
-        "vision",
-        lambda: fake_vision_service(run.case, run.scenario.inputs.get("vision_fixture", {})).assess_claim(
-            run.case, quoted_damage_types=map_quote_damage_types(run.quote)[0]
-        ),
-    )
-    output.vision = {
-        **run.visual.model_dump(mode="json"),
-        "observations": [item.model_dump(mode="json") for item in run.visual.observations],
-    }
-    output.facts["vision"] = output.vision
-    output.model_versions.update(
-        damage=run.visual.damage_model_metadata.version or "unknown",
-        parts=run.visual.part_model_metadata.version or "unknown",
-    )
-    output.policy_versions["fusion"] = run.visual.fusion_policy.version
-    output.provenance["images"] = _image_provenance(run)
 
 
 def investigate(run):
@@ -93,3 +43,41 @@ def investigate(run):
     run.output.facts["investigation"] = run.output.investigation
     run.output.signals = [signal.code.value for signal in investigation.signals]
     run.output.policy_versions["investigation"] = investigation.policy_version
+
+
+def review_agent(run):
+    """Run the production agent service against controlled snapshot tools."""
+    from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
+    from agent.service import AgentServiceConfig, ClaimsAgentService
+    from evaluation.fakes import SnapshotAgentTools
+
+    output = run.output
+    snapshots = {
+        "triage": output.facts["triage"],
+        "anomaly": run.anomaly.model_dump(mode="json"),
+        "history": output.facts["history"],
+        "investigation": output.investigation,
+        "vision": output.vision,
+    }
+    tools = SnapshotAgentTools(
+        run.case.claim,
+        snapshots,
+        similar_service=run.similar,
+        knowledge_retriever=run.retriever,
+        unavailable=run.scenario.inputs.get("unavailable_tools", []),
+    )
+    agent = run.recorder.record(
+        "agent",
+        lambda: ClaimsAgentService(
+            AgentServiceConfig(
+                tools,
+                StructuredAgentPlanner(run.llm),
+                StructuredAgentFinalizer(run.llm),
+                max_iterations=8,
+                llm_model="fake-structured-e2e-v1",
+            )
+        ).review_claim(run.case.claim.claim_id),
+    )
+    output.agent = agent.model_dump(mode="json")
+    output.facts["agent"] = output.agent
+    output.model_versions.update(embeddings=run.embeddings.model_name, llm="fake-structured-e2e-v1")

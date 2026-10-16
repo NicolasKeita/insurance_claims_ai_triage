@@ -12,8 +12,7 @@ from evaluation.metrics.latencies import latency_summary
 from evaluation.metrics.ratio import ratio
 
 DEFINITIONS = {
-    "scenario_pass_rate": "PASS / (PASS + FAIL); SKIP excluded and separately counted; "
-    "partial scenarios never PASS.",
+    "scenario_pass_rate": "PASS / (PASS + FAIL); SKIP excluded and separately counted; partial scenarios never PASS.",
     "component_success_rate": "Technical PASS / (PASS + FAIL) among attempted applicable components; "
     "requested_completion_rate includes unavailable requests.",
     "expected_fact_recall": "Matched controlled structured fact assertions / "

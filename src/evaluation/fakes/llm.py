@@ -87,9 +87,7 @@ class FakeStructuredLlm:
 
     @staticmethod
     def _uncertainties(unavailable, missing, by_type):
-        uncertainties = [
-            f"{item['tool']}: {item.get('message') or 'Evidence unavailable'}" for item in unavailable
-        ]
+        uncertainties = [f"{item['tool']}: {item.get('message') or 'Evidence unavailable'}" for item in unavailable]
         if missing:
             uncertainties.append("Some document entries are unavailable and need human follow-up.")
         visual = FakeStructuredLlm._structured(by_type, "VISUAL_ASSESSMENT")

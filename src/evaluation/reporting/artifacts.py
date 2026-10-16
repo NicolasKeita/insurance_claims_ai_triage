@@ -22,8 +22,12 @@ def _json(path, value):
 def _summary_document(report):
     summary = report.model_dump(mode="json", exclude={"results"})
     summary["scenarios"] = [
-        {"scenario_id": result.scenario_id, "status": result.status, "trace_reference": result.trace_reference,
-         "timings": result.timings}
+        {
+            "scenario_id": result.scenario_id,
+            "status": result.status,
+            "trace_reference": result.trace_reference,
+            "timings": result.timings,
+        }
         for result in report.results
     ]
     return summary

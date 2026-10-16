@@ -1,6 +1,6 @@
 """Offline deterministic evaluation backend for the controlled benchmark."""
 
-from evaluation.deterministic.analysis import assess_vision, investigate, score_models
+from evaluation.deterministic.analysis import investigate, review_agent, score_models
 from evaluation.deterministic.documents import extract_case_documents
 from evaluation.deterministic.fixtures import ROOT, SYNTHETIC_PROVENANCE, materialize_scenario_case
 from evaluation.deterministic.recording import TraceRecorder
@@ -13,7 +13,7 @@ from evaluation.deterministic.stages import (
     extract_documents,
     load_claim,
 )
-from evaluation.deterministic.vision import fake_vision_service
+from evaluation.deterministic.vision import assess_vision, fake_vision_service
 
 __all__ = [
     "ROOT",
@@ -32,5 +32,6 @@ __all__ = [
     "materialize_scenario_case",
     "retrieve_knowledge",
     "retrieve_similar",
+    "review_agent",
     "score_models",
 ]

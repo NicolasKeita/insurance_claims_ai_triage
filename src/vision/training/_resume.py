@@ -57,6 +57,8 @@ def _validate_resume_metadata(
         raise ValueError("Resume requires a VAL-selected baseline")
     _validate_resume_epochs(config, metadata)
     _validate_resume_checkpoints(config, metadata)
+
+
 def load_resume_metadata(
     config: DamageTrainingConfig,
     manifest: dict[str, Any],
@@ -102,26 +104,3 @@ def validate_resume_checkpoint(
         raise ValueError("last.pt must belong to the exact train run directory")
     verify_class_names(getattr(model, "names", None), manifest["category_mapping"])
     return checkpoint
-
-
-def resume_stopper_restorer(
-    config: DamageTrainingConfig,
-    recovery: dict[str, Any],
-    saved_checkpoint: dict[str, Any],
-) -> Callable[[Any], None]:
-    """Rebuild the stopper state of the interrupted run before resume continues."""
-
-    def restore(trainer: Any) -> None:
-        if trainer.start_epoch != recovery["epochs_completed"] or trainer.epochs != config.epochs:
-            raise RuntimeError("Framework resume did not preserve the expected start epoch and total epoch budget")
-        saved_stopper = saved_checkpoint.get("stopper") or {}
-        trainer.best_fitness = saved_checkpoint["best_fitness"]
-        trainer.stopper.best_fitness = saved_stopper.get("best_fitness", saved_checkpoint["best_fitness"])
-        trainer.stopper.best_epoch = saved_stopper.get("best_epoch", recovery["best_epoch"])
-        trainer.stopper.possible_stop = (
-            (recovery["epochs_completed"] - trainer.stopper.best_epoch >= config.patience - 1)
-            if config.patience
-            else False
-        )
-
-    return restore

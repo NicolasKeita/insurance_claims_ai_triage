@@ -1,5 +1,9 @@
 """Explicit vision test boundary; the fusion service under test is real."""
 
+from hashlib import sha256
+
+from evaluation.models import ComponentResult, TraceEvent
+
 
 def fake_vision_service(case, fixture):
     """Construct only explicit test observations; the fusion service is real."""
@@ -44,3 +48,47 @@ def _part(item, detection, bounding_box, polygon):
         confidence=item.get("part_confidence", 0.96),
         **_geometry(part_box, bounding_box, polygon),
     )
+
+
+def _skip_vision(run, reason):
+    run.output.components["vision"] = ComponentResult(status="SKIP", reason=reason, metadata={"applicable": False})
+    run.output.trace.append(TraceEvent(component="vision", status="SKIP", outputs={"reason": reason}))
+
+
+def _image_provenance(run):
+    return [
+        {
+            "filename": filename,
+            "synthetic": True,
+            "asset_sha256": sha256(run.case.image_path(filename).read_bytes()).hexdigest(),
+            "description": "Generated geometry-only pixels; detector observations supplied explicitly by the scenario.",
+        }
+        for filename in run.case.claim.images
+    ]
+
+
+def assess_vision(run):
+    """Record explicit vision observations, or an explicit non-applicable skip."""
+    if not run.scenario.vision_required:
+        _skip_vision(run, "Document-centric scenario; no vision fixture requested.")
+        return
+    from claims.consistency import map_quote_damage_types
+
+    output = run.output
+    run.visual = run.recorder.record(
+        "vision",
+        lambda: fake_vision_service(run.case, run.scenario.inputs.get("vision_fixture", {})).assess_claim(
+            run.case, quoted_damage_types=map_quote_damage_types(run.quote)[0]
+        ),
+    )
+    output.vision = {
+        **run.visual.model_dump(mode="json"),
+        "observations": [item.model_dump(mode="json") for item in run.visual.observations],
+    }
+    output.facts["vision"] = output.vision
+    output.model_versions.update(
+        damage=run.visual.damage_model_metadata.version or "unknown",
+        parts=run.visual.part_model_metadata.version or "unknown",
+    )
+    output.policy_versions["fusion"] = run.visual.fusion_policy.version
+    output.provenance["images"] = _image_provenance(run)

@@ -48,9 +48,7 @@ def seed_case(factory, case: ClaimCase | Claim, assessments: DemoAssessments | N
 def _history_claim(current: Claim, fixture, index: int) -> Claim:
     payload = current.model_dump(mode="json")
     payload["claim_id"] = fixture.get("claim_id", f"{current.claim_id}-HISTORY-{index}")
-    payload["incident"]["date"] = (
-        current.incident.date - timedelta(days=fixture.get("days_before", 10))
-    ).isoformat()
+    payload["incident"]["date"] = (current.incident.date - timedelta(days=fixture.get("days_before", 10))).isoformat()
     payload["customer"]["customer_id"] = fixture.get("customer_id", current.customer.customer_id)
     payload["repair_estimate"] = {
         "amount": str(fixture.get("amount", 1000)),
