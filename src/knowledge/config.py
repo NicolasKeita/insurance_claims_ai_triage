@@ -21,11 +21,13 @@ class KnowledgeConfig:
     batch_size: int = 32
 
     def __post_init__(self):
+        """
+        Explicit --recreate may never target the existing claim index.
+        """
         if not all((self.qdrant_url, self.embedding_model, self.policy_collection, self.procedure_collection)):
             raise ValueError("RAG URL, model and collections must be nonempty")
         if self.policy_collection == self.procedure_collection:
             raise ValueError("POLICY and PROCEDURE must have separate collections")
-        # Explicit --recreate may never target the existing claim index.
         claims_collection = os.environ.get("CLAIMS_SIMILAR_COLLECTION", "insurance_claims_similar_v1")
         if claims_collection in (self.policy_collection, self.procedure_collection):
             raise ValueError("RAG collections must differ from the Similar Claims collection")

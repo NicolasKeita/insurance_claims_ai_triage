@@ -35,6 +35,9 @@ def components():
 
 
 def test_canonical_representation_is_stable_and_allowlisted():
+    """
+    The input type cannot carry identifiers or model outputs at all.
+    """
     current = claim()
     expected = "\n".join(
         [
@@ -84,7 +87,6 @@ def test_canonical_representation_is_stable_and_allowlisted():
         "mlflow",
     ]
     assert all(word not in expected.lower() for word in forbidden)
-    # The input type cannot carry identifiers or model outputs at all.
     assert set(vars(current.facts)) == {
         "claim_type",
         "collision_type",
@@ -195,6 +197,11 @@ def test_incompatible_collection_never_silently_deleted(components, difference):
 
 
 def test_ranking_top_k_and_strict_date_and_type_filters(components):
+    """
+    Qdrant itself excludes type/date/current; do not rely on app filtering alone.
+
+    compares to actual HOME, never hardcodes AUTO_COLLISION
+    """
     embeddings, store = components
     claims = [
         claim(),
@@ -214,7 +221,6 @@ def test_ranking_top_k_and_strict_date_and_type_filters(components):
     results = service.search(claims[0].claim_id, 20).results
     assert [r.claim_id for r in results] == [c.claim_id for c in claims[1:4]]
     assert all(r.incident_date < claims[0].incident_date for r in results)
-    # Qdrant itself excludes type/date/current; do not rely on app filtering alone.
     page = store.query(
         embeddings.embed_query(build_retrieval_document(claims[0]).canonical_text),
         claims[0].incident_date,
@@ -223,7 +229,7 @@ def test_ranking_top_k_and_strict_date_and_type_filters(components):
     )
     assert {h.point_id for h in page.hits} == {c.point_id for c in claims[1:4]}
     other_domain = service.search(claims[-1].claim_id).results
-    assert other_domain == []  # compares to actual HOME, never hardcodes AUTO_COLLISION
+    assert other_domain == []
     unfiltered = SimilarClaimsService(repository, embeddings, store, same_claim_type=False)
     assert claims[-1].claim_id in {r.claim_id for r in unfiltered.search(claims[0].claim_id).results}
 
@@ -250,10 +256,12 @@ def test_stale_points_ignored_and_postgres_facts_used(components):
 
 
 def test_search_refills_after_a_whole_page_of_deleted_points(components):
+    """
+    Keep only the last ranked candidate; determine ranking before removing rows.
+    """
     embeddings, store = components
     repository = FakeRepository([claim(), *[claim(i, days=1) for i in range(2, 55)]])
     SimilarClaimsIndexer(repository, embeddings, store).index_all()
-    # Keep only the last ranked candidate; determine ranking before removing rows.
     current = repository.get("DEMO-TEST-1")
     vector = embeddings.embed_query(build_retrieval_document(current).canonical_text)
     ordered = store.query(vector, current.incident_date, current.facts.claim_type, 100).hits

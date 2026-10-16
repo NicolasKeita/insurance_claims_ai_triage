@@ -15,6 +15,10 @@ class BinaryMaskGeometryError(ValueError):
 
 
 def binary_mask_to_polygon(mask: Any) -> NormalizedPolygon | None:
+    """
+    Coalesce equal runs in adjacent rows. GEOS, rather than hand-written ring tracing, performs the
+    complete polygon union and topology construction.
+    """
     import numpy as np
     from shapely import union_all
     from shapely.geometry import box
@@ -30,8 +34,6 @@ def binary_mask_to_polygon(mask: Any) -> NormalizedPolygon | None:
     def rectangle(start, end, top, bottom):
         return box(start / width, top / height, end / width, bottom / height)
 
-    # Coalesce equal runs in adjacent rows. GEOS, rather than hand-written ring
-    # tracing, performs the complete polygon union and topology construction.
     for row_index, row in enumerate(mask.astype(bool, copy=False)):
         changes = np.flatnonzero(np.diff(np.pad(row.astype(np.int8), (1, 1))))
         runs = {tuple(map(int, pair)) for pair in changes.reshape(-1, 2)}

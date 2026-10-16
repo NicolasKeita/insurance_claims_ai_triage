@@ -77,10 +77,15 @@ def extract_pdf_text_auto(
     ocr_engine: OcrEngine,
     dpi: int = 300,
 ) -> PdfTextExtraction:
+    """
+    Every page already contains usable native text: OCR is unnecessary.
+
+    Keep native text whenever available.
+
+    No native text: render this page and use OCR.
+    """
     native = extract_pdf_text(asset)
 
-    # Every page already contains usable native text:
-    # OCR is unnecessary.
     if all(page.strip() for page in native.pages):
         return native
 
@@ -96,7 +101,6 @@ def extract_pdf_text_auto(
 
     try:
         for page_index, native_text in enumerate(native.pages):
-            # Keep native text whenever available.
             if native_text.strip():
                 pages.append(native_text)
 
@@ -104,8 +108,6 @@ def extract_pdf_text_auto(
 
                 continue
 
-            # No native text:
-            # render this page and use OCR.
             page = document.load_page(page_index)
 
             pixmap = page.get_pixmap(

@@ -22,8 +22,10 @@ class SentenceTransformerEmbeddingProvider:
     normalized = True
 
     def __init__(self, model_name: str, *, asymmetric: bool = False, local_files_only: bool = False):
+        """
+        Existing claim-to-claim indexes retain their symmetric encode contract.
+        """
         self.model_name = model_name
-        # Existing claim-to-claim indexes retain their symmetric encode contract.
         self.asymmetric = asymmetric
         self.local_files_only = local_files_only
         self._model = None

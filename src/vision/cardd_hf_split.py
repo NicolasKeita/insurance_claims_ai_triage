@@ -284,6 +284,9 @@ def _balance_groups(
     exact capacities and duplicate isolation. Search label-pattern pairs rather
     than all image pairs, minimizing sum(squared residual / class image count).
     This uses annotation incidence only, before training or model evaluation.
+
+    At six multilabel classes, singleton incidence has at most 64 patterns. Duplicate groups contribute their
+    actual image-count vectors separately.
     """
     split_for_id = {sample_id: name for name in SPLITS for sample_id in assignments[name]}
     buckets = {name: defaultdict(list) for name in SPLITS}
@@ -301,8 +304,6 @@ def _balance_groups(
     residual = {
         name: [actual[name][index] - desired[label][name] for index, label in enumerate(classes)] for name in SPLITS
     }
-    # At six multilabel classes, singleton incidence has at most 64 patterns.
-    # Duplicate groups contribute their actual image-count vectors separately.
     pattern_pairs = []
     for first in sorted(patterns):
         for second in sorted(patterns):
@@ -356,6 +357,9 @@ def _balance_groups(
 def _assign(
     groups: list[_Group], classes: list[str], targets: dict[str, int], ratios: dict[str, float], seed: int
 ) -> dict[str, list[str]]:
+    """
+    Compute seeded tie keys once; repeated hashing would dominate a real run.
+    """
     total_per_class = Counter(
         label for group in groups for label, count in group.image_counts.items() for _ in range(count)
     )
@@ -363,7 +367,6 @@ def _assign(
     actual = {name: Counter() for name in SPLITS}
     capacity = dict(targets)
     output = {name: [] for name in SPLITS}
-    # Compute seeded tie keys once; repeated hashing would dominate a real run.
     tie_keys = {group.ids: _digest([seed, group.ids]) for group in groups}
 
     def tie(group):
@@ -563,7 +566,11 @@ def create_or_load_cardd_hf_split(
     ratios: dict[str, float] | None = None,
     seed: int = 42,
 ) -> dict[str, Any]:
-    """Create once, otherwise reuse and validate the same frozen manifest."""
+    """
+    Create once, otherwise reuse and validate the same frozen manifest.
+
+    Exclusive creation also prevents two concurrent jobs replacing a split.
+    """
     ratios = _parameters(ratios, seed)
     path = Path(manifest_path).expanduser().resolve()
     if path.exists():
@@ -600,7 +607,6 @@ def create_or_load_cardd_hf_split(
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        # Exclusive creation also prevents two concurrent jobs replacing a split.
         with path.open("x", encoding="utf-8", newline="\n") as stream:
             json.dump(manifest, stream, indent=2, sort_keys=True, allow_nan=False)
             stream.write("\n")

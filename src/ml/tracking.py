@@ -9,10 +9,12 @@ from sklearn.pipeline import Pipeline
 
 
 def configure_mlflow_tracking() -> str:
-    """Use the explicitly configured tracking server for MLOps commands."""
-    # MLflow prints Unicode run links when a run ends. Windows consoles may
-    # default to cp1252, which otherwise makes a successful run exit with an
-    # encoding error.
+    """
+    Use the explicitly configured tracking server for MLOps commands.
+
+    MLflow prints Unicode run links when a run ends. Windows consoles may default to cp1252, which otherwise makes
+    a successful run exit with an encoding error.
+    """
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="backslashreplace")
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")

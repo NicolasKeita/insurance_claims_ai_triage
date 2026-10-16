@@ -8,6 +8,9 @@ def _ratio(numerator, denominator):
 
 
 def aggregate_metrics(results):
+    """
+    Small runs are diagnostics. Tail summaries require >=20 observations.
+    """
     counts = {status: sum(r.status == status for r in results) for status in ("PASS", "FAIL", "SKIP")}
     assertions = [a for result in results for a in result.assertions]
     executed = [a for a in assertions if a.status != "SKIP"]
@@ -58,7 +61,6 @@ def aggregate_metrics(results):
             "individual_seconds": samples,
             "mean_seconds": mean(samples) if samples else None,
         }
-        # Small runs are diagnostics. Tail summaries require >=20 observations.
         if len(samples) >= 20:
             ordered = sorted(samples)
             timings[name].update(

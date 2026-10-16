@@ -117,7 +117,9 @@ def create_app(
                 engine.dispose()
 
     def predictor(request: Request, kind: str):
-        # Read-only history remains usable without loading any MLflow model.
+        """
+        Read-only history remains usable without loading any MLflow model.
+        """
         with request.app.state.model_lock:
             attribute = f"{kind}_predictor"
             value = getattr(request.app.state, attribute)
@@ -128,11 +130,13 @@ def create_app(
             return value
 
     def database_session(request: Request):
+        """
+        One fresh session/transaction, with rollback on any exception.
+        """
         factory = request.app.state.session_factory
         if factory is None:
             raise HTTPException(status_code=503, detail="Database is not configured")
         try:
-            # One fresh session/transaction, with rollback on any exception.
             with factory.begin() as session:
                 yield session
         except SQLAlchemyError as error:

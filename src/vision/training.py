@@ -282,9 +282,11 @@ def run_training(
         model.add_callback("on_pretrain_routine_end", restore_resume_stopper)
 
     def record_checkpoint_progress(trainer: Any) -> None:
-        # save_model writes best.pt whenever fitness equals best_fitness,
-        # including ties. The stopper records only strict improvements, so its
-        # best_epoch can differ from the epoch of the actual selected weights.
+        """
+        save_model writes best.pt whenever fitness equals best_fitness, including ties. The stopper
+        records only strict improvements, so its best_epoch can differ from the epoch of the actual
+        selected weights.
+        """
         epoch_completed = int(trainer.epoch) + 1
         if trainer.fitness == trainer.best_fitness:
             progress["best_epoch"] = epoch_completed

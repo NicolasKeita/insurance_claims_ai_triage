@@ -19,6 +19,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.postgres]
 
 
 def test_repository_bulk_reads_two_queries_per_batch(factory, reference_claim):
+    """
+    Two per nonempty batch, one final empty read.
+    """
     with factory.begin() as session:
         repo = ClaimRepository(session)
         repo.add(reference_claim)
@@ -36,7 +39,7 @@ def test_repository_bulk_reads_two_queries_per_batch(factory, reference_claim):
     try:
         batches = list(repository.iter_batches(3))
         assert [len(batch) for batch in batches] == [3, 3, 1]
-        assert len(sql) == 7  # Two per nonempty batch, one final empty read.
+        assert len(sql) == 7
         assert all(isinstance(c, StoredRetrievalClaim) for b in batches for c in b)
         sql.clear()
         current = repository.get(reference_claim.claim_id)
@@ -70,6 +73,9 @@ def test_step26_seed_idempotent_and_preserves_step25_history(factory, reference_
 
 @pytest.mark.qdrant
 def test_postgres_qdrant_and_api_use_authoritative_business_data(factory, reference_claim, remote_store):
+    """
+    Same indexed vector/rank, fresh PostgreSQL display amount.
+    """
     from scripts.seed_historical_claims import seed as seed_history
 
     with factory.begin() as session:
@@ -90,7 +96,6 @@ def test_postgres_qdrant_and_api_use_authoritative_business_data(factory, refere
         row = session.scalar(select(ClaimRow).where(ClaimRow.claim_id == first.claim_id))
         row.repair_estimate_amount = Decimal("3200")
 
-    # Same indexed vector/rank, fresh PostgreSQL display amount.
     class BorrowedService:
         search = service.search
 

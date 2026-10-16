@@ -53,6 +53,9 @@ class RealEvaluationConfig:
 
     @classmethod
     def from_toml(cls, path: Path = DEFAULT_CONFIG, **overrides):
+        """
+        Current project environment settings take precedence over versioned defaults.
+        """
         raw = tomllib.loads(Path(path).read_text(encoding="utf-8"))
         if raw.get("benchmark_version") != "e2e_claims_v1":
             raise ValueError("Unsupported real evaluation benchmark_version")
@@ -74,7 +77,6 @@ class RealEvaluationConfig:
             if key in models:
                 model_path = Path(models[key]).expanduser()
                 values[key] = model_path if model_path.is_absolute() else ROOT / model_path
-        # Current project environment settings take precedence over versioned defaults.
         for key, variable in (("damage_checkpoint", "DAMAGE_MODEL_PATH"), ("part_checkpoint", "PART_MODEL_PATH")):
             if os.environ.get(variable):
                 values[key] = Path(os.environ[variable]).expanduser()
@@ -122,6 +124,9 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
     report = PreflightReport()
 
     def probe(name, operation, *, enabled=True):
+        """
+        Missing optional dependencies are explicit SKIP/FAIL according to config.
+        """
         start = perf_counter()
         row = {"component": name, "status": "SKIP", "version": None, "reason": "Disabled by configuration"}
         if enabled:
@@ -129,7 +134,6 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
                 metadata = operation() or {}
                 row.update(status="PASS", reason=None, **metadata)
             except Exception as error:
-                # Missing optional dependencies are explicit SKIP/FAIL according to config.
                 row.update(
                     status="SKIP" if name == "mlflow" else config.dependency_unavailable,
                     reason=f"{type(error).__name__}: {error}",
@@ -221,9 +225,11 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
     )
 
     def embeddings():
+        """
+        local_files_only is enforced even when another import initialized HF settings.
+        """
         from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
-        # local_files_only is enforced even when another import initialized HF settings.
         provider = SentenceTransformerEmbeddingProvider(
             knowledge_config.embedding_model, asymmetric=True, local_files_only=True
         )
@@ -319,6 +325,9 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
     probe("anomaly", lambda: trained_model("anomaly", config.anomaly_checkpoint))
 
     def detector(kind):
+        """
+        Validate loadability, segmentation task and complete domain taxonomy.
+        """
         from vision.config import VisionSettings
         from vision.detector import UltralyticsDamageDetector
         from vision.parts_detector import UltralyticsVehiclePartDetector, VehiclePartSettings
@@ -331,7 +340,6 @@ def run_preflight(config: RealEvaluationConfig, *, progress: Callable[[dict], No
             adapter = UltralyticsVehiclePartDetector(
                 VehiclePartSettings(model_path=config.part_checkpoint, device=config.vision_device)
             )
-        # Validate loadability, segmentation task and complete domain taxonomy.
         model = adapter._load_model()
         report.resources[kind + "_detector"] = adapter
         return {

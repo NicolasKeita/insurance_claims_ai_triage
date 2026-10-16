@@ -57,10 +57,12 @@ class DeviceValidationStub:
         self.callbacks.setdefault(event, []).append(callback)
 
     def val(self, **kwargs):
+        """
+        The caller never gets the validator, just its metric result.
+        """
         validator = SimpleNamespace(device=self.validator_device)
         for callback in self.callbacks.get("on_val_start", []):
             callback(validator)
-        # The caller never gets the validator, just its metric result.
         return SimpleNamespace()
 
 

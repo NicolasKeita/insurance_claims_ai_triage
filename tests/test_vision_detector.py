@@ -77,8 +77,10 @@ def test_invalid_framework_output_is_rejected(result):
 
 
 def test_thin_v_mask_contour_keeps_detection_and_box_with_explicit_warning():
-    # OpenCV CHAIN_APPROX_SIMPLE produces this retraced four-vertex contour for
-    # a one-pixel V mask, despite the underlying binary mask having pixels.
+    """
+    OpenCV CHAIN_APPROX_SIMPLE produces this retraced four-vertex contour for a one-pixel V mask, despite
+    the underlying binary mask having pixels.
+    """
     contour = [[1 / 12, 1 / 12], [3 / 12, 3 / 12], [5 / 12, 1 / 12], [3 / 12, 3 / 12]]
     assessment = convert(framework_result(polygon=contour))
     assert assessment.detection_count == 1

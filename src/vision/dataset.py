@@ -261,6 +261,11 @@ def build_dataset_manifest(dataset: CarddDataset) -> dict[str, Any]:
 
 
 def _polygon(annotation: dict[str, Any], width: int, height: int) -> tuple[list[float] | None, str | None]:
+    """
+    YOLO stores one polygon per instance. Preserve every component vertex and retrace each connector so it
+    adds zero polygon area. Matching winding keeps component areas additive. This cannot preserve COCO
+    disconnected topology exactly after rasterization; the manifest records the representation limit.
+    """
     if annotation.get("iscrowd", 0):
         return None, "crowd"
     segmentation = annotation.get("segmentation")
@@ -298,10 +303,6 @@ def _polygon(annotation: dict[str, Any], width: int, height: int) -> tuple[list[
         parts.append(points)
         areas.append(area)
     points = parts[0]
-    # YOLO stores one polygon per instance. Preserve every component vertex and
-    # retrace each connector so it adds zero polygon area. Matching winding keeps
-    # component areas additive. This cannot preserve COCO disconnected topology
-    # exactly after rasterization; the manifest records the representation limit.
     for component, area in zip(parts[1:], areas[1:]):
         if area * areas[0] < 0:
             component = component[::-1]
@@ -425,6 +426,15 @@ def prepare_cardd_yolo(
     YOLO supports only one polygon per instance; this limitation is recorded.
     ``auto`` uses the official converter if available and output-compatible, then
     records a native polygon-only fallback when it is absent or incompatible.
+
+    Two different source names must never accidentally collapse into one class.
+
+    JSON is valid YAML and avoids a YAML dependency for preparation.
+
+    Converter scratch data is not part of the prepared dataset.
+
+    Ultralytics resolves relative dataset paths against its datasets_dir, not the YAML directory. Only portable
+    manifest metadata excludes root.
     """
     if unsupported not in ("error", "skip") or converter not in ("auto", "native", "ultralytics"):
         raise DatasetValidationError("Invalid unsupported annotation policy or converter")
@@ -455,7 +465,6 @@ def prepare_cardd_yolo(
             category["damage_type"] = map_category_name(category["name"]).value
         except ValueError as exc:
             raise DatasetValidationError(f"Unsupported domain taxonomy category: {category['name']}") from exc
-    # Two different source names must never accidentally collapse into one class.
     if len({item["damage_type"] for item in manifest["category_mapping"]}) != len(manifest["category_mapping"]):
         raise DatasetValidationError("COCO categories collapse to duplicate domain damage types")
     class_ids = {item["category_id"]: item["yolo_class_id"] for item in manifest["category_mapping"]}
@@ -596,7 +605,6 @@ def prepare_cardd_yolo(
         for files in manifest["prepared_files"].values():
             for entry in files:
                 entry["label_sha256"] = annotation_hash(stage / entry["label"])
-        # JSON is valid YAML and avoids a YAML dependency for preparation.
         dataset_yaml = {
             "path": str(stage),
             **{name: f"images/{name}" for name in SPLITS},
@@ -606,12 +614,9 @@ def prepare_cardd_yolo(
         _write_json(stage / "dataset.yaml", dataset_yaml)
         _write_json(stage / PREPARED_MANIFEST_NAME, manifest)
         load_prepared_dataset(stage / "dataset.yaml")
-        # Converter scratch data is not part of the prepared dataset.
         for scratch in (stage / "converter_annotations", stage / "converter_output"):
             if scratch.exists():
                 shutil.rmtree(scratch)
-        # Ultralytics resolves relative dataset paths against its datasets_dir,
-        # not the YAML directory. Only portable manifest metadata excludes root.
         dataset_yaml["path"] = str(output)
         _write_json(stage / "dataset.yaml", dataset_yaml)
         stage.rename(output)

@@ -134,6 +134,9 @@ def create_baseline(report, path):
 
 
 def compare_baseline(report, baseline):
+    """
+    Forbidden signals are gates, not all newly observed legitimate ML signals.
+    """
     if isinstance(baseline, (str, Path)):
         baseline = json.loads(Path(baseline).read_text(encoding="utf-8"))
     if baseline["benchmark_version"] != report.benchmark_version:
@@ -167,7 +170,6 @@ def compare_baseline(report, baseline):
                 )
             if expectation["status"] == "PASS" and (now is None or now["status"] != "PASS"):
                 regressions.append({"scenario_id": sid, "kind": name, "expected": expectation, "actual": now})
-        # Forbidden signals are gates, not all newly observed legitimate ML signals.
         for name, now in actual["structured_expectations"].items():
             if (
                 name.startswith("forbidden_signal:")

@@ -262,6 +262,10 @@ class ImageVisualAssessment(VisionDomainModel):
 
     @model_validator(mode="after")
     def validate_image_evidence(self):
+        """
+        Reproduce deterministic geometry and assignment from stored masks, without invoking a
+        detector. This also protects JSONB round-trips.
+        """
         damage, parts = self.damage_assessment, self.part_assessment
         if (damage.filename, damage.width, damage.height) != (parts.filename, parts.width, parts.height):
             raise ValueError("Damage and part assessments must describe the same image and oriented dimensions")
@@ -301,8 +305,6 @@ class ImageVisualAssessment(VisionDomainModel):
                     or association.candidate_part != parts.detections[association.part_detection_index]
                 ):
                     raise ValueError("Association candidate part differs from its source part detection")
-        # Reproduce deterministic geometry and assignment from stored masks,
-        # without invoking a detector. This also protects JSONB round-trips.
         from vision.fusion import validate_image_association_snapshot
 
         validate_image_association_snapshot(self)
@@ -379,7 +381,9 @@ class ClaimMultimodalVisionAssessment(VisionDomainModel):
     @computed_field
     @property
     def observations(self) -> list[VisualDamageEvidence]:
-        # Observations are never deduplicated across photos.
+        """
+        Observations are never deduplicated across photos.
+        """
         return [item for image in self.images for item in image.evidence]
 
     @computed_field

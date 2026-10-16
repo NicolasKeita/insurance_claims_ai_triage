@@ -145,8 +145,10 @@ def test_existing_v1_manifest_stays_valid_and_immutable_after_v2_upgrade(tmp_pat
 
 
 def test_common_cooccurring_class_stays_balanced_after_rare_label_assignment(tmp_path):
-    # Many common-only images and rare class combinations can cause a naive
-    # rare-first greedy allocation to reserve most common images for train.
+    """
+    Many common-only images and rare class combinations can cause a naive rare-first greedy allocation to
+    reserve most common images for train.
+    """
     patterns = [
         (("scratch",), 70),
         (("glass_shatter",), 40),
@@ -285,6 +287,9 @@ def test_same_filepath_different_ids_are_kept_together(tmp_path):
 
 
 def test_frozen_split_detects_identical_bytes_crossing_splits_after_id_swap(tmp_path):
+    """
+    IDs remain unique and split sizes unchanged; content still must not leak.
+    """
     dataset = fixture(tmp_path)
     original, duplicate = dataset.samples[:2]
     duplicate.filepath.write_bytes(original.filepath.read_bytes())
@@ -294,7 +299,6 @@ def test_frozen_split_detects_identical_bytes_crossing_splits_after_id_swap(tmp_
     manifest = create_or_load_cardd_hf_split(dataset, tmp_path / "split.json")
     original_split = assigned(manifest, "0")
     other_split = next(name for name in ("train", "val", "test") if name != original_split)
-    # IDs remain unique and split sizes unchanged; content still must not leak.
     donor_id = manifest["sample_ids"][other_split][0]
     manifest["sample_ids"][original_split].remove("1")
     manifest["sample_ids"][original_split].append(donor_id)

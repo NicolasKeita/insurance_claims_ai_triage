@@ -10,7 +10,9 @@ def _text(value: str) -> str:
 
 
 def build_claim_retrieval_text(facts: ClaimRetrievalFacts) -> str:
-    # Fixed-point formatting avoids scientific notation and DB scale differences.
+    """
+    Fixed-point formatting avoids scientific notation and DB scale differences.
+    """
     amount = format(facts.repair_amount, "f")
     if "." in amount:
         amount = amount.rstrip("0").rstrip(".")

@@ -98,8 +98,11 @@ class SimilarClaimsService:
         self.same_claim_type = same_claim_type
 
     def search(self, current_claim_id: str, limit: int = DEFAULT_LIMIT) -> SimilarClaimsResponse:
+        """
+        Unknown always yields 404 before model I/O.
+        """
         validate_limit(limit)
-        current = self.repository.get(current_claim_id)  # Unknown always yields 404 before model I/O.
+        current = self.repository.get(current_claim_id)
         self.store.require_collection()
         document = build_retrieval_document(current)
         try:

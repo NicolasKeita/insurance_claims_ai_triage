@@ -61,6 +61,10 @@ class ClaimMultimodalVisionService:
         *,
         quoted_damage_types: Iterable[DamageType] = (),
     ) -> ClaimMultimodalVisionAssessment:
+        """
+        A detector's output is checked before its source identity is normalized to the ClaimCase asset
+        (nested filenames are supported).
+        """
         images = []
         image_root = case.images_dir.resolve()
         for asset in resolve_image_assets(case):
@@ -68,8 +72,6 @@ class ClaimMultimodalVisionService:
                 raise ImageValidationError(f"Claim image is outside the claim image directory: {asset.filename}")
             damage = self.damage_detector.assess_image(asset.path)
             parts = self.part_detector.assess_image(asset.path)
-            # A detector's output is checked before its source identity is
-            # normalized to the ClaimCase asset (nested filenames are supported).
             if damage.filename != asset.path.name or parts.filename != asset.path.name:
                 raise ImageValidationError("Detector assessment filename does not match the requested image")
             for assessment in (damage, parts):

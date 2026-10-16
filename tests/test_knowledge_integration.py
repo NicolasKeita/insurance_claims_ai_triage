@@ -18,11 +18,14 @@ pytestmark = [pytest.mark.integration, pytest.mark.rag]
 
 
 def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path, monkeypatch):
-    # Never trigger a Hub request, even when other tests imported Transformers first.
+    """
+    Never trigger a Hub request, even when other tests imported Transformers first.
+
+    Fixed, tiny synthetic corpus only; app connection/collection overrides are ignored.
+    """
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
     with temporary_qdrant_collections("rag_policy", "rag_procedure") as (client, collections):
-        # Fixed, tiny synthetic corpus only; app connection/collection overrides are ignored.
         config = replace(
             KnowledgeConfig(),
             qdrant_url=get_test_qdrant_url(),

@@ -42,6 +42,10 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
 
     The caller owns cleanup of ``root_dir``. If omitted, a fresh temporary dir is
     returned through ``ClaimCase.root_dir``. No inference or fake model is used.
+
+    General overrides are fixture inputs, never inferred from expectations.
+
+    Amount arithmetic remains exact and the real quote parser verifies it.
     """
     root = Path(root_dir) if root_dir is not None else Path(mkdtemp(prefix="claims-e2e-"))
     root.mkdir(parents=True, exist_ok=True)
@@ -70,7 +74,6 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
     amount = Decimal(str(inputs.get("repair_amount", 1500)))
     payload["repair_estimate"]["amount"] = str(amount)
     payload["images"] = ["synthetic_geometry.png"] if scenario.vision_required else []
-    # General overrides are fixture inputs, never inferred from expectations.
     for key, value in inputs.get("claim_overrides", {}).items():
         if isinstance(value, dict) and isinstance(payload.get(key), dict):
             payload[key].update(value)
@@ -87,7 +90,6 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
         "ACCIDENT_REPORT": f"DEMO SYNTHETIC ACCIDENT REPORT\nClaim ID: {payload['claim_id']}\nDate: {date}\nLocation: {payload['incident']['location']}\nVehicle:\n{vehicle}\nCollision type: Front collision\nReported damage:\n{damage}\nPassengers: 1\nInjuries: {injuries}",
         "POLICE_REPORT": f"DEMO SYNTHETIC SUPPORTING RECORD\nClaim ID: {payload['claim_id']}\nNo inference of misconduct is made.",
     }
-    # Amount arithmetic remains exact and the real quote parser verifies it.
     part_amount = (amount / Decimal(max(1, len(quoted) + 1))).quantize(Decimal("0.01"))
     labor = amount - part_amount * len(quoted)
     parts = "\n".join(f"{item.lower().replace('_', ' ')}: {part_amount} EUR" for item in quoted)
@@ -194,6 +196,11 @@ class ClaimsEvaluationPipeline:
         self.triage_predictor, self.anomaly_predictor = triage_predictor, anomaly_predictor
 
     def run(self, scenario):
+        """
+        Use the real Qdrant stores/index/query orchestration in local memory.
+
+        Preserve partial observations for useful expectation diagnostics.
+        """
         from qdrant_client import QdrantClient
 
         from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
@@ -406,7 +413,6 @@ class ClaimsEvaluationPipeline:
                 output.facts["investigation"] = output.investigation
                 output.signals = [signal.code.value for signal in investigation.signals]
                 output.policy_versions["investigation"] = investigation.policy_version
-                # Use the real Qdrant stores/index/query orchestration in local memory.
                 embeddings = FakeEmbeddings()
                 repository = InMemoryRetrievalRepository([case.claim, *(claim for claim, _ in history_inputs)])
                 claim_store = QdrantClaimStore(client, "e2e_claims", embeddings)
@@ -492,7 +498,6 @@ class ClaimsEvaluationPipeline:
                 output.facts["agent"] = output.agent
                 output.model_versions.update(embeddings=embeddings.model_name, llm="fake-structured-e2e-v1")
             except Exception as error:
-                # Preserve partial observations for useful expectation diagnostics.
                 if not output.errors:
                     output.errors.append(f"orchestration: {type(error).__name__}: {error}")
         return output

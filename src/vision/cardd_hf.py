@@ -155,6 +155,11 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
     Holes become retraced bridges in their outer component, matching YOLO's
     single-contour contract. A rasterizer may add bridge pixels; this limitation
     is explicit in inspection metadata. No mask is replaced by its rectangle.
+
+    Left turn first joins corner-touching foreground (8-connectivity, matching common instance-mask contour
+    implementations).
+
+    A point just inside the hole avoids exact boundary ambiguities.
     """
     import numpy as np
 
@@ -216,8 +221,6 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
             if direction is None or len(choices) == 1:
                 following = min(choices)
             else:
-                # Left turn first joins corner-touching foreground (8-connectivity,
-                # matching common instance-mask contour implementations).
                 preference = {3: 0, 0: 1, 1: 2, 2: 3}
                 following = min(
                     choices,
@@ -240,7 +243,6 @@ def _mask_polygons(mask: Any, bbox: Any) -> tuple[tuple[Polygon, ...], int]:
     outers = [ring for ring in rings if _area(ring) > 0]
     holes = [ring for ring in rings if _area(ring) < 0]
     for hole in holes:
-        # A point just inside the hole avoids exact boundary ambiguities.
         a, b = hole[0], hole[1]
         delta = (b[0] - a[0], b[1] - a[1])
         length = max(abs(delta[0]), abs(delta[1]))
@@ -305,7 +307,11 @@ def _instances(value: Any, name: str) -> tuple[HfDamageInstance, ...]:
 def normalize_fiftyone_dataset(
     dataset: Any, repository: str, revision: str | None, *, annotation_field: str | None = None
 ) -> HfDamageDataset:
-    """Discover schema/usable instance fields from actual loaded FiftyOne data."""
+    """
+    Discover schema/usable instance fields from actual loaded FiftyOne data.
+
+    Portable identity does not depend on the local MongoDB object ID.
+    """
     try:
         schema = dataset.get_field_schema()
     except (AttributeError, TypeError) as exc:
@@ -422,7 +428,6 @@ def normalize_fiftyone_dataset(
         if isinstance(coco_id, int) and not isinstance(coco_id, bool) and coco_id >= 0:
             sample_id = f"coco:{coco_id}"
         else:
-            # Portable identity does not depend on the local MongoDB object ID.
             sample_id = "image:" + hashlib.sha256((filepath.name + "\0" + digest).encode()).hexdigest()
         if sample_id in ids:
             raise DatasetValidationError(f"Duplicate stable sample ID: {sample_id}")
@@ -526,6 +531,10 @@ class _PinnedHub:
 
 
 def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
+    """
+    This name was absent before this invocation. Remove only its incomplete database entry; source/cache
+    files remain resumable.
+    """
     cache_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("FIFTYONE_DATABASE_DIR", str(cache_dir / "fiftyone_db"))
     try:
@@ -557,8 +566,6 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
             dataset.save()
             return dataset
         except Exception:
-            # This name was absent before this invocation. Remove only its
-            # incomplete database entry; source/cache files remain resumable.
             if fo.dataset_exists(name):
                 fo.delete_dataset(name)
             raise

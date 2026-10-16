@@ -109,7 +109,9 @@ def test_half_and_zero_overlap(part_bounds, containment):
 
 
 def test_masks_take_precedence_over_overlapping_boxes():
-    # Both boxes cover the image, but the observed mask regions are disjoint.
+    """
+    Both boxes cover the image, but the observed mask regions are disjoint.
+    """
     full_box = rectangle(0, 0, 1, 1)
     observation = damage(full_box).model_copy(update={"polygon": polygon_for(rectangle(0, 0, 0.2, 0.2))})
     vehicle_part = part(full_box).model_copy(update={"polygon": polygon_for(rectangle(0.8, 0.8, 1, 1))})
@@ -165,18 +167,23 @@ def test_only_missing_masks_use_explicit_bbox_fallback(damage_mask, part_mask):
     ],
 )
 def test_invalid_self_crossing_polygon_rejected(coordinates):
+    """
+    Step29 already rejects signed-zero area geometry.
+    """
     points = [NormalizedPoint(x=x, y=y) for x, y in coordinates]
     try:
         polygon = NormalizedPolygon(points=points)
     except ValidationError:
-        return  # Step29 already rejects signed-zero area geometry.
+        return
     with pytest.raises(FusionGeometryError, match="fallback is forbidden"):
         calculate_overlap(damage().model_copy(update={"polygon": polygon}), part())
 
 
 def test_step29_retraced_nonzero_ring_can_load_but_is_rejected_for_fusion():
-    # Ultralytics xyn can bridge contours using a retraced edge. Preserve the
-    # step29 artifact loading contract; fusion must reject its invalid topology.
+    """
+    Ultralytics xyn can bridge contours using a retraced edge. Preserve the step29 artifact loading
+    contract; fusion must reject its invalid topology.
+    """
     polygon = NormalizedPolygon(
         points=[
             NormalizedPoint(x=x, y=y)

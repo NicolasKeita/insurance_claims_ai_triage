@@ -18,14 +18,18 @@ class AgentRunAlreadyExistsError(ValueError):
 
 
 def agent_run_to_row(claim_pk: UUID, result: AgentRunResult) -> AgentRunRow:
-    """Validate again and snapshot JSON values before issuing an INSERT."""
+    """
+    Validate again and snapshot JSON values before issuing an INSERT.
+
+    Pydantic's JSON mode can normalize NaN to null; reject the original nonfinite values before that conversion
+    loses their meaning.
+
+    PostgreSQL JSONB cannot represent nonfinite numbers. Also detach all nested snapshots from mutable
+    caller-owned Pydantic lists/dictionaries.
+    """
     checked = AgentRunResult.model_validate(result.model_dump())
-    # Pydantic's JSON mode can normalize NaN to null; reject the original
-    # nonfinite values before that conversion loses their meaning.
     json.dumps(checked.model_dump(), default=str, allow_nan=False)
     payload = checked.model_dump(mode="json")
-    # PostgreSQL JSONB cannot represent nonfinite numbers. Also detach all
-    # nested snapshots from mutable caller-owned Pydantic lists/dictionaries.
     payload = json.loads(json.dumps(payload, allow_nan=False))
     return AgentRunRow(
         claim_pk=claim_pk,

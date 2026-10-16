@@ -43,7 +43,9 @@ class KnowledgeAnswerRequest(ClaimKnowledgeAnswerRequest):
 
 
 def load_stored_claim(factory, claim_id):
-    # End the SQL session before embedding/retrieval or LLM network calls.
+    """
+    End the SQL session before embedding/retrieval or LLM network calls.
+    """
     with factory() as session:
         claim = ClaimRepository(session).get_by_claim_id(claim_id)
         if claim is None:
@@ -69,13 +71,15 @@ def install_knowledge_routes(app, *, retriever_loader=None, rag_loader=None, cla
             return request.app.state.knowledge_rag
 
     def claim_filters(request, claim_id, source_type):
+        """
+        Procedure is global; the model has no reliable handling date.
+        """
         factory = request.app.state.session_factory
         if factory is None and claim_loader is None:
             raise HTTPException(503, "Database is not configured")
         claim = (claim_loader or load_stored_claim)(factory, claim_id)
         if source_type == KnowledgeSourceType.POLICY:
             return {"product": claim.policy.product, "as_of_date": claim.incident.date}
-        # Procedure is global; the model has no reliable handling date.
         return {"product": None, "as_of_date": None}
 
     @app.exception_handler(RetrievalUnavailableError)
@@ -88,7 +92,9 @@ def install_knowledge_routes(app, *, retriever_loader=None, rag_loader=None, cla
 
     @app.exception_handler(LlmError)
     async def generation_failed(request, error):
-        # Do not expose raw LLM data in an HTTP error response.
+        """
+        Do not expose raw LLM data in an HTTP error response.
+        """
         return JSONResponse(
             status_code=503, content={"detail": "Knowledge generation is unavailable or returned invalid data"}
         )

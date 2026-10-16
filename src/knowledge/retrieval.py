@@ -25,13 +25,17 @@ class KnowledgeRetriever:
         as_of_date: date | None = None,
         limit: int = 5,
     ) -> list[RetrievedKnowledgeChunk]:
+        """
+        Reload local authoritative sources: changed/deleted chunks are ignored.
+
+        INFO contains operational IDs only. Queries may contain sensitive data.
+        """
         validate_limit(limit)
         if not query.strip() or len(query) > 4000:
             raise ValueError("query must contain 1 to 4000 characters")
         source_type = KnowledgeSourceType(source_type)
         self.store.require_collection(source_type)
         try:
-            # Reload local authoritative sources: changed/deleted chunks are ignored.
             catalog = KnowledgeCatalog.load(self.store.config.knowledge_dir, self.store.config.max_chunk_chars)
             vector = self.store.embeddings.embed_query(query)
         except Exception as error:
@@ -67,7 +71,6 @@ class KnowledgeRetriever:
                     break
             if len(results) == limit or exhausted:
                 break
-        # INFO contains operational IDs only. Queries may contain sensitive data.
         logger.info(
             "knowledge_retrieval type=%s filters=%s results=%s",
             source_type.value,

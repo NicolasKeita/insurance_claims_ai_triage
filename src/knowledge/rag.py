@@ -39,7 +39,12 @@ class KnowledgeRagService:
         return self.answer_from_chunks(question, chunks)
 
     def answer_from_chunks(self, question, chunks) -> GroundedAnswer:
-        """Use an already retrieved context (smoke test can display this exact context)."""
+        """
+        Use an already retrieved context (smoke test can display this exact context).
+
+        Some structured models also repeat IDs in prose. Validate those too; promote valid references to
+        resolved citations and remove their markers.
+        """
         if not chunks:
             return GroundedAnswer(
                 answer="No applicable source excerpts were retrieved for this question.",
@@ -67,8 +72,6 @@ class KnowledgeRagService:
         )
         output = self.llm.generate(prompt=prompt, response_model=GroundedLlmOutput)
         by_id = {c.chunk_id: c for c in chunks}
-        # Some structured models also repeat IDs in prose. Validate those too;
-        # promote valid references to resolved citations and remove their markers.
         uuid_pattern = r"\b[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\b"
         inline_ids = re.findall(uuid_pattern, output.answer)
         inline_ids += [value.strip() for value in re.findall(r"\[chunk_id\s*:\s*([^\]]+)\]", output.answer)]

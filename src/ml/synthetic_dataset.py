@@ -171,6 +171,15 @@ def _sample_workflow(
     rng: np.random.Generator,
     features: dict,
 ) -> TriageWorkflow:
+    """
+    FAST_TRACK
+
+    STANDARD
+
+    EXPERT_REVIEW
+
+    INVESTIGATION
+    """
     repair_amount = features["repair_amount"]
 
     severity = np.log1p(repair_amount) / np.log(30001) * 2.0
@@ -193,13 +202,9 @@ def _sample_workflow(
     )
     logits = np.array(
         [
-            # FAST_TRACK
             (2.8 - 1.45 * severity - 1.60 * inconsistency),
-            # STANDARD
             (1.1 - 0.25 * severity - 0.25 * inconsistency),
-            # EXPERT_REVIEW
             (-1.0 + 1.35 * severity + 0.15 * inconsistency),
-            # INVESTIGATION
             (-1.6 + 0.15 * severity + 1.45 * inconsistency),
         ],
         dtype=float,

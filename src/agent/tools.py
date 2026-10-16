@@ -36,7 +36,12 @@ class AgentTools(Protocol):
 
 
 def _bounded(value, depth: int = 0, budget: list[int] | None = None):
-    """Bound persisted free text, nested signal facts, and collection fan-out."""
+    """
+    Bound persisted free text, nested signal facts, and collection fan-out.
+
+    Repository model_dump(mode="json") produces JSON values; unexpected objects fail explicitly rather than hiding
+    infrastructure/schema changes.
+    """
     budget = [12000] if budget is None else budget
     if budget[0] <= 0:
         return "[data budget exhausted]"
@@ -65,8 +70,6 @@ def _bounded(value, depth: int = 0, budget: list[int] | None = None):
                 break
             result.append(_bounded(item, depth + 1, budget))
         return result
-    # Repository model_dump(mode="json") produces JSON values; unexpected
-    # objects fail explicitly rather than hiding infrastructure/schema changes.
     raise TypeError("Agent tool data must be JSON-compatible")
 
 
@@ -141,12 +144,14 @@ class ReadOnlyAgentTools:
         return ToolObservation(tool_name=tool, status=ObservationStatus.OK, data=data, evidence=evidence)
 
     def execute(self, claim_id: str, step: AgentPlanStep) -> ToolObservation:
+        """
+        Only declared methods are dispatched. The planner cannot select a repository method, SQL,
+        filesystem path, or a different claim ID.
+        """
         tool = step.tool_name
         if tool is None:
             raise ValueError("FINISH is a planner action, not an executable tool")
         arguments = step.validated_arguments()
-        # Only declared methods are dispatched. The planner cannot select a
-        # repository method, SQL, filesystem path, or a different claim ID.
         if tool == AgentToolName.GET_CLAIM:
             claim = self._claim(claim_id)
             data = _claim_data(claim)
@@ -279,7 +284,10 @@ class ReadOnlyAgentTools:
         raise ValueError("Unsupported agent tool")
 
     def _similar(self, claim_id, tool, arguments):
-        claim = self._claim(claim_id)  # Session closes before external service calls.
+        """
+        Session closes before external service calls.
+        """
+        claim = self._claim(claim_id)
         try:
             service = self.similar_service
             if service is None and self.similar_service_loader is not None:
@@ -326,7 +334,16 @@ class ReadOnlyAgentTools:
         )
 
     def _knowledge(self, claim_id, tool, arguments):
-        claim = self._claim(claim_id)  # Authoritative product/date cannot be set by the planner.
+        """
+        Authoritative product/date cannot be set by the planner.
+
+        Preserve exact authoritative citation fields within a finite context; oversized metadata is a
+        source-contract failure.
+
+        Ranking depends on the query; keep it in the observation rather than changing a stable chunk's
+        evidence payload between searches.
+        """
+        claim = self._claim(claim_id)
         policy = tool == AgentToolName.SEARCH_POLICY
         source_type = KnowledgeSourceType.POLICY if policy else KnowledgeSourceType.PROCEDURE
         product = claim.policy.product if policy else None
@@ -353,8 +370,6 @@ class ReadOnlyAgentTools:
             ):
                 continue
             seen.add(chunk.chunk_id)
-            # Preserve exact authoritative citation fields within a finite
-            # context; oversized metadata is a source-contract failure.
             metadata_limits = {
                 "chunk_id": 250,
                 "source_id": 300,
@@ -386,8 +401,6 @@ class ReadOnlyAgentTools:
                     structured_data=metadata,
                 )
             )
-            # Ranking depends on the query; keep it in the observation rather
-            # than changing a stable chunk's evidence payload between searches.
             summaries.append({**metadata, "similarity_score": chunk.similarity_score})
             if len(evidence) == arguments.limit:
                 break

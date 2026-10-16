@@ -35,7 +35,9 @@ class RetrievalClaimRepository:
         self.factory = factory
 
     def _read(self, statement):
-        # Two queries per batch: facts and damages. No customer, policy or outputs.
+        """
+        Two queries per batch: facts and damages. No customer, policy or outputs.
+        """
         with self.factory() as session:
             rows = session.scalars(
                 statement.options(
@@ -71,6 +73,9 @@ class RetrievalClaimRepository:
         return {c.point_id: c for c in self._read(select(ClaimRow).where(ClaimRow.id.in_(point_ids)))}
 
     def iter_batches(self, batch_size: int):
+        """
+        Session is closed before inference or Qdrant calls.
+        """
         if batch_size < 1:
             raise ValueError("batch_size must be positive")
         after = None
@@ -81,6 +86,5 @@ class RetrievalClaimRepository:
             batch = self._read(statement)
             if not batch:
                 break
-            # Session is closed before inference or Qdrant calls.
             yield batch
             after = batch[-1].point_id

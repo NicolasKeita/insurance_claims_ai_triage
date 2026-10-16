@@ -23,6 +23,10 @@ class HistoricalClaimRepository:
         self.session = session
 
     def get_profile(self, claim_id: str) -> HistoricalClaimProfile:
+        """
+        Rank only assessments of eligible claims. One row per claim is joined, so append-only
+        assessment histories cannot multiply claim aggregates.
+        """
         current = self.session.execute(
             select(
                 ClaimRow.customer_pk,
@@ -43,8 +47,6 @@ class HistoricalClaimRepository:
             .where(previous_claim_predicate(current))
             .cte("previous_claims")
         )
-        # Rank only assessments of eligible claims. One row per claim is joined,
-        # so append-only assessment histories cannot multiply claim aggregates.
         latest = (
             select(
                 AnomalyAssessmentRow.claim_pk,

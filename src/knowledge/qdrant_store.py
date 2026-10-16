@@ -94,12 +94,14 @@ class QdrantKnowledgeStore:
             )
 
     def ensure_collection(self, source_type: KnowledgeSourceType, *, recreate: bool = False):
+        """
+        Only delete an owned RAG collection. Prevent a misconfigured name from destroying another
+        application's collection.
+        """
         with self._operation():
             collection, contract = self.config.collection(source_type), self.contract(source_type)
             exists = self.client.collection_exists(collection)
             if recreate and exists:
-                # Only delete an owned RAG collection. Prevent a misconfigured name
-                # from destroying another application's collection.
                 info = self.client.get_collection(collection)
                 existing = (info.config.metadata or {}).get("knowledge_rag")
                 if not isinstance(existing, dict) or existing.get("source_type") != source_type.value:
@@ -164,6 +166,9 @@ class QdrantKnowledgeStore:
     def query(
         self, source_type, vector, *, product=None, language=None, source_id=None, as_of_date=None, limit=5, offset=0
     ):
+        """
+        Only IDs/ranking cross the boundary; text and provenance are re-resolved.
+        """
         vector = self._vectors([vector], 1)[0]
         with self._operation():
             points = self.client.query_points(
@@ -177,7 +182,6 @@ class QdrantKnowledgeStore:
                 with_payload=["chunk_id"],
                 with_vectors=False,
             ).points
-        # Only IDs/ranking cross the boundary; text and provenance are re-resolved.
         return [(str(p.id), float(p.score)) for p in points if (p.payload or {}).get("chunk_id") == str(p.id)], len(
             points
         ) < limit

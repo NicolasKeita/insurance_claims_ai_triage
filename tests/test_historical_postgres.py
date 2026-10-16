@@ -34,13 +34,15 @@ def add_claim(session, reference, suffix, days, amount="100", currency="EUR", cu
 
 
 def test_temporal_customer_same_day_and_created_at_independence(factory, reference_claim):
+    """
+    Insertion time deliberately contradicts incident chronology.
+    """
     with factory.begin() as session:
         ClaimRepository(session).add(reference_claim)
         add_claim(session, reference_claim, "previous", 2)
         add_claim(session, reference_claim, "later", -1)
         add_claim(session, reference_claim, "same-day", 0)
         add_claim(session, reference_claim, "other-customer", 1, customer="OTHER")
-        # Insertion time deliberately contradicts incident chronology.
         current = session.scalar(select(ClaimRow).where(ClaimRow.claim_id == reference_claim.claim_id))
         current.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
         facts = HistoricalClaimRepository(session).get_profile(reference_claim.claim_id)
@@ -102,6 +104,11 @@ def test_no_compatible_currency_preserves_counts_with_null_amounts(factory, refe
 
 
 def test_latest_anomaly_not_alert_rows_and_insertion_order_timestamp_tie(factory, reference_claim):
+    """
+    Reverse UUID ordering: the newer row must still win a tie.
+
+    Previous investigation outputs must never feed into history.
+    """
     timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
     with factory.begin() as session:
         ClaimRepository(session).add(reference_claim)
@@ -116,7 +123,6 @@ def test_latest_anomaly_not_alert_rows_and_insertion_order_timestamp_tie(factory
                 result = make_anomaly(str(i))
                 result.assessment.is_anomalous = flag
                 row = anomaly_to_row(pk, result)
-                # Reverse UUID ordering: the newer row must still win a tie.
                 row.id = UUID(int=(20 if claim_id == first else 40) - i)
                 row.created_at = timestamp
                 session.add(row)
@@ -124,7 +130,6 @@ def test_latest_anomaly_not_alert_rows_and_insertion_order_timestamp_tie(factory
             assert repository.get_latest_anomaly(claim_id).result.assessment.is_anomalous is new_flag
         repository.add_anomaly(same_day, make_anomaly())
         repository.add_anomaly(reference_claim.claim_id, make_anomaly())
-        # Previous investigation outputs must never feed into history.
         repository.add_investigation(first, make_investigation())
         facts = HistoricalClaimRepository(session).get_profile(reference_claim.claim_id)
         assert facts.previous_claim_count == 3
@@ -178,6 +183,11 @@ def test_empty_history_unknown_claim_and_two_queries_independent_of_volume(facto
 
 
 def test_api_history_and_persisted_v2_signals_snapshot(factory, reference_claim):
+    """
+    33 history + 12 missing documents
+
+    Re-reading the stored snapshot preserves the old evidence exactly.
+    """
     from scripts.seed_historical_claims import seed
 
     service = PersistenceService(factory)
@@ -224,7 +234,7 @@ def test_api_history_and_persisted_v2_signals_snapshot(factory, reference_claim)
         assert response.status_code == 200
         body = response.json()
         assert body["policy_version"] == "investigation_policy_v2"
-        assert body["review_score"] == 45  # 33 history + 12 missing documents
+        assert body["review_score"] == 45
         assert body["review_priority"] == "ELEVATED"
         assert len(calls) == 1
         assert calls[0].repair_amount == float(reference_claim.repair_estimate.amount)
@@ -240,7 +250,6 @@ def test_api_history_and_persisted_v2_signals_snapshot(factory, reference_claim)
         result.assessment.is_anomalous = False
         AssessmentRepository(session).add_anomaly("DEMO-STEP25-HISTORY-P03", result)
     assert service.get_historical_profile(reference_claim.claim_id).previous_anomalous_claim_count == 1
-    # Re-reading the stored snapshot preserves the old evidence exactly.
     assert service.get_history(reference_claim.claim_id).investigation[0].result == stored
 
 

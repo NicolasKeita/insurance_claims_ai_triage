@@ -67,8 +67,10 @@ class ClaimRepository:
         return pk
 
     def _reuse(self, model, key: str, value: str, **fields):
-        # ON CONFLICT DO NOTHING handles concurrent imports without overwriting
-        # customer/policy data. PostgreSQL unique constraints remain authoritative.
+        """
+        ON CONFLICT DO NOTHING handles concurrent imports without overwriting customer/policy data.
+        PostgreSQL unique constraints remain authoritative.
+        """
         pk = self.session.scalar(
             insert(model)
             .values(**{key: value}, **fields)
@@ -79,9 +81,11 @@ class ClaimRepository:
         return row, pk is not None
 
     def add(self, claim: Claim) -> ClaimImportResult:
+        """
+        Build/validate before issuing writes.
+        """
         if self.exists(claim.claim_id):
             raise ClaimAlreadyExistsError(f"Claim {claim.claim_id} already exists")
-        # Build/validate before issuing writes.
         row = claim_to_row(
             claim,
             CustomerRow(customer_id=claim.customer.customer_id),

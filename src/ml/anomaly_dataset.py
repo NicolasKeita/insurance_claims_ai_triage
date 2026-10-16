@@ -23,6 +23,9 @@ def _inject_anomaly(
     kind: str,
     rng: np.random.Generator,
 ) -> dict:
+    """
+    Each value is plausible in isolation; their combination is rare.
+    """
     mutated = row.copy()
 
     if kind == "EXTREME_REPAIR_COST":
@@ -42,7 +45,6 @@ def _inject_anomaly(
         mutated["additional_damage_count"] = int(rng.integers(2, 5))
         mutated["consistency_issue_count"] = int(rng.integers(5, 9))
     elif kind == "MULTIVARIATE_ODDITY":
-        # Each value is plausible in isolation; their combination is rare.
         mutated["collision_type"] = CollisionType.PARKING_DAMAGE
         mutated["vehicle_age"] = int(rng.integers(10, 15))
         mutated["repair_amount"] = round(float(rng.uniform(5000, 8000)), 2)

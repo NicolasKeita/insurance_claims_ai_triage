@@ -36,7 +36,9 @@ class AssessmentRecord(Generic[Result]):
 
 
 def claim_to_row(claim: Claim, customer: CustomerRow, policy: PolicyRow) -> ClaimRow:
-    # Validate again: model_copy/model_construct can bypass Pydantic validation.
+    """
+    Validate again: model_copy/model_construct can bypass Pydantic validation.
+    """
     claim = Claim.model_validate(claim.model_dump())
     if len(set(claim.declared_damage)) != len(claim.declared_damage):
         raise ValueError("A declared damage type may occur only once per claim")
@@ -129,9 +131,11 @@ def anomaly_to_row(claim_pk: UUID, result: RegisteredAnomalyAssessment) -> Anoma
 
 
 def investigation_to_row(claim_pk: UUID, result: InvestigationAssessment) -> InvestigationAssessmentRow:
+    """
+    A JSON round-trip copies nested evidence, and rejects NaN/Infinity.
+    """
     result = InvestigationAssessment.model_validate(result.model_dump())
     payload = result.model_dump(mode="json")
-    # A JSON round-trip copies nested evidence, and rejects NaN/Infinity.
     payload["signals"] = json.loads(json.dumps(payload["signals"], allow_nan=False))
     return InvestigationAssessmentRow(claim_pk=claim_pk, **payload)
 

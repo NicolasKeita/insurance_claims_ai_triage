@@ -48,6 +48,9 @@ class InvestigationPolicy(BaseModel):
 
     @model_validator(mode="after")
     def validate_score_rules(self) -> "InvestigationPolicy":
+        """
+        A policy version must not change because a caller edits a nested dict.
+        """
         history_enabled = any(
             value is not None
             for value in (
@@ -73,7 +76,6 @@ class InvestigationPolicy(BaseModel):
             raise ValueError("priority thresholds must increase within score bounds")
         if self.review_recommendation_min_score > self.max_review_score:
             raise ValueError("review recommendation threshold exceeds score maximum")
-        # A policy version must not change because a caller edits a nested dict.
         object.__setattr__(self, "signal_weights", MappingProxyType(dict(self.signal_weights)))
         return self
 

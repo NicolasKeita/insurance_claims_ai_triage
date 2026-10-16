@@ -66,8 +66,12 @@ class QdrantClaimStore:
             )
 
     def ensure_collection(self, *, recreate: bool = False):
+        """
+        Resolve contract before any explicitly requested destructive action.
+
+        Create indexes only once (Qdrant local mode has no payload indexes).
+        """
         with self._operation():
-            # Resolve contract before any explicitly requested destructive action.
             contract = self.contract()
             exists = self.client.collection_exists(self.collection)
             if recreate and exists:
@@ -83,7 +87,6 @@ class QdrantClaimStore:
                     metadata={"claim_retrieval": contract},
                 )
             self._validate()
-            # Create indexes only once (Qdrant local mode has no payload indexes).
             info = self.client.get_collection(self.collection)
             local = (
                 self.client.init_options.get("location") == ":memory:"
@@ -141,6 +144,9 @@ class QdrantClaimStore:
     def query(
         self, vector: list[float], before: date, claim_type: str | None, limit: int, offset: int = 0
     ) -> RetrievalPage:
+        """
+        Foreign/non-UUID points cannot reference our PostgreSQL claims.
+        """
         vector = self._vectors([vector], 1)[0]
         conditions = [
             models.FieldCondition(key="incident_date_ordinal", range=models.Range(lt=before.toordinal())),
@@ -165,7 +171,7 @@ class QdrantClaimStore:
             try:
                 point_id = UUID(str(point.id))
             except ValueError:
-                continue  # Foreign/non-UUID points cannot reference our PostgreSQL claims.
+                continue
             hits.append(RetrievalHit(point_id, point.score))
         return RetrievalPage(tuple(hits), len(points) < limit)
 

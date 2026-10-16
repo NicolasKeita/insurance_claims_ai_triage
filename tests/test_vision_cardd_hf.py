@@ -167,7 +167,9 @@ def test_diagonally_touching_mask_pixels_use_eight_connected_foreground():
 
 
 def test_all_small_binary_masks_preserve_area_and_pixel_membership():
-    # Exhaustive small masks exercise diagonal contacts, holes and components.
+    """
+    Exhaustive small masks exercise diagonal contacts, holes and components.
+    """
     for bits in range(1, 2**9):
         mask = np.array([(bits >> offset) & 1 for offset in range(9)], dtype=bool).reshape(3, 3)
         polygons, _ = _mask_polygons(mask, [0, 0, 1, 1])

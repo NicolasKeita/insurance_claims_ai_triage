@@ -81,6 +81,18 @@ class RealClaimsEvaluationPipeline:
         observation.provenance[kind] = {key: value for key, value in row.items() if key != "duration_seconds"}
 
     def run(self, scenario: EvaluationScenario) -> PipelineObservation:
+        """
+        The shared helper uses real PDF ingestion and production extraction functions.
+
+        Evaluation fixtures are never silently imported into the application DB. History for
+        controlled claims requires an explicit prepared/seeded source.
+
+        The observed subset remains inspectable, but cannot validate a scenario whose required signal
+        depends on unavailable history.
+
+        Real stored absence represents the unavailable-tool case; the read-only application tools see
+        genuine missing assessment rows.
+        """
         started = perf_counter()
         observed = PipelineObservation()
         observed.provenance["mode"] = "real"
@@ -151,7 +163,6 @@ class RealClaimsEvaluationPipeline:
                     },
                 )
 
-        # The shared helper uses real PDF ingestion and production extraction functions.
         docs = self._record(
             observed,
             "document",
@@ -245,8 +256,6 @@ class RealClaimsEvaluationPipeline:
 
         history = None
         if self._available(observed, "history", ["postgresql"]):
-            # Evaluation fixtures are never silently imported into the application DB.
-            # History for controlled claims requires an explicit prepared/seeded source.
             from persistence.history import HistoricalClaimRepository
             from persistence.repositories import ClaimRepository
 
@@ -326,8 +335,6 @@ class RealClaimsEvaluationPipeline:
             observed, consistency=consistency, features=features, anomaly=anomaly, history=history, vision=vision
         )
         if scenario.inputs.get("history_claims") and history is None:
-            # The observed subset remains inspectable, but cannot validate a
-            # scenario whose required signal depends on unavailable history.
             observed.components["investigation"].status = EvaluationStatus.SKIP
             observed.components[
                 "investigation"
@@ -351,8 +358,6 @@ class RealClaimsEvaluationPipeline:
             assessment = (
                 InvestigationAssessment.model_validate(observed.investigation) if observed.investigation else None
             )
-            # Real stored absence represents the unavailable-tool case; the
-            # read-only application tools see genuine missing assessment rows.
             unavailable = set(scenario.inputs.get("unavailable_tools", []))
             self._record(
                 observed,
@@ -414,6 +419,10 @@ class RealClaimsEvaluationPipeline:
             return
 
         def assess_available_inputs():
+            """
+            Reuse the application's independent translators and policy without inventing a
+            negative anomaly assessment or an empty history.
+            """
             if all(value is not None for value in (consistency, features, anomaly, history)):
                 from investigation.engine import assess_investigation
 
@@ -425,8 +434,6 @@ class RealClaimsEvaluationPipeline:
                     policy=policy,
                     visual_assessment=vision,
                 )
-            # Reuse the application's independent translators and policy without
-            # inventing a negative anomaly assessment or an empty history.
             signals = (
                 *(signals_from_consistency(consistency) if consistency is not None else ()),
                 *(signals_from_anomaly(anomaly, policy) if anomaly is not None else ()),
@@ -559,6 +566,10 @@ class RealClaimsEvaluationPipeline:
             observed.facts["similar_claims"] = result.model_dump(mode="json")
 
     def _agent(self, scenario, case, observed, *, use_reference):
+        """
+        The normal application factory supplies lazy real services. Closing here only closes those
+        owned by this service, not preflight clients.
+        """
         if not self.config.include_agent:
             self._skip(observed, "agent", "Disabled by configuration")
             return
@@ -619,8 +630,6 @@ class RealClaimsEvaluationPipeline:
                 review,
                 inputs={"claim_id": case.claim.claim_id, "source": "existing PostgreSQL claim"},
             )
-            # The normal application factory supplies lazy real services. Closing
-            # here only closes those owned by this service, not preflight clients.
             service.tools.close()
         if result is not None:
             observed.agent = result.model_dump(mode="json")

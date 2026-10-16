@@ -87,7 +87,11 @@ def compact_data(value, depth=0):
 
 
 def finalizer_evidence(registry):
-    """Keep every provenance ID and bound the aggregate evidence context."""
+    """
+    Keep every provenance ID and bound the aggregate evidence context.
+
+    JSON escaping can occupy more than one character; fit exactly.
+    """
     evidence = [compact_data(e) for e in registry.values()]
     if len(json.dumps(evidence, ensure_ascii=False)) <= MAX_FINALIZER_EVIDENCE_CHARS:
         return evidence, False
@@ -105,7 +109,6 @@ def finalizer_evidence(registry):
         }
         space = max(0, per_item - len(json.dumps(entry, ensure_ascii=False)))
         entry["summary"] = item["summary"][:space]
-        # JSON escaping can occupy more than one character; fit exactly.
         while len(json.dumps(entry, ensure_ascii=False)) > per_item and entry["summary"]:
             entry["summary"] = entry["summary"][:-1]
         bounded.append(entry)

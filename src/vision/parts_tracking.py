@@ -30,8 +30,10 @@ class PartsMLflowTracking(VisionMLflowTracking):
 
 @contextmanager
 def parts_tracking_run(config: Any, *, run_id: str | None = None) -> Iterator[VisionMLflowTracking | None]:
-    # A local SQLite store makes explicit part training reproducible without a
-    # server. Existing configured tracking URI remains authoritative.
+    """
+    A local SQLite store makes explicit part training reproducible without a server. Existing configured
+    tracking URI remains authoritative.
+    """
     temporary_uri = bool(config.track_mlflow and not os.environ.get("MLFLOW_TRACKING_URI"))
     if temporary_uri:
         directory = REPO_ROOT / "artifacts/vision/mlflow_parts"

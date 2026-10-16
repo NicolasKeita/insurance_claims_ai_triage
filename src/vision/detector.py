@@ -111,7 +111,12 @@ def extract_ultralytics_rows(result: Any, *, width: int, height: int) -> tuple[l
 
 
 def normalized_detection_geometry(box: Any, contour: Any | None, index: int):
-    """Reuse the step29 geometry, retaining explicit missing-mask warnings."""
+    """
+    Reuse the step29 geometry, retaining explicit missing-mask warnings.
+
+    A retraced thin contour has no area. A self-crossing bowtie encloses real regions after topology repair and
+    must be rejected, not boxed.
+    """
     if len(box) != 4:
         raise DetectorOutputError("Detector box must contain four normalized coordinates")
     bounding_box = NormalizedBoundingBox(x_min=box[0], y_min=box[1], x_max=box[2], y_max=box[3])
@@ -135,8 +140,6 @@ def normalized_detection_geometry(box: Any, contour: Any | None, index: int):
         from shapely.geometry import Polygon
 
         geometry = Polygon([(point.x, point.y) for point in normalized_points])
-        # A retraced thin contour has no area. A self-crossing bowtie encloses
-        # real regions after topology repair and must be rejected, not boxed.
         if make_valid(geometry).area > 1e-12:
             raise DetectorOutputError("Detector returned an invalid self-crossing segmentation polygon")
         return bounding_box, None, [f"Detection {index} has a zero-area segmentation contour; bounding box retained."]
@@ -272,8 +275,10 @@ class UltralyticsDamageDetector:
             return model
 
     def assess_image(self, path: Path) -> ImageDamageAssessment:
+        """
+        Decode first: invalid images cannot trigger a model import or load.
+        """
         path = Path(path)
-        # Decode first: invalid images cannot trigger a model import or load.
         image = load_validated_image(path, self.settings)
         try:
             model = self._load_model()

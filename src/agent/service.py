@@ -29,10 +29,17 @@ class ClaimsAgentService:
         self.graph = build_agent_graph(tools, planner, finalizer)
 
     def review_claim(self, claim_id: str, objective: str | None = None) -> AgentRunResult:
+        """
+        Unknown claim fails before LLM/service I/O.
+
+        Nodes preserve their own accumulated state on known failures. An unexpected graph/runtime
+        exception still needs a terminal audit record; partial runtime state is unavailable from a
+        failed invoke.
+        """
         objective = DEFAULT_OBJECTIVE if objective is None else objective.strip()
         if not 1 <= len(objective) <= MAX_OBJECTIVE_CHARS:
             raise ValueError(f"objective must contain 1 to {MAX_OBJECTIVE_CHARS} characters")
-        self.tools.require_claim(claim_id)  # Unknown claim fails before LLM/service I/O.
+        self.tools.require_claim(claim_id)
         started, created_at = perf_counter(), datetime.now(timezone.utc)
         run_id = str(uuid4())
         state = {
@@ -57,9 +64,6 @@ class ClaimsAgentService:
         try:
             state = self.graph.invoke(state, config={"recursion_limit": 2 * self.max_iterations + 6})
         except Exception:
-            # Nodes preserve their own accumulated state on known failures.
-            # An unexpected graph/runtime exception still needs a terminal audit
-            # record; partial runtime state is unavailable from a failed invoke.
             state = {
                 **state,
                 "status": RunStatus.FAILED.value,

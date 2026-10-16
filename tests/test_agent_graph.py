@@ -258,9 +258,11 @@ def test_claim_search_limits_and_action_specific_arguments():
 
 
 def test_two_runs_append_instead_of_replacing():
+    """
+    A fresh finalizer output is required on each run; no run state leaks.
+    """
     store = FakeRunStore()
     agent, _, _ = service(["GET_CLAIM", "FINISH", "GET_CLAIM", "FINISH"], store=store)
-    # A fresh finalizer output is required on each run; no run state leaks.
     agent.graph = ClaimsAgentService(
         agent.tools,
         StructuredAgentPlanner(

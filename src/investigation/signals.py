@@ -22,12 +22,12 @@ def signals_from_multimodal(
 
     Keep every per-photo observation as evidence, but score a business damage
     category once. Positive corroboration and non-detection never add points.
+
+    Frozen models still contain mutable lists, and model_copy can bypass validation. Validate the complete source
+    graph before consuming or snapshotting its derived consistency and geometric evidence.
     """
     if not policy.multimodal_enabled:
         return ()
-    # Frozen models still contain mutable lists, and model_copy can bypass
-    # validation. Validate the complete source graph before consuming or
-    # snapshotting its derived consistency and geometric evidence.
     visual_assessment = ClaimMultimodalVisionAssessment.model_validate(visual_assessment.model_dump(round_trip=True))
     fusion = visual_assessment.fusion_policy
     additional = set(visual_assessment.consistency.additional_visual_damage) - set(

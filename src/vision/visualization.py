@@ -110,13 +110,17 @@ def save_multimodal_annotated_image(
             font = ImageFont.load_default(size=16)
 
         def draw_observations(panel, detections, *, kind):
+            """
+            Recreate the painter after compositing a polygon overlay.
+
+            Keep labels visible even when the detection reaches the right edge.
+            """
             overlay = Image.new("RGBA", image.size)
             painter = ImageDraw.Draw(overlay)
             for detection in detections:
                 color = "#00bcd4" if kind == "part" else COLORS[detection.damage_type]
                 if detection.polygon is not None:
                     _paint_polygon(overlay, detection.polygon, color, 65)
-                    # Recreate the painter after compositing a polygon overlay.
                     painter = ImageDraw.Draw(overlay)
                 else:
                     box = detection.bounding_box
@@ -141,7 +145,6 @@ def save_multimodal_annotated_image(
                     detection.bounding_box.x_min * (image.width - 1),
                     max(0, detection.bounding_box.y_min * (image.height - 1) - 20),
                 )
-                # Keep labels visible even when the detection reaches the right edge.
                 bounds = painter.textbbox((0, 0), label, font=font)
                 position = (max(0, min(position[0], image.width - (bounds[2] - bounds[0]))), position[1])
                 painter.rectangle(painter.textbbox(position, label, font=font), fill="#101820")

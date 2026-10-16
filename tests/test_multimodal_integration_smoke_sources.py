@@ -34,9 +34,11 @@ def test_source_escape_rejected_before_any_model_can_be_loaded(tmp_path):
 
 
 def test_prior_selection_order_is_kept_and_missing_images_are_not_silently_dropped(tmp_path):
+    """
+    Missing files remain selected so the runner records failures explicitly.
+    """
     dataset, prior, training = manifests(tmp_path, ["images/test/z.jpg", "images/test/a.jpg", "images/test/z.jpg"])
     actual_root, sources = SMOKE.select_sources(prior, training)
     assert actual_root == dataset
     assert [item.filename for item in sources] == ["test/z.jpg", "test/a.jpg"]
     assert all(not item.path.exists() for item in sources)
-    # Missing files remain selected so the runner records failures explicitly.

@@ -78,6 +78,9 @@ def run_parts_training(
     from vision.parts_tracking import parts_tracking_run
 
     def observed_model(checkpoint: str) -> Any:
+        """
+        Recording is explicit training-only and never runs during imports/tests.
+        """
         model = model_factory(checkpoint)
 
         def record_gpu_runtime(trainer: Any) -> None:
@@ -100,7 +103,6 @@ def run_parts_training(
                     f"\nUTC={datetime.now(timezone.utc).isoformat()} Python PID={os.getpid()} trainer.device={device} epoch={int(epoch) + 1}\n{evidence}\n"
                 )
 
-        # Recording is explicit training-only and never runs during imports/tests.
         if config.device == "0":
             model.add_callback("on_train_start", record_gpu_runtime)
             model.add_callback("on_train_epoch_end", record_gpu_runtime)

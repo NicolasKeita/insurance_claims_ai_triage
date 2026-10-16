@@ -13,8 +13,12 @@ class KnowledgeIndexer:
         self.store = store
 
     def index_all(self, manifest_path: Path, *, recreate: bool = False) -> dict:
+        """
+        Parse the entire corpus and resolve embedding configuration before mutation.
+
+        Validate both existing collections before upserting either one.
+        """
         config = self.store.config
-        # Parse the entire corpus and resolve embedding configuration before mutation.
         catalog = KnowledgeCatalog.load(config.knowledge_dir, config.max_chunk_chars)
         for kind in KnowledgeSourceType:
             self.store.contract(kind)
@@ -28,7 +32,6 @@ class KnowledgeIndexer:
                             "Refusing to recreate a collection not owned by this RAG source type"
                         )
         if not recreate:
-            # Validate both existing collections before upserting either one.
             for kind in KnowledgeSourceType:
                 if self.store.client.collection_exists(config.collection(kind)):
                     self.store.require_collection(kind)

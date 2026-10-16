@@ -166,6 +166,9 @@ def run_evaluation(
     tracking_factory: Callable[..., Any] | None = None,
     include_part_errors: bool = False,
 ) -> dict[str, Any]:
+    """
+    Validator save_dir is observed rather than assumed, to catch auto-increment.
+    """
     if max_error_examples < 0:
         raise ValueError("max_error_examples must be non-negative")
     if dataset_loader is None:
@@ -199,8 +202,10 @@ def run_evaluation(
     validation_device: str | None = None
 
     def capture_validation_device(validator: Any) -> None:
-        # Model.val uses a local validator and can leave model.device on CPU.
-        # The validator has selected its actual device before on_val_start.
+        """
+        Model.val uses a local validator and can leave model.device on CPU. The validator has selected
+        its actual device before on_val_start.
+        """
         nonlocal validation_device
         device = getattr(validator, "device", None)
         if device is not None:
@@ -222,7 +227,6 @@ def run_evaluation(
         exist_ok=False,
         plots=False,
     )
-    # Validator save_dir is observed rather than assumed, to catch auto-increment.
     actual_dir = getattr(result, "save_dir", None)
     if actual_dir is not None and Path(actual_dir).resolve() != evaluation_dir.resolve():
         raise RuntimeError("Evaluation wrote to an unexpected directory")

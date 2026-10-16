@@ -16,10 +16,13 @@ from vision.parts_detector import map_ultralytics_part_result
 
 
 def test_pixel_cells_preserve_thin_diagonal_holes_and_disconnected_regions():
+    """
+    diagonally touching single pixels
+    """
     mask = np.zeros((12, 20), dtype=np.uint8)
     mask[1:8, 1:8] = 1
     mask[3:6, 3:6] = 0
-    mask[9, 12] = mask[10, 13] = 1  # diagonally touching single pixels
+    mask[9, 12] = mask[10, 13] = 1
     polygon = binary_mask_to_polygon(mask)
     geometry = validated_polygon_geometry(polygon)
     assert polygon.holes and len(polygon.components) == 2

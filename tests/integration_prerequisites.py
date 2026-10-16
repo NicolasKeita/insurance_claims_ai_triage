@@ -125,11 +125,14 @@ def require_postgres_connection(config):
 
 
 def require_qdrant_connection(url):
+    """
+    Reject malformed ports before making a request.
+    """
     try:
         target = urlsplit(url)
         if target.scheme not in {"http", "https"} or not target.hostname or target.username or target.password:
             raise ValueError("expected an HTTP(S) URL without embedded credentials")
-        _ = target.port  # Reject malformed ports before making a request.
+        _ = target.port
     except ValueError as error:
         raise PrerequisiteError(f"Invalid TEST_QDRANT_URL: {error}") from None
     headers = {}
@@ -177,10 +180,13 @@ def _loopback(host):
 
 
 def check_selected_prerequisites(markers, root):
+    """
+    Unit and vision selections must not even inspect Docker.
+    """
     needs_postgres = "postgres" in markers
     needs_qdrant = bool({"qdrant", "rag"}.intersection(markers))
     if not needs_postgres and not needs_qdrant:
-        return  # Unit and vision selections must not even inspect Docker.
+        return
     from integration_support import (
         DEFAULT_TEST_DATABASE_URL,
         DEFAULT_TEST_QDRANT_URL,

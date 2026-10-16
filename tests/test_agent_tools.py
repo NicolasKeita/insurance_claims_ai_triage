@@ -373,6 +373,9 @@ def test_planner_cannot_override_claim_scope_or_unbound_retrieval(argument):
 
 
 def test_bounded_knowledge_excerpt_retains_metadata_and_unsafe_text_as_data(configured):
+    """
+    An injected instruction remains evidence text; it cannot extend the enum.
+    """
     claim, factory, _, _ = configured
 
     class Retriever:
@@ -388,7 +391,6 @@ def test_bounded_knowledge_excerpt_retains_metadata_and_unsafe_text_as_data(conf
     assert item.structured_data["source_id"] == "demo-policy"
     assert item.structured_data["source_version"] == "v1"
     assert item.structured_data["section"] == "Collision damage"
-    # An injected instruction remains evidence text; it cannot extend the enum.
     with pytest.raises(ValidationError):
         recommendation(recommended_next_action="APPROVE_CLAIM")
 

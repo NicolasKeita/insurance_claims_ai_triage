@@ -122,6 +122,9 @@ def test_cuda_available_but_framework_cpu_device_is_rejected(tmp_path):
 
 
 def test_reused_pipeline_preserves_train_val_and_final_test_once(tmp_path, monkeypatch):
+    """
+    Independent part threshold cannot accidentally read the damage environment.
+    """
     monkeypatch.delenv("DAMAGE_CONFIDENCE_THRESHOLD", raising=False)
     config = replace(
         load_parts_training_config(),
@@ -148,7 +151,6 @@ def test_reused_pipeline_preserves_train_val_and_final_test_once(tmp_path, monke
     }
     summary = run_parts_training(config, **kwargs)
     assert model.train_arguments["split"] == "val" and summary["test_used_during_training"] is False
-    # Independent part threshold cannot accidentally read the damage environment.
     monkeypatch.setenv("DAMAGE_CONFIDENCE_THRESHOLD", "0.99")
     result = run_parts_evaluation(config, **kwargs, max_error_examples=0)
     assert model.val_arguments["split"] == "test" and model.val_arguments["conf"] == 0.25

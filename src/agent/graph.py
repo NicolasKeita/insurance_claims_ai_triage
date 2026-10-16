@@ -22,7 +22,9 @@ from agent.models import (
 
 
 def failure(kind: str) -> dict:
-    # Never persist raw exceptions, prompts, credentials or provider responses.
+    """
+    Never persist raw exceptions, prompts, credentials or provider responses.
+    """
     return {
         "status": RunStatus.FAILED.value,
         "recommendation": None,
@@ -118,9 +120,11 @@ def build_agent_graph(tools, planner, finalizer):
         return "end" if state["status"] == RunStatus.FAILED else "plan"
 
     def finalize(state):
+        """
+        Explicit abstention, never an invented fallback answer.
+        """
         try:
             if not state["evidence_registry"]:
-                # Explicit abstention, never an invented fallback answer.
                 recommendation = AgentRecommendation(
                     case_summary="No claim evidence was collected for a supported recommendation.",
                     recommended_next_action=RecommendedNextAction.NO_RECOMMENDATION,
@@ -138,6 +142,10 @@ def build_agent_graph(tools, planner, finalizer):
         return "end" if state["status"] == RunStatus.FAILED else "validate"
 
     def validate(state):
+        """
+        Application-observed limits must survive a finalizer filling all available uncertainty slots
+        with its own observations.
+        """
         try:
             recommendation = AgentRecommendation.model_validate(state["recommendation"])
             if (
@@ -163,8 +171,6 @@ def build_agent_graph(tools, planner, finalizer):
             ]
             if state["stop_reason"] == "Maximum tool steps reached.":
                 limitations.append(state["stop_reason"])
-            # Application-observed limits must survive a finalizer filling all
-            # available uncertainty slots with its own observations.
             recommendation.uncertainties = list(dict.fromkeys([*limitations, *recommendation.uncertainties]))[:20]
             recommendation = AgentRecommendation.model_validate(recommendation.model_dump())
             return {"recommendation": recommendation.model_dump(mode="json"), "status": RunStatus.COMPLETED.value}

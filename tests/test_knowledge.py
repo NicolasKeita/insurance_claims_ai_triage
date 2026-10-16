@@ -110,6 +110,11 @@ def test_contract_mismatch_no_automatic_delete_and_explicit_rebuild(store):
 
 
 def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store, tmp_path):
+    """
+    Do not expose forged payload text or provenance.
+
+    A foreign ID cannot resolve to a local chunk; refill to requested limit.
+    """
     KnowledgeIndexer(store).index_all(tmp_path / "manifest.json")
     service = KnowledgeRetriever(store)
     catalog = KnowledgeCatalog.load(store.config.knowledge_dir)
@@ -127,13 +132,11 @@ def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store,
     assert service.search("test", Kind.POLICY, product="AUTO_PREMIUM", source_id="AUTO_BASIC_POLICY") == []
     assert service.search("test", Kind.POLICY, as_of_date=date(2025, 12, 31)) == []
     assert all(r.source_type == Kind.PROCEDURE and r.product is None for r in service.search("test", Kind.PROCEDURE))
-    # Do not expose forged payload text or provenance.
     store.client.set_payload(
         store.config.policy_collection, payload={"text": "FORGED", "title": "FORGED"}, points=[target.chunk_id]
     )
     resolved = service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", limit=1)[0]
     assert resolved.text == target.text and resolved.title == target.title
-    # A foreign ID cannot resolve to a local chunk; refill to requested limit.
     from uuid import uuid4
 
     foreign_id = str(uuid4())

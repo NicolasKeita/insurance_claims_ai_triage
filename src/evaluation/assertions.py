@@ -97,6 +97,19 @@ def forbidden_decisions(value: Any) -> list[str]:
 
 
 def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObservation, *, mode="deterministic"):
+    """
+    A real model prediction is an observation unless explicitly justified.
+
+    Supplemental explicit affirmative phrases; schema checks above are primary.
+
+    Their structured cause must be observed, plus explicit uncertainty; no exact final-answer wording is
+    required.
+
+    The source snapshot, not an explanatory string, anchors document findings.
+
+    Application schema verifies the three separate taxonomies, models, image identity and geometry
+    consistency, including empty detections.
+    """
     checks = []
 
     def check(name, component, expected, actual, passed, *, source=None, blocked=False):
@@ -142,7 +155,6 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
         )
 
     for code in scenario.expected_signals:
-        # A real model prediction is an observation unless explicitly justified.
         model_dependent = code in {"ANOMALOUS_PATTERN", "EXTREME_ANOMALY_PERCENTILE"}
         if mode == "real" and (
             code in scenario.inputs.get("deterministic_only_signals", [])
@@ -227,7 +239,6 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
                 observation.facts[component] == payload,
                 observation.facts[component] == payload,
             )
-    # Supplemental explicit affirmative phrases; schema checks above are primary.
     prose = []
     if observation.agent:
         rec = observation.agent.get("recommendation") or {}
@@ -319,8 +330,6 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
                 rec.get("recommended_next_action") in scenario.acceptable_agent_actions,
             )
         if scenario.expected_uncertainties:
-            # Their structured cause must be observed, plus explicit uncertainty;
-            # no exact final-answer wording is required.
             unavailable = [e.get("observation_status") for e in agent.get("trace", [])]
             check(
                 "agent:uncertainty",
@@ -399,7 +408,6 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
                 )
                 check("rag:expected_section", "retrieval", section, [item.get("section") for item in results], found)
 
-    # The source snapshot, not an explanatory string, anchors document findings.
     document_sources = observation.provenance.get("documents", [])
     if isinstance(document_sources, dict):
         document_sources = list(document_sources.values())
@@ -439,8 +447,6 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
         version = observation.model_versions.get("anomaly")
         check("provenance:anomaly_model", "anomaly", "recorded model/version", version, bool(version))
     if observation.vision:
-        # Application schema verifies the three separate taxonomies, models,
-        # image identity and geometry consistency, including empty detections.
         images = observation.vision.get("images", [])
         metadata_ok = (
             bool(images)

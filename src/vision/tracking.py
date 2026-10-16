@@ -114,6 +114,12 @@ def vision_tracking_run(
     *,
     run_id: str | None = None,
 ) -> Iterator[VisionMLflowTracking | None]:
+    """
+    Reuse the repository's tracking configuration, without imports when off.
+
+    Never catch the training body: a CV failure must still propagate. Avoid printing an exception
+    containing credentials from a server URI.
+    """
     if not (config.track_mlflow or os.environ.get("MLFLOW_TRACKING_URI")):
         yield None
         return
@@ -124,7 +130,6 @@ def vision_tracking_run(
         )
         yield None
         return
-    # Reuse the repository's tracking configuration, without imports when off.
     try:
         import mlflow
         from mlflow.exceptions import MlflowException
@@ -143,8 +148,6 @@ def vision_tracking_run(
         kwargs = {"run_id": run_id} if run_id else {"run_name": config.version}
         active_run = mlflow.start_run(**kwargs)
     except MlflowException:
-        # Never catch the training body: a CV failure must still propagate.
-        # Avoid printing an exception containing credentials from a server URI.
         warnings.warn(
             "Vision MLflow tracking unavailable: server run initialization failed; continuing CV without tracking.",
             RuntimeWarning,

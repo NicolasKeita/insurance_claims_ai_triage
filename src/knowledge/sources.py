@@ -14,7 +14,9 @@ DEMO_NOTICE = "DEMO / SYNTHETIC DOCUMENT — NOT A REAL INSURANCE CONTRACT"
 
 
 def _split_long(text: str, maximum: int) -> list[str]:
-    # Prefer sentence ends, then whitespace; hard split only a single oversized token.
+    """
+    Prefer sentence ends, then whitespace; hard split only a single oversized token.
+    """
     pieces = []
     while len(text) > maximum:
         window = text[: maximum + 1]
@@ -30,6 +32,9 @@ def _split_long(text: str, maximum: int) -> list[str]:
 
 
 def chunk_markdown(source: KnowledgeSource, markdown: str, max_chars: int = 600) -> list[KnowledgeChunk]:
+    """
+    H1 is document title; nested subsections retain their heading path.
+    """
     if max_chars < 100:
         raise ValueError("max_chars must be at least 100")
     section = source.title
@@ -50,7 +55,6 @@ def chunk_markdown(source: KnowledgeSource, markdown: str, max_chars: int = 600)
             level, title = len(heading[1]), heading[2]
             headings = {k: v for k, v in headings.items() if k < level}
             headings[level] = title
-            # H1 is document title; nested subsections retain their heading path.
             section = " / ".join(v for k, v in sorted(headings.items()) if k > 1) or title
         else:
             paragraphs.append(line)
@@ -105,11 +109,13 @@ class KnowledgeCatalog:
 
     @classmethod
     def load(cls, root: Path, max_chars: int = 600):
+        """
+        The sidecar cannot redirect the reader to another file.
+        """
         sources, chunks, identities = [], {}, set()
         for path in sorted(root.rglob("*.md")):
             sidecar = path.with_suffix(".metadata.json")
             metadata = json.loads(sidecar.read_text(encoding="utf-8"))
-            # The sidecar cannot redirect the reader to another file.
             source = KnowledgeSource(**metadata, file_path=path.relative_to(root).as_posix())
             expected_dir = "policies" if source.source_type == KnowledgeSourceType.POLICY else "procedures"
             if path.relative_to(root).parts[0] != expected_dir:

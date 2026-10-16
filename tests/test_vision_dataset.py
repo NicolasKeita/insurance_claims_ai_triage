@@ -23,7 +23,11 @@ from vision.dataset import (
 
 
 def synthetic_cardd(tmp_path: Path) -> Path:
-    """Tiny generated pixels with arbitrary polygons, not damage examples."""
+    """
+    Tiny generated pixels with arbitrary polygons, not damage examples.
+
+    Noncontiguous/reversed IDs deliberately avoid category_id - 1.
+    """
     root = tmp_path / "external_coco"
     (root / "annotations").mkdir(parents=True)
     for index, split in enumerate(("train", "val", "test"), start=1):
@@ -31,7 +35,6 @@ def synthetic_cardd(tmp_path: Path) -> Path:
         image_dir.mkdir()
         filename = f"synthetic_{split}.png"
         Image.new("RGB", (20, 10), color=(index * 30, 0, 0)).save(image_dir / filename)
-        # Noncontiguous/reversed IDs deliberately avoid category_id - 1.
         document = {
             "images": [{"id": index, "file_name": filename, "width": 20, "height": 10}],
             "categories": [{"id": 42, "name": "scratch"}, {"id": 7, "name": "dent"}],

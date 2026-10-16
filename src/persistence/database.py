@@ -59,6 +59,10 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
     Libpq connection overrides can redirect an otherwise safe-looking URL to a
     different database or schema. Test URLs therefore allow only ``sslmode`` as
     a query parameter; search paths are set by the isolated-schema fixtures.
+
+    Reject sockets, multiple hosts, percent escapes and delimiter tricks.
+
+    An explicit port also prevents a PGPORT environment value from changing it.
     """
     config = DatabaseConfig.from_url(value)
     target = config.url
@@ -77,7 +81,6 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
     try:
         ip_address(host)
     except ValueError:
-        # Reject sockets, multiple hosts, percent escapes and delimiter tricks.
         if not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?", host):
             raise DatabaseConfigurationError(
                 "TEST_DATABASE_URL requires one unambiguous hostname or IP address"
@@ -107,5 +110,4 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
         dev = DatabaseConfig.from_url(development).url
         if dev.database == target.database:
             raise DatabaseConfigurationError("Test and development databases must differ")
-    # An explicit port also prevents a PGPORT environment value from changing it.
     return DatabaseConfig(target.set(port=target.port or 5432))

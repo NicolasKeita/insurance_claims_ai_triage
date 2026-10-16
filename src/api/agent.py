@@ -30,10 +30,12 @@ def install_agent_routes(
     knowledge_retriever_loader=None,
 ):
     def ensure_claim(request, claim_id):
+        """
+        A nonexistent claim must fail before any LLM/embedding model is loaded.
+        """
         factory = request.app.state.session_factory
         if factory is None and claim_loader is None:
             raise HTTPException(503, "Database is not configured")
-        # A nonexistent claim must fail before any LLM/embedding model is loaded.
         return (claim_loader or load_stored_claim)(factory, claim_id)
 
     def similar_service(request):
@@ -79,6 +81,9 @@ def install_agent_routes(
         request: Request,
         payload: ClaimAgentReviewRequest | None = None,
     ):
+        """
+        Provider exceptions may include raw output or connection details.
+        """
         ensure_claim(request, claim_id)
         service = agent_service(request)
         try:
@@ -89,7 +94,6 @@ def install_agent_routes(
         except (ClaimNotFoundError, SQLAlchemyError):
             raise
         except Exception as error:
-            # Provider exceptions may include raw output or connection details.
             raise HTTPException(503, "Agent review failed") from error
         if result.status == "FAILED":
             raise HTTPException(503, {"message": "Agent review failed", "run_id": result.run_id})

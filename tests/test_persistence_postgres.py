@@ -43,7 +43,9 @@ def postgres_engine():
 
 @pytest.fixture
 def factory(postgres_engine):
-    # Application commits become savepoints; an outer rollback isolates tests.
+    """
+    Application commits become savepoints; an outer rollback isolates tests.
+    """
     with postgres_engine.connect() as connection:
         outer = connection.begin()
         factory = sessionmaker(connection, expire_on_commit=False, join_transaction_mode="create_savepoint")
@@ -150,11 +152,13 @@ def test_latest_tie_breaker_is_explicit(factory, reference_claim):
 
 
 def test_failed_document_write_rolls_back_entire_import(factory, reference_claim):
+    """
+    Fail a later document write after all initial inserts flushed.
+    """
     with pytest.raises(IntegrityError):
         with factory.begin() as session:
             ClaimRepository(session).add(reference_claim)
             row = session.scalar(select(ClaimRow))
-            # Fail a later document write after all initial inserts flushed.
             session.add(
                 DocumentRow(claim_pk=row.id, document_type="POLICE_REPORT", available=True, filename=None, position=4)
             )

@@ -22,7 +22,9 @@ IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
-    # PyYAML is a small transitive vision dependency, imported only on inspection.
+    """
+    PyYAML is a small transitive vision dependency, imported only on inspection.
+    """
     import yaml
 
     document = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
@@ -190,7 +192,13 @@ def prepare_carparts_dataset(
     dataset_root: Path = DEFAULT_DATASET_ROOT,
     manifest_path: Path = DEFAULT_MANIFEST,
 ) -> dict[str, Any]:
-    """Explicit official download followed by real inspection and reproducibility manifest."""
+    """
+    Explicit official download followed by real inspection and reproducibility manifest.
+
+    Existing folders are inspected below, never considered proof of success.
+
+    JSON is valid YAML; no download directive.
+    """
     from ultralytics.utils import ROOT as ULTRALYTICS_ROOT
     from ultralytics.utils.downloads import safe_download
 
@@ -205,7 +213,6 @@ def prepare_carparts_dataset(
         raise DatasetValidationError(
             "Installed official Carparts-Seg YAML changed its download URL; review before downloading"
         )
-    # Existing folders are inspected below, never considered proof of success.
     if not dataset_root.is_dir():
         extracted = Path(safe_download(OFFICIAL_ARCHIVE, dir=dataset_root.parent, unzip=True, delete=False))
         if extracted.resolve() != dataset_root:
@@ -225,7 +232,7 @@ def prepare_carparts_dataset(
         "names": {item["yolo_class_id"]: item["name"] for item in mapping},
         "nc": len(mapping),
     }
-    write_json(dataset_yaml, normalized)  # JSON is valid YAML; no download directive.
+    write_json(dataset_yaml, normalized)
     inspection = inspect_carparts_dataset(dataset_yaml)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     write_json(manifest_path.with_name("carparts_dataset_inspection.json"), inspection)

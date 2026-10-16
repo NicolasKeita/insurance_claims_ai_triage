@@ -232,6 +232,12 @@ def save_error_examples(
     max_images: int = 100,
     include_part_errors: bool = False,
 ) -> dict[str, Any]:
+    """
+    One overlay per selected image can show several observed events.
+
+    Other event kinds remain recorded, but each quota selects a distinct image instead of one busy image
+    exhausting all quotas.
+    """
     directory = config.output_dir / "error_examples"
     directory.mkdir(parents=True, exist_ok=False)
     root = config.dataset_yaml.parent
@@ -289,7 +295,6 @@ def save_error_examples(
             kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))
         ]
         if eligible and len(selected) < max_examples:
-            # One overlay per selected image can show several observed events.
             kind = eligible[0]
             annotated_name = f"{len(selected) + 1:03d}_{kind}_{image_path.stem}.jpg"
             _annotate(image_path, directory / annotated_name, detected, truth, names)
@@ -304,8 +309,6 @@ def save_error_examples(
                     "events": events,
                 }
             )
-            # Other event kinds remain recorded, but each quota selects a
-            # distinct image instead of one busy image exhausting all quotas.
             selected_per_kind[kind] += 1
     metadata = {
         "split": "test",

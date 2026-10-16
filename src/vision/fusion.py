@@ -62,6 +62,8 @@ def calculate_overlap(damage: VisualDamageDetection, part: VehiclePartDetection)
     Invalid supplied polygons fail explicitly, including when the other mask is
     missing. Only unavailable/unusable contours already surfaced as ``None`` by
     an adapter can use BBOX_FALLBACK, which is kept in the evidence snapshot.
+
+    Bound roundoff at polygon edges; geometry is never repaired or replaced.
     """
     from shapely.errors import GEOSException
 
@@ -80,7 +82,6 @@ def calculate_overlap(damage: VisualDamageDetection, part: VehiclePartDetection)
         intersection = float(damage_geometry.intersection(part_geometry).area)
     except GEOSException as error:
         raise FusionGeometryError("GEOS could not intersect valid damage and vehicle part geometry") from error
-    # Bound roundoff at polygon edges; geometry is never repaired or replaced.
     intersection = max(0.0, min(intersection, damage_area, part_area))
     union = damage_area + part_area - intersection
     return GeometryOverlap(
