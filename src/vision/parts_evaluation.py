@@ -1,7 +1,8 @@
 """Final official TEST evaluation via the shared segmentation evaluator."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from vision.carparts_dataset import carparts_provenance, load_carparts_dataset
 from vision.evaluation import run_evaluation

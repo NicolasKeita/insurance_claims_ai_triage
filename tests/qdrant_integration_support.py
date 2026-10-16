@@ -47,4 +47,5 @@ def temporary_qdrant_collections(*labels: str):
         except Exception as error:
             errors.append(error)
         if errors:
-            raise ExceptionGroup("Test Qdrant cleanup failed; inspect the reserved test collections", errors)
+            message = "Test Qdrant cleanup failed; inspect the reserved test collections"
+            raise ExceptionGroup(message, errors)  # noqa: F821

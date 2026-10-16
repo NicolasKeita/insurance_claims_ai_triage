@@ -29,7 +29,10 @@ def assess_multimodal_consistency(
     quoted = {DamageType(item) for item in quoted_damage_types}
     evidence = [item for image in images for item in image.evidence]
     mapped = {item.mapped_damage_type for item in evidence if item.mapped_damage_type is not None}
-    ordered = lambda values: [damage for damage in DamageType if damage in values]
+
+    def ordered(values):
+        return [damage for damage in DamageType if damage in values]
+
     return MultimodalConsistencyAssessment(
         declared_damage_types=ordered(declared),
         quoted_damage_types=ordered(quoted),

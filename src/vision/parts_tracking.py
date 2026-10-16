@@ -1,9 +1,10 @@
 """Separate part experiment, reusing the metadata-only step-29 MLflow logger."""
 
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from vision.tracking import VisionMLflowTracking, vision_tracking_run
 from vision.training import REPO_ROOT, write_json

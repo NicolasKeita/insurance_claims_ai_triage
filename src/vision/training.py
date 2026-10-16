@@ -9,10 +9,11 @@ import os
 import platform
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import tomllib
 

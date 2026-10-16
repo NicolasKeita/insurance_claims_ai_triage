@@ -6,12 +6,12 @@ inference and local multimodal diagnostics do not require a running database.
 
 import json
 import os
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 from tempfile import mkdtemp
 from time import perf_counter
-from typing import Callable
 
 from evaluation.models import ComponentResult, EvaluationScenario, EvaluationStatus, PipelineObservation, TraceEvent
 from evaluation.preflight import ROOT, PreflightReport, RealEvaluationConfig, run_preflight
@@ -222,7 +222,7 @@ class RealClaimsEvaluationPipeline:
                 triage = self._record(
                     observed,
                     kind,
-                    lambda: predictor.predict(features),
+                    lambda predictor=predictor: predictor.predict(features),
                     inputs=features.model_dump(mode="json"),
                     sources=[str(observed.provenance[kind].get("checkpoint", "mlflow_candidate"))],
                 )
@@ -232,7 +232,7 @@ class RealClaimsEvaluationPipeline:
                 result = self._record(
                     observed,
                     kind,
-                    lambda: predictor.assess(features),
+                    lambda predictor=predictor: predictor.assess(features),
                     inputs=features.model_dump(mode="json"),
                     sources=[str(observed.provenance[kind].get("checkpoint", "mlflow_candidate"))],
                 )

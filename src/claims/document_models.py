@@ -100,16 +100,6 @@ class AccidentReportExtraction(BaseModel):
     source: DocumentSource
 
 
-class GarageQuoteLlmOutput(BaseModel):
-    garage: str | None
-    claim_id: str | None
-
-    parts: tuple[LlmQuoteLineItem, ...] = ()
-
-    labor: LlmMoneyAmount | None
-    total: LlmMoneyAmount | None
-
-
 class LlmMoneyAmount(BaseModel):
     amount: float = Field(ge=0)
 
@@ -123,6 +113,16 @@ class LlmMoneyAmount(BaseModel):
 class LlmQuoteLineItem(BaseModel):
     description: str
     price: LlmMoneyAmount
+
+
+class GarageQuoteLlmOutput(BaseModel):
+    garage: str | None
+    claim_id: str | None
+
+    parts: tuple[LlmQuoteLineItem, ...] = ()
+
+    labor: LlmMoneyAmount | None
+    total: LlmMoneyAmount | None
 
 
 class ClaimFormLlmOutput(BaseModel):

@@ -6,10 +6,11 @@ service startup, writes to the database/vector stores, or fake replacements.
 
 import hashlib
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 
 import tomllib
 

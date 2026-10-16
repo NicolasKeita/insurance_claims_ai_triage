@@ -112,7 +112,7 @@ def save_multimodal_annotated_image(
         def draw_observations(panel, detections, *, kind):
             overlay = Image.new("RGBA", image.size)
             painter = ImageDraw.Draw(overlay)
-            for index, detection in enumerate(detections):
+            for detection in detections:
                 color = "#00bcd4" if kind == "part" else COLORS[detection.damage_type]
                 if detection.polygon is not None:
                     _paint_polygon(overlay, detection.polygon, color, 65)

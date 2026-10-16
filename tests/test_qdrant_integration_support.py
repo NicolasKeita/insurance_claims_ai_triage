@@ -58,7 +58,7 @@ def test_cleanup_attempts_every_collection_and_closes_after_delete_error(client_
         client_stub.collections.remove(name)
 
     monkeypatch.setattr(client_stub, "delete_collection", fail_first_delete)
-    with pytest.raises(ExceptionGroup, match="Test Qdrant cleanup failed"):
+    with pytest.raises(ExceptionGroup, match="Test Qdrant cleanup failed"):  # noqa: F821
         with support.temporary_qdrant_collections("rag_policy", "rag_procedure") as (client, names):
             client.collections.update(names)
     assert attempted == list(names)

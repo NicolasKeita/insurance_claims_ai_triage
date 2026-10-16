@@ -1,7 +1,7 @@
 """Novelty detection against an unmodified reference population."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping
 
 import numpy as np
 import pandas as pd

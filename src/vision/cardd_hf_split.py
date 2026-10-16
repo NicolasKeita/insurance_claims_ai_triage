@@ -365,7 +365,10 @@ def _assign(
     output = {name: [] for name in SPLITS}
     # Compute seeded tie keys once; repeated hashing would dominate a real run.
     tie_keys = {group.ids: _digest([seed, group.ids]) for group in groups}
-    tie = lambda group: tie_keys[group.ids]
+
+    def tie(group):
+        return tie_keys[group.ids]
+
     duplicates = sorted(
         (group for group in groups if group.size > 1),
         key=lambda group: (

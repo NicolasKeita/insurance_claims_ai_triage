@@ -12,9 +12,10 @@ import os
 import re
 import threading
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from vision.dataset import DatasetValidationError, annotation_hash
 from vision.taxonomy import map_category_name

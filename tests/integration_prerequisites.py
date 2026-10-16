@@ -129,7 +129,7 @@ def require_qdrant_connection(url):
         target = urlsplit(url)
         if target.scheme not in {"http", "https"} or not target.hostname or target.username or target.password:
             raise ValueError("expected an HTTP(S) URL without embedded credentials")
-        target.port  # Reject malformed ports before making a request.
+        _ = target.port  # Reject malformed ports before making a request.
     except ValueError as error:
         raise PrerequisiteError(f"Invalid TEST_QDRANT_URL: {error}") from None
     headers = {}

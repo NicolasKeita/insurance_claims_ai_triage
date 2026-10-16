@@ -32,7 +32,9 @@ def create_claims_agent_service(
     if similar_service is None and similar_service_loader is None:
         from retrieval.similar_claims import create_similar_claims_service
 
-        similar_service_loader = lambda: create_similar_claims_service(factory)
+        def similar_service_loader():
+            return create_similar_claims_service(factory)
+
     if knowledge_retriever is None and knowledge_retriever_loader is None:
         from knowledge.factory import create_knowledge_retriever
 
