@@ -7,7 +7,7 @@ from pathlib import Path
 
 from knowledge.config import ROOT
 from knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
-from knowledge.models import KnowledgeSourceType
+from knowledge.models import KnowledgeFilter, KnowledgeSourceType
 
 SMOKE_CASES = [
     ("POLICY", "What is the AUTO_PREMIUM collision deductible and how is it applied?", "AUTO_PREMIUM", False),
@@ -27,7 +27,9 @@ def main():
     try:
         service = create_knowledge_rag_service(retriever)
         for kind, question, product, expected_insufficient in SMOKE_CASES:
-            chunks = retriever.search(question, KnowledgeSourceType(kind), product=product, language="en", limit=5)
+            chunks = retriever.search(
+                question, KnowledgeSourceType(kind), filters=KnowledgeFilter(product=product, language="en"), limit=5
+            )
             record = {"question": question, "source_type": kind,
                       "retrieved_chunks": [c.model_dump(mode="json") for c in chunks]}
             try:

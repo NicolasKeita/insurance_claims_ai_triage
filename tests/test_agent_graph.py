@@ -21,7 +21,7 @@ from agent.models import (
     ToolObservation,
 )
 from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
-from agent.service import AgentRunError, ClaimsAgentService
+from agent.service import AgentRunError, AgentServiceConfig, ClaimsAgentService
 from persistence.repositories import ClaimNotFoundError
 
 CLAIM_ID = "CLAIM-2026-00001"
@@ -31,12 +31,14 @@ def service(steps, recommendation=None, tools=None, store=None, max_iterations=8
     planner_llm = FakeStructuredLlm([make_step(s) if isinstance(s, str) else s for s in steps])
     finalizer_llm = FakeStructuredLlm([recommendation or make_recommendation()])
     value = ClaimsAgentService(
-        tools or FakeAgentTools(),
-        StructuredAgentPlanner(planner_llm),
-        StructuredAgentFinalizer(finalizer_llm),
-        run_store=store,
-        max_iterations=max_iterations,
-        llm_model="fake-local",
+        AgentServiceConfig(
+            tools or FakeAgentTools(),
+            StructuredAgentPlanner(planner_llm),
+            StructuredAgentFinalizer(finalizer_llm),
+            run_store=store,
+            max_iterations=max_iterations,
+            llm_model="fake-local",
+        )
     )
     return value, planner_llm, finalizer_llm
 
@@ -264,14 +266,16 @@ def test_two_runs_append_instead_of_replacing():
     store = FakeRunStore()
     agent, _, _ = service(["GET_CLAIM", "FINISH", "GET_CLAIM", "FINISH"], store=store)
     agent.graph = ClaimsAgentService(
-        agent.tools,
-        StructuredAgentPlanner(
-            FakeStructuredLlm(
-                [make_step("GET_CLAIM"), make_step("FINISH"), make_step("GET_CLAIM"), make_step("FINISH")]
-            )
-        ),
-        StructuredAgentFinalizer(FakeStructuredLlm([make_recommendation(), make_recommendation()])),
-        run_store=store,
+        AgentServiceConfig(
+            agent.tools,
+            StructuredAgentPlanner(
+                FakeStructuredLlm(
+                    [make_step("GET_CLAIM"), make_step("FINISH"), make_step("GET_CLAIM"), make_step("FINISH")]
+                )
+            ),
+            StructuredAgentFinalizer(FakeStructuredLlm([make_recommendation(), make_recommendation()])),
+            run_store=store,
+        )
     ).graph
     first, second = agent.review_claim(CLAIM_ID), agent.review_claim(CLAIM_ID)
     assert first.run_id != second.run_id

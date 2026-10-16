@@ -9,7 +9,7 @@ from qdrant_client import QdrantClient, models
 
 from knowledge.config import KNOWLEDGE_CHUNKING_VERSION, ROOT, KnowledgeConfig
 from knowledge.indexing import KnowledgeIndexer
-from knowledge.models import KnowledgeSource, applicable_on
+from knowledge.models import KnowledgeFilter, KnowledgeSource, applicable_on
 from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.qdrant_store import QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
@@ -121,21 +121,26 @@ def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store,
     target = next(
         c for c in catalog.chunks.values() if c.source_id == "AUTO_PREMIUM_POLICY" and c.section == "Deductible"
     )
-    response = service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", language="en", limit=3)
+    response = service.search(
+        target.text, Kind.POLICY, filters=KnowledgeFilter(product="AUTO_PREMIUM", language="en"), limit=3
+    )
     assert len(response) == 3 and response[0].chunk_id == target.chunk_id
     assert [r.similarity_score for r in response] == sorted((r.similarity_score for r in response), reverse=True)
     assert all(r.product == "AUTO_PREMIUM" and r.source_type == Kind.POLICY for r in response)
-    assert service.search("test", Kind.POLICY, language="fr") == []
-    assert service.search("test", Kind.POLICY, product="NONEXISTENT") == []
-    selected = service.search("test", Kind.POLICY, source_id="AUTO_BASIC_POLICY")
+    assert service.search("test", Kind.POLICY, filters=KnowledgeFilter(language="fr")) == []
+    assert service.search("test", Kind.POLICY, filters=KnowledgeFilter(product="NONEXISTENT")) == []
+    selected = service.search("test", Kind.POLICY, filters=KnowledgeFilter(source_id="AUTO_BASIC_POLICY"))
     assert selected and all(r.source_id == "AUTO_BASIC_POLICY" for r in selected)
-    assert service.search("test", Kind.POLICY, product="AUTO_PREMIUM", source_id="AUTO_BASIC_POLICY") == []
-    assert service.search("test", Kind.POLICY, as_of_date=date(2025, 12, 31)) == []
+    both = service.search(
+        "test", Kind.POLICY, filters=KnowledgeFilter(product="AUTO_PREMIUM", source_id="AUTO_BASIC_POLICY")
+    )
+    assert both == []
+    assert service.search("test", Kind.POLICY, filters=KnowledgeFilter(as_of_date=date(2025, 12, 31))) == []
     assert all(r.source_type == Kind.PROCEDURE and r.product is None for r in service.search("test", Kind.PROCEDURE))
     store.client.set_payload(
         store.config.policy_collection, payload={"text": "FORGED", "title": "FORGED"}, points=[target.chunk_id]
     )
-    resolved = service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", limit=1)[0]
+    resolved = service.search(target.text, Kind.POLICY, filters=KnowledgeFilter(product="AUTO_PREMIUM"), limit=1)[0]
     assert resolved.text == target.text and resolved.title == target.title
     from uuid import uuid4
 
@@ -150,7 +155,7 @@ def test_retrieval_filters_limit_rank_authoritative_text_and_stale_chunks(store,
             )
         ],
     )
-    assert len(service.search(target.text, Kind.POLICY, product="AUTO_PREMIUM", limit=5)) == 5
+    assert len(service.search(target.text, Kind.POLICY, filters=KnowledgeFilter(product="AUTO_PREMIUM"), limit=5)) == 5
 
 
 def test_temporal_pure_and_qdrant_boundaries(store):
@@ -177,7 +182,9 @@ def test_temporal_pure_and_qdrant_boundaries(store):
         (date(2026, 10, 1), {chunks[1].chunk_id, chunks[2].chunk_id}),
         (date(2025, 1, 1), {chunks[2].chunk_id}),
     ):
-        hits, _ = store.query(Kind.POLICY, store.embeddings.embed_query("rule"), as_of_date=day, limit=20)
+        hits, _ = store.query(
+            Kind.POLICY, store.embeddings.embed_query("rule"), filters=KnowledgeFilter(as_of_date=day), limit=20
+        )
         assert {i for i, _ in hits} == expected
 
 

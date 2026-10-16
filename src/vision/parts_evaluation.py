@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from vision.carparts_dataset import carparts_provenance, load_carparts_dataset
-from vision.evaluation import run_evaluation
+from vision.evaluation import EvaluationParams, run_evaluation
 from vision.parts_training import VehiclePartTrainingConfig, require_requested_device
 
 
@@ -22,12 +22,14 @@ def run_parts_evaluation(
 
     return run_evaluation(
         config,
-        model_factory=model_factory,
-        environment_provider=lambda: require_requested_device(config, environment_provider()),
-        dataset_loader=dataset_loader,
-        max_error_examples=max_error_examples,
-        provenance_provider=carparts_provenance,
-        confidence_threshold=config.confidence_threshold,
-        tracking_factory=tracking_factory or parts_tracking_run,
-        include_part_errors=True,
+        params=EvaluationParams(
+            model_factory=model_factory,
+            environment_provider=lambda: require_requested_device(config, environment_provider()),
+            dataset_loader=dataset_loader,
+            max_error_examples=max_error_examples,
+            provenance_provider=carparts_provenance,
+            confidence_threshold=config.confidence_threshold,
+            tracking_factory=tracking_factory or parts_tracking_run,
+            include_part_errors=True,
+        ),
     )

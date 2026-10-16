@@ -6,6 +6,7 @@ import csv
 import json
 import math
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -155,21 +156,32 @@ def _write_per_class_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow(flattened)
 
 
+@dataclass
+class EvaluationParams:
+    """Evaluation dependencies, diagnostic quotas and checkpoint provenance."""
+
+    model_factory: Callable[[str], Any]
+    environment_provider: Callable[[], dict[str, Any]]
+    dataset_loader: Callable[[Path], dict[str, Any]] | None = None
+    max_error_examples: int = 8
+    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None
+    confidence_threshold: float | None = None
+    tracking_factory: Callable[..., Any] | None = None
+    include_part_errors: bool = False
+
+
 def run_evaluation(
     config: DamageTrainingConfig,
     *,
-    model_factory: Callable[[str], Any],
-    environment_provider: Callable[[], dict[str, Any]],
-    dataset_loader: Callable[[Path], dict[str, Any]] | None = None,
-    max_error_examples: int = 8,
-    provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]] | None = None,
-    confidence_threshold: float | None = None,
-    tracking_factory: Callable[..., Any] | None = None,
-    include_part_errors: bool = False,
+    params: EvaluationParams,
 ) -> dict[str, Any]:
     """
     Validator save_dir is observed rather than assumed, to catch auto-increment.
     """
+    model_factory, environment_provider = params.model_factory, params.environment_provider
+    dataset_loader, provenance_provider = params.dataset_loader, params.provenance_provider
+    max_error_examples, confidence_threshold = params.max_error_examples, params.confidence_threshold
+    tracking_factory, include_part_errors = params.tracking_factory, params.include_part_errors
     if max_error_examples < 0:
         raise ValueError("max_error_examples must be non-negative")
     if dataset_loader is None:
@@ -260,10 +272,14 @@ def run_evaluation(
     csv_path = config.output_dir / "per_class_metrics.csv"
     _write_per_class_csv(csv_path, payload["per_class"])
     if max_error_examples:
-        from vision.error_analysis import save_error_examples
+        from vision.error_analysis import ErrorExamplesConfig, save_error_examples
 
         analysis = save_error_examples(
-            model, config, manifest, threshold, max_examples=max_error_examples, include_part_errors=include_part_errors
+            model,
+            config,
+            manifest,
+            threshold,
+            examples=ErrorExamplesConfig(max_examples=max_error_examples, include_part_errors=include_part_errors),
         )
         payload["error_analysis"] = analysis
         write_json(metrics_path, payload)

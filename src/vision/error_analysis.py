@@ -26,14 +26,21 @@ def box_iou(first: tuple[float, ...], second: tuple[float, ...]) -> float:
     return overlap / union if union else 0.0
 
 
+@dataclass
+class AnalysisConfig:
+    """Confidence, matching and optional mask diagnostic settings."""
+
+    confidence_threshold: float
+    matching_iou: float = 0.5
+    image_size: tuple[int, int] | None = None
+    include_part_errors: bool = False
+
+
 def analyze_instances(
     predictions: list[ErrorInstance],
     truth: list[ErrorInstance],
     *,
-    confidence_threshold: float,
-    matching_iou: float = 0.5,
-    image_size: tuple[int, int] | None = None,
-    include_part_errors: bool = False,
+    config: AnalysisConfig,
 ) -> dict[str, Any]:
     """Greedily match highest-IoU same-class boxes, once per instance.
 
@@ -44,7 +51,7 @@ def analyze_instances(
     accepted = [
         index
         for index, pred in enumerate(predictions)
-        if pred.confidence is not None and pred.confidence >= confidence_threshold
+        if pred.confidence is not None and pred.confidence >= config.confidence_threshold
     ]
     candidates = [
         (box_iou(predictions[pred].box, target.box), pred, target_index)
@@ -58,23 +65,23 @@ def analyze_instances(
         key=lambda value: (value[0], predictions[value[1]].confidence, -value[1], -value[2]),
         reverse=True,
     ):
-        if overlap >= matching_iou and pred not in matched_pred and target not in matched_truth:
+        if overlap >= config.matching_iou and pred not in matched_pred and target not in matched_truth:
             matched_pred.add(pred)
             matched_truth.add(target)
             matches.append({"prediction_index": pred, "truth_index": target, "box_iou": overlap})
     false_positives = [index for index in accepted if index not in matched_pred]
     good_predictions, segmentation_errors, incomplete_masks = [], [], []
-    if image_size is not None:
+    if config.image_size is not None:
         for match in matches:
             pred = predictions[match["prediction_index"]]
             target = truth[match["truth_index"]]
-            overlap = polygon_mask_overlap(pred.polygon, target.polygon, image_size)
+            overlap = polygon_mask_overlap(pred.polygon, target.polygon, config.image_size)
             match["polygon_mask_iou"] = overlap["iou"]
-            if include_part_errors:
+            if config.include_part_errors:
                 match["truth_mask_coverage"] = overlap["truth_coverage"]
                 if pred.polygon and target.polygon and overlap["truth_coverage"] < 0.8:
                     incomplete_masks.append(match.copy())
-            if match["polygon_mask_iou"] >= matching_iou:
+            if match["polygon_mask_iou"] >= config.matching_iou:
                 good_predictions.append(match.copy())
             else:
                 segmentation_errors.append(match.copy())
@@ -89,15 +96,15 @@ def analyze_instances(
         "low_confidence": [
             index
             for index, pred in enumerate(predictions)
-            if pred.confidence is not None and pred.confidence < confidence_threshold
+            if pred.confidence is not None and pred.confidence < config.confidence_threshold
         ],
         "localization_errors": [
             {"prediction_index": pred, "truth_index": target, "box_iou": overlap}
             for overlap, pred, target in candidates
-            if pred in false_positives and target not in matched_truth and 0.1 <= overlap < matching_iou
+            if pred in false_positives and target not in matched_truth and 0.1 <= overlap < config.matching_iou
         ],
     }
-    if include_part_errors:
+    if config.include_part_errors:
         result["wrong_parts"] = [
             {
                 "prediction_index": pred,
@@ -109,7 +116,7 @@ def analyze_instances(
             for pred in false_positives
             for target in result["false_negatives"]
             if predictions[pred].class_id != truth[target].class_id
-            and box_iou(predictions[pred].box, truth[target].box) >= matching_iou
+            and box_iou(predictions[pred].box, truth[target].box) >= config.matching_iou
         ]
         result["incomplete_masks"] = incomplete_masks
     return result
@@ -222,15 +229,22 @@ def _annotate(
     image.save(output, format="JPEG")
 
 
+@dataclass
+class ErrorExamplesConfig:
+    """Limits and optional vehicle-part diagnostics for error overlays."""
+
+    max_examples: int = 8
+    max_images: int = 100
+    include_part_errors: bool = False
+
+
 def save_error_examples(
     model: Any,
     config: DamageTrainingConfig,
     manifest: dict[str, Any],
     confidence_threshold: float,
     *,
-    max_examples: int = 8,
-    max_images: int = 100,
-    include_part_errors: bool = False,
+    examples: ErrorExamplesConfig | None = None,
 ) -> dict[str, Any]:
     """
     One overlay per selected image can show several observed events.
@@ -238,11 +252,12 @@ def save_error_examples(
     Other event kinds remain recorded, but each quota selects a distinct image instead of one busy image
     exhausting all quotas.
     """
+    examples = examples or ErrorExamplesConfig()
     directory = config.output_dir / "error_examples"
     directory.mkdir(parents=True, exist_ok=False)
     root = config.dataset_yaml.parent
     names = {item["yolo_class_id"]: item["name"] for item in manifest["category_mapping"]}
-    images = sorted(manifest["prepared_files"]["test"], key=lambda entry: entry["image"])[:max_images]
+    images = sorted(manifest["prepared_files"]["test"], key=lambda entry: entry["image"])[: examples.max_images]
     kinds = (
         "good_predictions",
         "false_positives",
@@ -251,7 +266,7 @@ def save_error_examples(
         "localization_errors",
         "segmentation_errors",
     )
-    if include_part_errors:
+    if examples.include_part_errors:
         kinds = (
             "good_predictions",
             "wrong_parts",
@@ -285,16 +300,20 @@ def save_error_examples(
         events = analyze_instances(
             detected,
             truth,
-            confidence_threshold=confidence_threshold,
-            image_size=image_size,
-            include_part_errors=include_part_errors,
+            config=AnalysisConfig(
+                confidence_threshold=confidence_threshold,
+                image_size=image_size,
+                include_part_errors=examples.include_part_errors,
+            ),
         )
         for kind in kinds:
             totals[kind] += len(events[kind])
         eligible = [
-            kind for kind in kinds if events[kind] and selected_per_kind[kind] < max(1, max_examples // len(kinds))
+            kind
+            for kind in kinds
+            if events[kind] and selected_per_kind[kind] < max(1, examples.max_examples // len(kinds))
         ]
-        if eligible and len(selected) < max_examples:
+        if eligible and len(selected) < examples.max_examples:
             kind = eligible[0]
             annotated_name = f"{len(selected) + 1:03d}_{kind}_{image_path.stem}.jpg"
             _annotate(image_path, directory / annotated_name, detected, truth, names)
@@ -313,7 +332,7 @@ def save_error_examples(
     metadata = {
         "split": "test",
         "images_inspected": len(images),
-        "maximum_images": max_images,
+        "maximum_images": examples.max_images,
         "selection": "first filename-sorted test images; bounded diagnostic sample, not a representative estimate",
         "confidence_threshold": confidence_threshold,
         "diagnostic_candidate_threshold": floor,
@@ -321,11 +340,11 @@ def save_error_examples(
         "diagnostic_polygon_mask_iou": 0.5,
         "incomplete_mask_definition": "Same-class box match with source-resolution polygon intersection/"
         "truth mask area <0.8; fixed diagnostic criterion, not TEST-tuned."
-        if include_part_errors
+        if examples.include_part_errors
         else None,
         "wrong_part_definition": "Unmatched prediction/GT pair of different classes with box IoU >=0.5; "
         "plausible classification confusion, not causal proof."
-        if include_part_errors
+        if examples.include_part_errors
         else None,
         "counts_in_inspected_sample": totals,
         "good_prediction_definition": "Same-class one-to-one box IoU >=0.5 and source-resolution rasterized "

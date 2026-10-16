@@ -3,7 +3,7 @@ import logging
 import re
 
 from claims.llm import StructuredLlm
-from knowledge.models import GroundedAnswer, GroundedLlmOutput, GroundingError, KnowledgeCitation
+from knowledge.models import GroundedAnswer, GroundedLlmOutput, GroundingError, KnowledgeCitation, KnowledgeFilter
 
 logger = logging.getLogger(__name__)
 RAG_SYSTEM_PROMPT = """Answer ONLY from the provided sources. Do not use outside knowledge.
@@ -25,15 +25,12 @@ class KnowledgeRagService:
         self.retriever, self.llm = retriever, llm
 
     def answer(
-        self, question, source_type, *, product=None, language=None, source_id=None, as_of_date=None, retrieval_limit=5
+        self, question, source_type, *, filters: KnowledgeFilter | None = None, retrieval_limit=5
     ) -> GroundedAnswer:
         chunks = self.retriever.search(
             question,
             source_type,
-            product=product,
-            language=language,
-            source_id=source_id,
-            as_of_date=as_of_date,
+            filters=filters,
             limit=retrieval_limit,
         )
         return self.answer_from_chunks(question, chunks)

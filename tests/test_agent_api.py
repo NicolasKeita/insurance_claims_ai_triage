@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from agent.config import DEFAULT_OBJECTIVE
 from agent.models import AgentRecommendation, AgentRunResult
 from agent.service import AgentRunError
-from api.main import create_app
+from api.main import AppConfig, create_app
 from persistence.repositories import ClaimNotFoundError
 from retrieval.models import SimilarClaimsResponse
 
@@ -80,7 +80,11 @@ def test_optional_body_objective_cached_service_and_append_only_run_reads(monkey
         return service
 
     app = create_app(
-        agent_service_loader=loader, agent_claim_loader=fake_claim_loader, agent_run_store_loader=lambda _: store
+        AppConfig(
+            agent_service_loader=loader,
+            agent_claim_loader=fake_claim_loader,
+            agent_run_store_loader=lambda _: store,
+        )
     )
     with TestClient(app) as client:
         assert loaded == []
@@ -118,7 +122,7 @@ def test_invalid_body_rejected_before_database_and_model_loading(payload, monkey
     def forbidden(*args, **kwargs):
         raise AssertionError("No dependency may load for an invalid HTTP body")
 
-    app = create_app(agent_service_loader=forbidden, agent_claim_loader=forbidden)
+    app = create_app(AppConfig(agent_service_loader=forbidden, agent_claim_loader=forbidden))
     with TestClient(app) as client:
         assert client.post("/v1/claims/demo/agent/review", json=payload).status_code == 422
 
@@ -133,7 +137,7 @@ def test_claim_scope_and_unknown_claim_before_model_io(monkeypatch):
         loaded.append(True)
         return service
 
-    with TestClient(create_app(agent_service_loader=loader, agent_claim_loader=fake_claim_loader)) as client:
+    with TestClient(create_app(AppConfig(agent_service_loader=loader, agent_claim_loader=fake_claim_loader))) as client:
         assert client.post("/v1/claims/missing/agent/review").status_code == 404
         assert loaded == []
         response = client.post(
@@ -156,9 +160,11 @@ def test_failed_run_id_and_sanitized_http_error(failure_kind, expected_status, m
             raise AgentRunError("secret raw LLM output", run_id=run.run_id, failure_kind=failure_kind)
 
     app = create_app(
-        agent_service_loader=lambda *args, **kwargs: BrokenAgent(),
-        agent_claim_loader=fake_claim_loader,
-        agent_run_store_loader=lambda _: store,
+        AppConfig(
+            agent_service_loader=lambda *args, **kwargs: BrokenAgent(),
+            agent_claim_loader=fake_claim_loader,
+            agent_run_store_loader=lambda _: store,
+        )
     )
     with TestClient(app) as client:
         response = client.post("/v1/claims/demo/agent/review")
@@ -178,7 +184,9 @@ def test_audit_reads_do_not_load_agent_and_bounded_limit(monkeypatch):
         raise AssertionError("Audit reads must not load a model")
 
     app = create_app(
-        agent_service_loader=forbidden, agent_claim_loader=fake_claim_loader, agent_run_store_loader=lambda _: store
+        AppConfig(
+            agent_service_loader=forbidden, agent_claim_loader=fake_claim_loader, agent_run_store_loader=lambda _: store
+        )
     )
     with TestClient(app) as client:
         assert client.get("/v1/claims/demo/agent/runs").status_code == 200
@@ -201,7 +209,7 @@ def test_database_unconfigured_and_loader_failure_are_controlled(monkeypatch):
     def broken(*args, **kwargs):
         raise RuntimeError("secret connection details")
 
-    with TestClient(create_app(agent_service_loader=broken, agent_claim_loader=fake_claim_loader)) as client:
+    with TestClient(create_app(AppConfig(agent_service_loader=broken, agent_claim_loader=fake_claim_loader))) as client:
         response = client.post("/v1/claims/demo/agent/review")
         assert response.status_code == 503 and "secret" not in response.text
 
@@ -223,7 +231,7 @@ def test_agent_reuses_lifespan_retrieval_caches_and_cleanup(preload, monkeypatch
     class Knowledge:
         closed = False
 
-        def search(self, **kwargs):
+        def search(self, query, source_type, **kwargs):
             return []
 
         def close(self):
@@ -251,10 +259,12 @@ def test_agent_reuses_lifespan_retrieval_caches_and_cleanup(preload, monkeypatch
         return CachedAgent()
 
     app = create_app(
-        agent_service_loader=agent_loader,
-        agent_claim_loader=fake_claim_loader,
-        similar_service_loader=similar_loader,
-        knowledge_retriever_loader=knowledge_loader,
+        AppConfig(
+            agent_service_loader=agent_loader,
+            agent_claim_loader=fake_claim_loader,
+            similar_service_loader=similar_loader,
+            knowledge_retriever_loader=knowledge_loader,
+        )
     )
     with TestClient(app) as client:
 

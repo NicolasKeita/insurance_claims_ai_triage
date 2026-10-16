@@ -7,7 +7,7 @@ import numpy as np
 from qdrant_client import QdrantClient, models
 
 from knowledge.config import KNOWLEDGE_CHUNKING_VERSION, KNOWLEDGE_COLLECTION_VERSION, KnowledgeConfig
-from knowledge.models import KnowledgeChunk, KnowledgeSourceType
+from knowledge.models import KnowledgeChunk, KnowledgeFilter, KnowledgeSourceType
 from retrieval.embeddings import EmbeddingProvider
 from retrieval.models import IndexCompatibilityError, RetrievalUnavailableError
 
@@ -163,19 +163,22 @@ class QdrantKnowledgeStore:
         with self._operation():
             self.client.upsert(self.config.collection(source_type), points=points, wait=True)
 
-    def query(
-        self, source_type, vector, *, product=None, language=None, source_id=None, as_of_date=None, limit=5, offset=0
-    ):
+    def query(self, source_type, vector, *, filters=None, limit=5, offset=0):
         """
         Only IDs/ranking cross the boundary; text and provenance are re-resolved.
         """
+        active = filters or KnowledgeFilter()
         vector = self._vectors([vector], 1)[0]
         with self._operation():
             points = self.client.query_points(
                 self.config.collection(source_type),
                 query=vector,
                 query_filter=knowledge_filter(
-                    source_type, product=product, language=language, source_id=source_id, as_of_date=as_of_date
+                    source_type,
+                    product=active.product,
+                    language=active.language,
+                    source_id=active.source_id,
+                    as_of_date=active.as_of_date,
                 ),
                 limit=limit,
                 offset=offset,

@@ -21,12 +21,19 @@ def add_hf_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def load_hf_arguments(args: argparse.Namespace):
-    from vision.cardd_hf import default_hf_cache_dir, load_cardd_hf, normalize_fiftyone_dataset
+    from vision.cardd_hf import CarddHfConfig, default_hf_cache_dir, load_cardd_hf, normalize_fiftyone_dataset
 
     if args.dataset_dir is not None:
         raise DatasetValidationError("--dataset-dir requires --source coco; the default source is the HF mirror")
     if args.download:
-        return load_cardd_hf(repository=args.repository, revision=args.revision, cache_dir=args.cache_dir, annotation_field=args.annotation_field)
+        return load_cardd_hf(
+            CarddHfConfig(
+                repository=args.repository,
+                revision=args.revision,
+                cache_dir=args.cache_dir,
+                annotation_field=args.annotation_field,
+            )
+        )
     if args.dataset_name:
         cache_dir = args.cache_dir.expanduser().resolve() if args.cache_dir is not None else default_hf_cache_dir()
         os.environ.setdefault("FIFTYONE_DATABASE_DIR", str(cache_dir / "fiftyone_db"))

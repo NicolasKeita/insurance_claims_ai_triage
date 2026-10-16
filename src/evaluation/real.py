@@ -476,7 +476,7 @@ class RealClaimsEvaluationPipeline:
             self._skip(observed, "rag_generation", "Retrieval unavailable")
             return
         from knowledge.evaluation import section_metrics
-        from knowledge.models import KnowledgeSourceType
+        from knowledge.models import KnowledgeFilter, KnowledgeSourceType
         from knowledge.qdrant_store import QdrantKnowledgeStore
         from knowledge.retrieval import KnowledgeRetriever
 
@@ -493,7 +493,10 @@ class RealClaimsEvaluationPipeline:
             observed,
             "retrieval",
             lambda: retriever.search(
-                question, kind, product=scenario.inputs.get("rag_product"), language="en", limit=5
+                question,
+                kind,
+                filters=KnowledgeFilter(product=scenario.inputs.get("rag_product"), language="en"),
+                limit=5,
             ),
             inputs={"question": question, "source_type": kind.value},
         )

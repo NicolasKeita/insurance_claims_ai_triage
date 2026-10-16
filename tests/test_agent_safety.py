@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from agent.config import MAX_FINALIZER_EVIDENCE_CHARS
 from agent.models import RunStatus, ToolObservation
 from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
-from agent.service import AgentRunError, ClaimsAgentService
+from agent.service import AgentRunError, AgentServiceConfig, ClaimsAgentService
 from claims.llm import OllamaStructuredLlm
 
 CLAIM_ID = "CLAIM-2026-00001"
@@ -23,11 +23,13 @@ CLAIM_ID = "CLAIM-2026-00001"
 
 def make_service(steps, *, tools=None, recommendation=None, store=None, max_iterations=8):
     return ClaimsAgentService(
-        tools or FakeAgentTools(),
-        StructuredAgentPlanner(FakeStructuredLlm([make_step(step) for step in steps])),
-        StructuredAgentFinalizer(FakeStructuredLlm([recommendation or make_recommendation()])),
-        run_store=store,
-        max_iterations=max_iterations,
+        AgentServiceConfig(
+            tools or FakeAgentTools(),
+            StructuredAgentPlanner(FakeStructuredLlm([make_step(step) for step in steps])),
+            StructuredAgentFinalizer(FakeStructuredLlm([recommendation or make_recommendation()])),
+            run_store=store,
+            max_iterations=max_iterations,
+        )
     )
 
 
@@ -105,18 +107,20 @@ def test_rationale_citations_are_aggregated_even_when_llm_omits_top_level_ids():
 
 def test_omitted_finalizer_grounding_fields_are_invalid_generation():
     service = ClaimsAgentService(
-        FakeAgentTools(),
-        StructuredAgentPlanner(FakeStructuredLlm([make_step("GET_CLAIM"), make_step("FINISH")])),
-        StructuredAgentFinalizer(
-            FakeStructuredLlm(
-                [
-                    {
-                        "case_summary": "A claim needs review.",
-                        "recommended_next_action": "CONTINUE_STANDARD_REVIEW",
-                    }
-                ]
-            )
-        ),
+        AgentServiceConfig(
+            FakeAgentTools(),
+            StructuredAgentPlanner(FakeStructuredLlm([make_step("GET_CLAIM"), make_step("FINISH")])),
+            StructuredAgentFinalizer(
+                FakeStructuredLlm(
+                    [
+                        {
+                            "case_summary": "A claim needs review.",
+                            "recommended_next_action": "CONTINUE_STANDARD_REVIEW",
+                        }
+                    ]
+                )
+            ),
+        )
     )
     with pytest.raises(AgentRunError) as caught:
         service.review_claim(CLAIM_ID)

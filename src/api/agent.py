@@ -1,5 +1,8 @@
 """Bounded HTTP inputs and lifespan-cached dependencies for advisory reviews."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from fastapi import HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,20 +18,28 @@ from persistence.repositories import ClaimNotFoundError
 from retrieval.similar_claims import create_similar_claims_service
 
 
+@dataclass
+class AgentRouteConfig:
+    """Service loaders used by claim review routes."""
+
+    service_loader: Callable | None = None
+    claim_loader: Callable | None = None
+    run_store_loader: Callable | None = None
+    similar_service_loader: Callable | None = None
+    knowledge_retriever_loader: Callable | None = None
+
+
 class ClaimAgentReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     objective: str | None = Field(default=None, min_length=1, max_length=2000)
 
 
-def install_agent_routes(
-    app,
-    *,
-    service_loader=None,
-    claim_loader=None,
-    run_store_loader=None,
-    similar_service_loader=None,
-    knowledge_retriever_loader=None,
-):
+def install_agent_routes(app, *, config: AgentRouteConfig | None = None):
+    config = config or AgentRouteConfig()
+    service_loader, claim_loader = config.service_loader, config.claim_loader
+    run_store_loader, similar_service_loader = config.run_store_loader, config.similar_service_loader
+    knowledge_retriever_loader = config.knowledge_retriever_loader
+
     def ensure_claim(request, claim_id):
         """
         A nonexistent claim must fail before any LLM/embedding model is loaded.

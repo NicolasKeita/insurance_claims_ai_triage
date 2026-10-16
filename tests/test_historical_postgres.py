@@ -10,7 +10,7 @@ from sqlalchemy import event, func, select
 from test_investigation import make_consistency
 from test_persistence import make_anomaly, make_investigation
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from investigation.models import SignalCategory
 from persistence.history import HistoricalClaimRepository
 from persistence.mappers import anomaly_to_row
@@ -209,7 +209,11 @@ def test_api_history_and_persisted_v2_signals_snapshot(factory, reference_claim)
     def forbidden_triage():
         raise AssertionError("History/investigation does not need a triage model")
 
-    app = create_app(forbidden_triage, lambda: Predictor(), session_factory=factory)
+    app = create_app(
+        AppConfig(
+            predictor_loader=forbidden_triage, anomaly_predictor_loader=lambda: Predictor(), session_factory=factory
+        )
+    )
     path = f"/v1/claims/{reference_claim.claim_id}"
     with TestClient(app) as client:
         response = client.get(path + "/history")
@@ -279,7 +283,7 @@ def test_api_rolls_back_anomaly_if_investigation_write_fails(factory, reference_
         raise IntegrityError("demo failure", {}, Exception("write rejected"))
 
     monkeypatch.setattr(AssessmentRepository, "add_investigation", fail)
-    app = create_app(anomaly_predictor_loader=lambda: Predictor(), session_factory=factory)
+    app = create_app(AppConfig(anomaly_predictor_loader=lambda: Predictor(), session_factory=factory))
     with TestClient(app) as client:
         result = client.post(
             f"/v1/claims/{reference_claim.claim_id}/investigation/assess",

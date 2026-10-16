@@ -4,7 +4,7 @@ import os
 
 from agent.config import AGENT_LLM_CONTEXT_WINDOW
 from agent.planner import AGENT_SYSTEM_PROMPT, StructuredAgentFinalizer, StructuredAgentPlanner
-from agent.service import ClaimsAgentService
+from agent.service import AgentServiceConfig, ClaimsAgentService
 from agent.tools import ReadOnlyAgentTools
 from claims.llm import LlmError, OllamaStructuredLlm
 from persistence.agent_runs import AgentRunStore
@@ -53,9 +53,11 @@ def create_claims_agent_service(
         knowledge_retriever_loader=knowledge_retriever_loader,
     )
     return ClaimsAgentService(
-        tools,
-        StructuredAgentPlanner(llm),
-        StructuredAgentFinalizer(llm),
-        run_store=AgentRunStore(factory),
-        llm_model=model,
+        AgentServiceConfig(
+            tools,
+            StructuredAgentPlanner(llm),
+            StructuredAgentFinalizer(llm),
+            run_store=AgentRunStore(factory),
+            llm_model=model,
+        )
     )

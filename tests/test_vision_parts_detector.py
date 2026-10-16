@@ -10,6 +10,7 @@ from vision.detector import DetectorOutputError
 from vision.images import ImageValidationError
 from vision.models import VisionModelMetadata
 from vision.parts_detector import (
+    PartMappingConfig,
     UltralyticsVehiclePartDetector,
     VehiclePartDetectorError,
     VehiclePartSettings,
@@ -34,11 +35,13 @@ def framework_result(*, name="hood", contour=None, confidence=0.9):
 def convert(result):
     return map_ultralytics_part_result(
         result,
-        filename="synthetic.png",
-        width=20,
-        height=12,
-        confidence_threshold=0.25,
-        model_metadata=METADATA,
+        config=PartMappingConfig(
+            filename="synthetic.png",
+            width=20,
+            height=12,
+            confidence_threshold=0.25,
+            model_metadata=METADATA,
+        ),
     )
 
 

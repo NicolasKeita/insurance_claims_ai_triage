@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 
 from vision.cardd_hf import (
+    CarddHfConfig,
     _area,
     _contains,
     _mask_polygons,
@@ -224,7 +225,13 @@ def test_loader_uses_env_source_and_pinned_revision_offline(tmp_path, monkeypatc
         calls.append(("load", repo, kwargs))
         return raw
 
-    result = load_cardd_hf(cache_dir=tmp_path / "cache", loader=load, revision_resolver=resolve)
+    result = load_cardd_hf(
+        CarddHfConfig(
+            cache_dir=tmp_path / "cache",
+            loader=load,
+            revision_resolver=resolve,
+        )
+    )
     assert result.revision == "b" * 40
     assert calls == [("resolve", "owner/subset", "tag"), ("load", "owner/subset", {"revision": "b" * 40})]
     assert not (tmp_path / "cache").exists()

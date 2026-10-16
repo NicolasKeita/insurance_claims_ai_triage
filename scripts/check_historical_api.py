@@ -11,7 +11,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from claims.assets import resolve_document_assets
 from claims.consistency import compare_claim_documents
 from claims.document_extraction import extract_accident_report, extract_claim_form, extract_garage_quote
@@ -76,7 +76,7 @@ def main() -> None:
     engine = create_database_engine(DatabaseConfig.from_env())
     try:
         factory = create_session_factory(engine)
-        app = create_app(unused_triage, loader, session_factory=factory)
+        app = create_app(AppConfig(unused_triage, loader, session_factory=factory))
         path = f"/v1/claims/{case.claim.claim_id}"
         with TestClient(app) as client:
             history = client.get(path + "/history")

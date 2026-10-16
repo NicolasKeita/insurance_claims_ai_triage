@@ -8,8 +8,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from vision.error_analysis import ErrorInstance, analyze_instances, box_iou, save_error_examples
-from vision.evaluation import extract_segmentation_metrics, run_evaluation
+from vision.error_analysis import (
+    AnalysisConfig,
+    ErrorExamplesConfig,
+    ErrorInstance,
+    analyze_instances,
+    box_iou,
+    save_error_examples,
+)
+from vision.evaluation import EvaluationParams, extract_segmentation_metrics, run_evaluation
 from vision.tracking import VisionMLflowTracking, vision_tracking_run
 from vision.training import (
     DamageTrainingConfig,
@@ -390,10 +397,12 @@ def test_test_evaluation_uses_only_exact_val_selected_best(prepared):
 
     result = run_evaluation(
         config,
-        model_factory=load,
-        environment_provider=lambda: {},
-        dataset_loader=lambda _: manifest,
-        max_error_examples=0,
+        params=EvaluationParams(
+            model_factory=load,
+            environment_provider=lambda: {},
+            dataset_loader=lambda _: manifest,
+            max_error_examples=0,
+        ),
     )
     assert loaded == [str(config.output_dir / "train/weights/best.pt")]
     assert stub.validation_kwargs["split"] == "test" and stub.validation_kwargs["conf"] == 0.25
@@ -426,10 +435,12 @@ def test_evaluation_rejects_provenance_changes_before_model_load(prepared, chang
     with pytest.raises(ValueError):
         run_evaluation(
             config,
-            dataset_loader=lambda _: manifest,
-            model_factory=lambda _: pytest.fail("must not load"),
-            environment_provider=lambda: pytest.fail("must not import"),
-            max_error_examples=0,
+            params=EvaluationParams(
+                dataset_loader=lambda _: manifest,
+                model_factory=lambda _: pytest.fail("must not load"),
+                environment_provider=lambda: pytest.fail("must not import"),
+                max_error_examples=0,
+            ),
         )
 
 
@@ -440,10 +451,12 @@ def test_threshold_change_is_not_selected_using_test(prepared, monkeypatch):
     with pytest.raises(ValueError, match="never select it on TEST"):
         run_evaluation(
             config,
-            dataset_loader=lambda _: manifest,
-            model_factory=lambda _: pytest.fail("must not load"),
-            environment_provider=lambda: {},
-            max_error_examples=0,
+            params=EvaluationParams(
+                dataset_loader=lambda _: manifest,
+                model_factory=lambda _: pytest.fail("must not load"),
+                environment_provider=lambda: {},
+                max_error_examples=0,
+            ),
         )
 
 
@@ -560,7 +573,7 @@ def test_error_matching_is_one_to_one_classwise_and_keeps_low_confidence():
         ErrorInstance(0, (0, 0, 0.5, 0.5), 0.8),
         ErrorInstance(1, (0.5, 0.5, 1, 1), 0.1),
     ]
-    result = analyze_instances(predictions, truth, confidence_threshold=0.25)
+    result = analyze_instances(predictions, truth, config=AnalysisConfig(confidence_threshold=0.25))
     assert len(result["matches"]) == 1
     assert result["false_positives"] == [1] and result["false_negatives"] == [1]
     assert result["low_confidence"] == [2]
@@ -569,7 +582,9 @@ def test_error_matching_is_one_to_one_classwise_and_keeps_low_confidence():
 
 def test_wrong_class_is_fp_and_fn_not_a_match():
     result = analyze_instances(
-        [ErrorInstance(1, (0, 0, 1, 1), 0.9)], [ErrorInstance(0, (0, 0, 1, 1))], confidence_threshold=0.25
+        [ErrorInstance(1, (0, 0, 1, 1), 0.9)],
+        [ErrorInstance(0, (0, 0, 1, 1))],
+        config=AnalysisConfig(confidence_threshold=0.25),
     )
     assert result["false_positives"] == [0] and result["false_negatives"] == [0]
 
@@ -594,7 +609,13 @@ def test_error_examples_follow_manifest_nested_paths(prepared):
         paths.append(kwargs["source"])
         return [SimpleNamespace(boxes=None)]
 
-    analysis = save_error_examples(SimpleNamespace(predict=predict), config, manifest, 0.25, max_examples=4)
+    analysis = save_error_examples(
+        SimpleNamespace(predict=predict),
+        config,
+        manifest,
+        0.25,
+        examples=ErrorExamplesConfig(max_examples=4),
+    )
     assert paths == [str(image)] and analysis["examples_saved"] == 1
     payload = json.loads((config.output_dir / "error_examples/metadata.json").read_text())
     assert payload["examples"][0]["kind"] == "false_negatives"

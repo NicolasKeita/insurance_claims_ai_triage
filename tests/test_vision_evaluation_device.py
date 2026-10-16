@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from vision.evaluation import run_evaluation
+from vision.evaluation import EvaluationParams, run_evaluation
 from vision.training import DamageTrainingConfig
 
 
@@ -69,10 +69,12 @@ class DeviceValidationStub:
 def evaluate_fixture(config, manifest, model):
     return run_evaluation(
         config,
-        model_factory=lambda _: model,
-        environment_provider=lambda: {"cuda_available": True},
-        dataset_loader=lambda _: manifest,
-        max_error_examples=0,
+        params=EvaluationParams(
+            model_factory=lambda _: model,
+            environment_provider=lambda: {"cuda_available": True},
+            dataset_loader=lambda _: manifest,
+            max_error_examples=0,
+        ),
     )
 
 

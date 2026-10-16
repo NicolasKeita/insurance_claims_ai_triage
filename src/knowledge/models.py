@@ -1,7 +1,18 @@
+from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
+
+
+@dataclass(frozen=True)
+class KnowledgeFilter:
+    """Authoritative scope applied to every knowledge retrieval request."""
+
+    product: str | None = None
+    language: str | None = None
+    source_id: str | None = None
+    as_of_date: date | None = None
 
 
 class KnowledgeSourceType(StrEnum):

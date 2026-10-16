@@ -76,19 +76,24 @@ def part_mapping_from_model_names(names: Any, *, require_complete: bool = False)
     return mapping
 
 
-def map_ultralytics_part_result(
-    result: Any,
-    *,
-    filename: str,
-    width: int,
-    height: int,
-    confidence_threshold: float,
-    model_metadata: VisionModelMetadata,
-) -> ImagePartAssessment:
+@dataclass
+class PartMappingConfig:
+    """Image dimensions, confidence threshold and vehicle-part model provenance."""
+
+    filename: str
+    width: int
+    height: int
+    confidence_threshold: float
+    model_metadata: VisionModelMetadata
+
+
+def map_ultralytics_part_result(result: Any, *, config: PartMappingConfig) -> ImagePartAssessment:
     """No torch or Ultralytics import is needed to map framework-like output."""
-    VehiclePartSettings(confidence_threshold=confidence_threshold)
+    VehiclePartSettings(confidence_threshold=config.confidence_threshold)
     mapping = part_mapping_from_model_names(result.names)
-    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result, width=width, height=height)
+    coordinates, classes, confidences, polygons = extract_ultralytics_rows(
+        result, width=config.width, height=config.height
+    )
     detections, warnings = [], []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
         if (
@@ -117,15 +122,15 @@ def map_ultralytics_part_result(
             warnings.extend(geometry_warnings)
             if polygons is not None and polygons[index] is None:
                 warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
-            if confidence >= confidence_threshold:
+            if confidence >= config.confidence_threshold:
                 detections.append(
                     VehiclePartDetection(
                         part_type=mapping[int(class_id)],
                         confidence=confidence,
                         bounding_box=bounding_box,
                         polygon=polygon,
-                        model_identifier=model_metadata.identifier,
-                        model_version=model_metadata.version,
+                        model_identifier=config.model_metadata.identifier,
+                        model_version=config.model_metadata.version,
                     )
                 )
         except (ValidationError, PolygonGeometryError) as error:
@@ -133,13 +138,13 @@ def map_ultralytics_part_result(
     if polygons is None and detections:
         warnings.append("Segmentation masks unavailable for these detections; bounding boxes retained.")
     return ImagePartAssessment(
-        filename=filename,
-        width=width,
-        height=height,
+        filename=config.filename,
+        width=config.width,
+        height=config.height,
         detections=detections,
         warnings=warnings,
-        model_metadata=model_metadata,
-        confidence_threshold=confidence_threshold,
+        model_metadata=config.model_metadata,
+        confidence_threshold=config.confidence_threshold,
     )
 
 
@@ -207,11 +212,13 @@ class UltralyticsVehiclePartDetector:
                 raise DetectorOutputError("Detector result dimensions differ from the EXIF-oriented image")
             assessment = map_ultralytics_part_result(
                 result,
-                filename=path.name,
-                width=image.width,
-                height=image.height,
-                confidence_threshold=self.confidence_threshold,
-                model_metadata=self.model_metadata,
+                config=PartMappingConfig(
+                    filename=path.name,
+                    width=image.width,
+                    height=image.height,
+                    confidence_threshold=self.confidence_threshold,
+                    model_metadata=self.model_metadata,
+                ),
             )
             return assessment.model_copy(update={"asset_reference": str(path)})
         finally:

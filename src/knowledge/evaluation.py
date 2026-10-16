@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from knowledge.models import KnowledgeSourceType
+from knowledge.models import KnowledgeFilter, KnowledgeSourceType
 
 
 class RetrievalEvaluationCase(BaseModel):
@@ -66,9 +66,7 @@ def evaluate_retrieval(retriever, benchmark: RetrievalBenchmark) -> dict:
         results = retriever.search(
             case.query,
             case.source_type,
-            product=case.product,
-            language=case.language,
-            as_of_date=case.as_of_date,
+            filters=KnowledgeFilter(product=case.product, language=case.language, as_of_date=case.as_of_date),
             limit=5,
         )
         row = {"case": case.model_dump(mode="json"), "results": [r.model_dump(mode="json") for r in results]}

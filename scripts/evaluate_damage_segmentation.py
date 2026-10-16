@@ -5,7 +5,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from vision.evaluation import run_evaluation
+from vision.evaluation import EvaluationParams, run_evaluation
 from vision.training import DEFAULT_TRAINING_CONFIG, load_training_config, observe_environment
 
 
@@ -38,7 +38,12 @@ def main() -> int:
             print(f"Requested device: {config.device}")
             return observed
 
-        metrics = run_evaluation(config, model_factory=load_model, environment_provider=environment, max_error_examples=args.error_examples)
+        metrics = run_evaluation(
+            config,
+            params=EvaluationParams(
+                model_factory=load_model, environment_provider=environment, max_error_examples=args.error_examples
+            ),
+        )
     except (OSError, ValueError, RuntimeError) as error:
         parser.exit(2, f"Evaluation not executed/completed: {error}\n")
     print(json.dumps({"box": metrics["box"], "mask": metrics["mask"]}, indent=2))

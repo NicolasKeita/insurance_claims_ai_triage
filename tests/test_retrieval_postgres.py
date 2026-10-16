@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, select
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from persistence.models import ClaimRow
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
 from persistence.retrieval import RetrievalClaimRepository
@@ -99,7 +99,9 @@ def test_postgres_qdrant_and_api_use_authoritative_business_data(factory, refere
     class BorrowedService:
         search = service.search
 
-    with TestClient(create_app(session_factory=factory, similar_service_loader=lambda _: BorrowedService())) as client:
+    with TestClient(
+        create_app(AppConfig(session_factory=factory, similar_service_loader=lambda _: BorrowedService()))
+    ) as client:
         response = client.get(f"/v1/claims/{reference_claim.claim_id}/similar")
         assert response.status_code == 200
         assert response.json()["results"][0]["repair_amount"] == "3200"

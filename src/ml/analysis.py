@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel
@@ -26,24 +28,28 @@ class CrossValidationMetrics(BaseModel):
     balanced_accuracy_std: float
 
 
-def cross_validate_model(
-    *,
-    name: str,
-    model: Pipeline,
-    X_train: pd.DataFrame,
-    y_train: pd.Series,
-    folds: int = 5,
-    seed: int = 42,
-) -> CrossValidationMetrics:
+@dataclass
+class CrossValidateConfig:
+    """Model, training data and reproducible cross-validation settings."""
+
+    name: str
+    model: Pipeline
+    X_train: pd.DataFrame
+    y_train: pd.Series
+    folds: int = 5
+    seed: int = 42
+
+
+def cross_validate_model(config: CrossValidateConfig) -> CrossValidationMetrics:
     cv = StratifiedKFold(
-        n_splits=folds,
+        n_splits=config.folds,
         shuffle=True,
-        random_state=seed,
+        random_state=config.seed,
     )
     scores = cross_validate(
-        model,
-        X_train,
-        y_train,
+        config.model,
+        config.X_train,
+        config.y_train,
         cv=cv,
         scoring={
             "f1_macro": "f1_macro",
@@ -53,8 +59,8 @@ def cross_validate_model(
         return_train_score=False,
     )
     return CrossValidationMetrics(
-        model_name=name,
-        folds=folds,
+        model_name=config.name,
+        folds=config.folds,
         f1_macro_mean=float(np.mean(scores["test_f1_macro"])),
         f1_macro_std=float(np.std(scores["test_f1_macro"])),
         balanced_accuracy_mean=float(np.mean(scores["test_balanced_accuracy"])),
@@ -72,12 +78,14 @@ def cross_validate_models(
 ) -> list[CrossValidationMetrics]:
     results = [
         cross_validate_model(
-            name=name,
-            model=model,
-            X_train=X_train,
-            y_train=y_train,
-            folds=folds,
-            seed=seed,
+            CrossValidateConfig(
+                name=name,
+                model=model,
+                X_train=X_train,
+                y_train=y_train,
+                folds=folds,
+                seed=seed,
+            )
         )
         for name, model in models.items()
     ]

@@ -5,7 +5,14 @@ from types import SimpleNamespace
 import pytest
 
 from scripts.check_damage_test_smoke import select_test_entries
-from vision.error_analysis import ErrorInstance, analyze_instances, polygon_mask_iou, save_error_examples
+from vision.error_analysis import (
+    AnalysisConfig,
+    ErrorExamplesConfig,
+    ErrorInstance,
+    analyze_instances,
+    polygon_mask_iou,
+    save_error_examples,
+)
 from vision.training import DamageTrainingConfig
 
 
@@ -16,8 +23,7 @@ def test_diagnostic_distinguishes_correct_box_with_bad_mask_from_good_mask():
     bad = analyze_instances(
         [ErrorInstance(0, truth[0].box, 0.9, right)],
         truth,
-        confidence_threshold=0.25,
-        image_size=(100, 100),
+        config=AnalysisConfig(confidence_threshold=0.25, image_size=(100, 100)),
     )
     assert bad["matches"][0]["box_iou"] == 1.0
     assert bad["segmentation_errors"][0]["polygon_mask_iou"] == 0.0
@@ -26,8 +32,7 @@ def test_diagnostic_distinguishes_correct_box_with_bad_mask_from_good_mask():
     good = analyze_instances(
         [ErrorInstance(0, truth[0].box, 0.9, left)],
         truth,
-        confidence_threshold=0.25,
-        image_size=(100, 100),
+        config=AnalysisConfig(confidence_threshold=0.25, image_size=(100, 100)),
     )
     assert good["good_predictions"][0]["polygon_mask_iou"] == 1.0
     assert good["segmentation_errors"] == []
@@ -38,8 +43,7 @@ def test_missing_predicted_polygon_is_a_segmentation_failure():
     result = analyze_instances(
         [ErrorInstance(0, (0.1, 0.1, 0.9, 0.9), 0.9)],
         [ErrorInstance(0, (0.1, 0.1, 0.9, 0.9), polygon=polygon)],
-        confidence_threshold=0.25,
-        image_size=(20, 20),
+        config=AnalysisConfig(confidence_threshold=0.25, image_size=(20, 20)),
     )
     assert result["segmentation_errors"][0]["polygon_mask_iou"] == 0
     assert result["good_predictions"] == []
@@ -121,7 +125,13 @@ def test_error_overlay_quotas_select_distinct_good_and_bad_images(tmp_path):
         ],
         "prepared_files": {"test": entries},
     }
-    summary = save_error_examples(SimpleNamespace(predict=lambda **_: [result]), config, manifest, 0.25, max_examples=8)
+    summary = save_error_examples(
+        SimpleNamespace(predict=lambda **_: [result]),
+        config,
+        manifest,
+        0.25,
+        examples=ErrorExamplesConfig(max_examples=8),
+    )
     metadata = json.loads((config.output_dir / "error_examples/metadata.json").read_text(encoding="utf-8"))
     assert summary["examples_saved"] == 3
     assert [row["kind"] for row in metadata["examples"]] == ["good_predictions", "false_positives", "false_negatives"]

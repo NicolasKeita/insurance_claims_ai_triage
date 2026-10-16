@@ -9,7 +9,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from claims.llm import LlmError
 from knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
-from knowledge.models import GroundedAnswer, GroundingError, KnowledgeSearchResponse, KnowledgeSourceType
+from knowledge.models import (
+    GroundedAnswer,
+    GroundingError,
+    KnowledgeFilter,
+    KnowledgeSearchResponse,
+    KnowledgeSourceType,
+)
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
 from retrieval.models import RetrievalUnavailableError
 
@@ -105,24 +111,44 @@ def install_knowledge_routes(app, *, retriever_loader=None, rag_loader=None, cla
 
     @app.post("/v1/knowledge/search", response_model=KnowledgeSearchResponse)
     def search(payload: KnowledgeSearchRequest, request: Request):
-        return KnowledgeSearchResponse(results=retriever(request).search(**payload.model_dump()))
+        data = payload.model_dump()
+        limit, query, source_type = data.pop("limit"), data.pop("query"), data.pop("source_type")
+        return KnowledgeSearchResponse(
+            results=retriever(request).search(query, source_type, filters=KnowledgeFilter(**data), limit=limit)
+        )
 
     @app.post("/v1/knowledge/answer", response_model=GroundedAnswer)
     def answer(payload: KnowledgeAnswerRequest, request: Request):
         try:
-            return rag(request).answer(**payload.model_dump())
+            data = payload.model_dump()
+            retrieval_limit = data.pop("retrieval_limit")
+            question = data.pop("question")
+            source_type = data.pop("source_type")
+            return rag(request).answer(
+                question, source_type, filters=KnowledgeFilter(**data), retrieval_limit=retrieval_limit
+            )
         except (ConnectionError, TimeoutError) as error:
             raise HTTPException(503, "Knowledge generation is unavailable") from error
 
     @app.post("/v1/claims/{claim_id}/knowledge/search", response_model=KnowledgeSearchResponse)
     def claim_search(claim_id: str, payload: ClaimKnowledgeSearchRequest, request: Request):
-        filters = claim_filters(request, claim_id, payload.source_type)
-        return KnowledgeSearchResponse(results=retriever(request).search(**payload.model_dump(), **filters))
+        data = payload.model_dump()
+        limit, query, source_type = data.pop("limit"), data.pop("query"), data.pop("source_type")
+        data.update(claim_filters(request, claim_id, source_type))
+        return KnowledgeSearchResponse(
+            results=retriever(request).search(query, source_type, filters=KnowledgeFilter(**data), limit=limit)
+        )
 
     @app.post("/v1/claims/{claim_id}/knowledge/answer", response_model=GroundedAnswer)
     def claim_answer(claim_id: str, payload: ClaimKnowledgeAnswerRequest, request: Request):
-        filters = claim_filters(request, claim_id, payload.source_type)
+        data = payload.model_dump()
+        retrieval_limit = data.pop("retrieval_limit")
+        question = data.pop("question")
+        source_type = data.pop("source_type")
+        data.update(claim_filters(request, claim_id, source_type))
         try:
-            return rag(request).answer(**payload.model_dump(), **filters)
+            return rag(request).answer(
+                question, source_type, filters=KnowledgeFilter(**data), retrieval_limit=retrieval_limit
+            )
         except (ConnectionError, TimeoutError) as error:
             raise HTTPException(503, "Knowledge generation is unavailable") from error

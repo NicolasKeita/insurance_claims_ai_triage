@@ -8,11 +8,19 @@ from PIL import Image
 from shapely.geometry import Point
 
 from vision.config import VisionSettings
-from vision.detector import DetectorOutputError, UltralyticsDamageDetector, map_ultralytics_result
+from vision.detector import (
+    DamageMappingConfig,
+    DetectorOutputError,
+    UltralyticsDamageDetector,
+    map_ultralytics_result,
+)
 from vision.geometry import validated_polygon_geometry
 from vision.masks import BinaryMaskGeometryError, binary_mask_to_polygon, native_mask_polygons
 from vision.models import VisionModelMetadata
-from vision.parts_detector import map_ultralytics_part_result
+from vision.parts_detector import (
+    PartMappingConfig,
+    map_ultralytics_part_result,
+)
 
 
 def test_pixel_cells_preserve_thin_diagonal_holes_and_disconnected_regions():
@@ -77,19 +85,23 @@ def test_both_adapters_prefer_actual_bitmap_and_preserve_its_hole():
     mask[3:8, 6:12] = False
     damage = map_ultralytics_result(
         result(mask, names={0: "scratch"}),
-        filename="same.png",
-        width=20,
-        height=12,
-        confidence_threshold=0.25,
-        model_identifier="synthetic-damage",
+        config=DamageMappingConfig(
+            filename="same.png",
+            width=20,
+            height=12,
+            confidence_threshold=0.25,
+            model_identifier="synthetic-damage",
+        ),
     )
     parts = map_ultralytics_part_result(
         result(mask, names={0: "hood"}),
-        filename="same.png",
-        width=20,
-        height=12,
-        confidence_threshold=0.25,
-        model_metadata=VisionModelMetadata(identifier="synthetic-parts", framework="fake"),
+        config=PartMappingConfig(
+            filename="same.png",
+            width=20,
+            height=12,
+            confidence_threshold=0.25,
+            model_metadata=VisionModelMetadata(identifier="synthetic-parts", framework="fake"),
+        ),
     )
     for observation in (damage, parts):
         assert observation.detections[0].polygon.holes
@@ -99,22 +111,26 @@ def test_both_adapters_prefer_actual_bitmap_and_preserve_its_hole():
 def test_empty_mask_is_explicit_and_invalid_supplied_mask_is_not_boxed():
     empty = map_ultralytics_result(
         result(np.zeros((12, 20)), names={0: "scratch"}),
-        filename="empty.png",
-        width=20,
-        height=12,
-        confidence_threshold=0.25,
-        model_identifier="fake",
+        config=DamageMappingConfig(
+            filename="empty.png",
+            width=20,
+            height=12,
+            confidence_threshold=0.25,
+            model_identifier="fake",
+        ),
     )
     assert empty.detections[0].polygon is None
     assert "empty binary mask" in empty.warnings[0]
     with pytest.raises(DetectorOutputError, match="binary"):
         map_ultralytics_result(
             result(np.full((12, 20), 0.4), names={0: "scratch"}),
-            filename="bad.png",
-            width=20,
-            height=12,
-            confidence_threshold=0.25,
-            model_identifier="fake",
+            config=DamageMappingConfig(
+                filename="bad.png",
+                width=20,
+                height=12,
+                confidence_threshold=0.25,
+                model_identifier="fake",
+            ),
         )
 
 

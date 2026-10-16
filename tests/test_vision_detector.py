@@ -9,6 +9,7 @@ from PIL import Image
 from vision.config import VisionSettings
 from vision.detector import (
     DamageDetectorError,
+    DamageMappingConfig,
     DetectorOutputError,
     UltralyticsDamageDetector,
     category_mapping_from_model_names,
@@ -32,11 +33,13 @@ def framework_result(*, confidence=0.8, class_id=1, box=None, polygon=None):
 def convert(result, threshold=0.25):
     return map_ultralytics_result(
         result,
-        filename="synthetic.png",
-        width=20,
-        height=12,
-        confidence_threshold=threshold,
-        model_identifier="test-only",
+        config=DamageMappingConfig(
+            filename="synthetic.png",
+            width=20,
+            height=12,
+            confidence_threshold=threshold,
+            model_identifier="test-only",
+        ),
     )
 
 

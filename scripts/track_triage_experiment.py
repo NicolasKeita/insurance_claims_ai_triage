@@ -10,6 +10,7 @@ from mlflow.models import (
 )
 
 from ml.analysis import (
+    CrossValidateConfig,
     build_classification_report,
     build_error_analysis,
     cross_validate_model,
@@ -267,12 +268,14 @@ with mlflow.start_run(
             )
             cv_metrics = (
                 cross_validate_model(
-                    name=name,
-                    model=model,
-                    X_train=X_train,
-                    y_train=y_train,
-                    folds=CV_FOLDS,
-                    seed=SEED,
+                    CrossValidateConfig(
+                        name=name,
+                        model=model,
+                        X_train=X_train,
+                        y_train=y_train,
+                        folds=CV_FOLDS,
+                        seed=SEED,
+                    )
                 )
             )
 

@@ -1,4 +1,5 @@
 from ml.analysis import (
+    CrossValidateConfig,
     build_error_analysis,
     compute_permutation_importance,
     cross_validate_model,
@@ -13,12 +14,14 @@ def test_logistic_cross_validation():
     model = build_models(seed=42)["logistic_regression"]
 
     result = cross_validate_model(
-        name="logistic_regression",
-        model=model,
-        X_train=X_train,
-        y_train=y_train,
-        folds=3,
-        seed=42,
+        CrossValidateConfig(
+            name="logistic_regression",
+            model=model,
+            X_train=X_train,
+            y_train=y_train,
+            folds=3,
+            seed=42,
+        )
     )
 
     assert 0 <= result.f1_macro_mean <= 1

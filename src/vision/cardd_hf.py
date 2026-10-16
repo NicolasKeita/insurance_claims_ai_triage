@@ -581,33 +581,38 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
             fo.config.default_dataset_dir, fo_hf.hfh = previous_dir, previous_hub
 
 
-def load_cardd_hf(
-    repository: str | None = None,
-    *,
-    revision: str | None = None,
-    cache_dir: Path | str | None = None,
-    annotation_field: str | None = None,
-    loader: Callable[..., Any] | None = None,
-    revision_resolver: Callable[[str, str | None], str] | None = None,
-) -> HfDamageDataset:
+@dataclass
+class CarddHfConfig:
+    """Dataset source, cache and injectable loading dependencies."""
+
+    repository: str | None = None
+    revision: str | None = None
+    cache_dir: Path | str | None = None
+    annotation_field: str | None = None
+    loader: Callable[..., Any] | None = None
+    revision_resolver: Callable[[str, str | None], str] | None = None
+
+
+def load_cardd_hf(config: CarddHfConfig | None = None) -> HfDamageDataset:
     """Load the mirror using official ``fiftyone.utils.huggingface.load_from_hub``.
 
     Dependencies/network/database are lazy. Immutable revisions isolate caches.
     Injected loaders/resolvers support small offline fixtures without MongoDB.
     """
-    repository = repository or os.environ.get("CARDD_HF_DATASET", DEFAULT_HF_REPOSITORY)
+    config = config or CarddHfConfig()
+    repository = config.repository or os.environ.get("CARDD_HF_DATASET", DEFAULT_HF_REPOSITORY)
     if not isinstance(repository, str) or not repository.strip():
         raise DatasetValidationError("CARDD_HF_DATASET must identify a Hugging Face dataset repository")
-    revision = revision if revision is not None else os.environ.get("CARDD_HF_REVISION")
-    resolved = (revision_resolver or _resolve_revision)(repository, revision)
+    revision = config.revision if config.revision is not None else os.environ.get("CARDD_HF_REVISION")
+    resolved = (config.revision_resolver or _resolve_revision)(repository, revision)
     if not isinstance(resolved, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", resolved):
         raise DatasetValidationError("Dataset revision resolver must return a 40-character commit SHA")
-    cache = Path(cache_dir).expanduser().resolve() if cache_dir is not None else default_hf_cache_dir()
+    cache = Path(config.cache_dir).expanduser().resolve() if config.cache_dir is not None else default_hf_cache_dir()
     try:
         raw = (
             _official_load(repository, resolved.lower(), cache)
-            if loader is None
-            else loader(repository, revision=resolved.lower())
+            if config.loader is None
+            else config.loader(repository, revision=resolved.lower())
         )
     except DatasetValidationError:
         raise
@@ -615,4 +620,4 @@ def load_cardd_hf(
         raise DatasetValidationError(
             f"FiftyOne could not load CarDD HF mirror ({repository}) at {resolved}: {type(exc).__name__}: {exc}"
         ) from exc
-    return normalize_fiftyone_dataset(raw, repository, resolved.lower(), annotation_field=annotation_field)
+    return normalize_fiftyone_dataset(raw, repository, resolved.lower(), annotation_field=config.annotation_field)

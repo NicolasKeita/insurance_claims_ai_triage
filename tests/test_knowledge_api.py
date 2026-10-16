@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from knowledge.models import GroundedAnswer, GroundingError
 from persistence.repositories import ClaimNotFoundError
 from retrieval.models import RetrievalUnavailableError
@@ -15,7 +15,7 @@ class FakeSearch:
         self.calls = []
         self.closed = False
 
-    def search(self, **kwargs):
+    def search(self, *args, **kwargs):
         self.calls.append(kwargs)
         return []
 
@@ -27,7 +27,7 @@ class FakeRag:
     def __init__(self):
         self.calls = []
 
-    def answer(self, **kwargs):
+    def answer(self, *args, **kwargs):
         self.calls.append(kwargs)
         return GroundedAnswer(answer="Demo excerpts are insufficient.", citations=[], insufficient_evidence=True)
 
@@ -45,7 +45,9 @@ def test_search_answer_loaders_cached_and_lifespan_cleanup():
         loaded.append("rag")
         return rag
 
-    with TestClient(create_app(knowledge_retriever_loader=loader, knowledge_rag_loader=rag_loader)) as client:
+    with TestClient(
+        create_app(AppConfig(knowledge_retriever_loader=loader, knowledge_rag_loader=rag_loader))
+    ) as client:
         assert loaded == []
         for _ in range(2):
             response = client.post(
@@ -56,7 +58,7 @@ def test_search_answer_loaders_cached_and_lifespan_cleanup():
             response = client.post("/v1/knowledge/answer", json={"question": "test", "source_type": "PROCEDURE"})
             assert response.status_code == 200 and response.json()["insufficient_evidence"]
     assert loaded == ["retriever", "rag"] and search.closed
-    assert search.calls[0]["product"] == "AUTO_PREMIUM"
+    assert search.calls[0]["filters"].product == "AUTO_PREMIUM"
 
 
 @pytest.mark.parametrize(
@@ -79,7 +81,7 @@ def test_invalid_payload_422_before_loader(path, payload):
     def forbidden():
         raise AssertionError("Invalid payload must not load services")
 
-    with TestClient(create_app(knowledge_retriever_loader=forbidden)) as client:
+    with TestClient(create_app(AppConfig(knowledge_retriever_loader=forbidden))) as client:
         assert client.post(path, json=payload).status_code == 422
 
 
@@ -96,9 +98,11 @@ def test_claim_aware_product_and_dates_and_unknown_before_model_io():
         )
 
     app = create_app(
-        knowledge_retriever_loader=lambda: search,
-        knowledge_rag_loader=lambda _: rag,
-        knowledge_claim_loader=claim_loader,
+        AppConfig(
+            knowledge_retriever_loader=lambda: search,
+            knowledge_rag_loader=lambda _: rag,
+            knowledge_claim_loader=claim_loader,
+        )
     )
     with TestClient(app) as client:
         for kind in ("POLICY", "PROCEDURE"):
@@ -115,10 +119,10 @@ def test_claim_aware_product_and_dates_and_unknown_before_model_io():
             ).status_code
             == 404
         )
-    assert search.calls[0]["product"] == rag.calls[0]["product"] == "AUTO_PREMIUM"
-    assert search.calls[0]["as_of_date"] == rag.calls[0]["as_of_date"] == date(2026, 9, 20)
-    assert search.calls[1]["product"] is rag.calls[1]["product"] is None
-    assert search.calls[1]["as_of_date"] is rag.calls[1]["as_of_date"] is None
+    assert search.calls[0]["filters"].product == rag.calls[0]["filters"].product == "AUTO_PREMIUM"
+    assert search.calls[0]["filters"].as_of_date == rag.calls[0]["filters"].as_of_date == date(2026, 9, 20)
+    assert search.calls[1]["filters"].product is rag.calls[1]["filters"].product is None
+    assert search.calls[1]["filters"].as_of_date is rag.calls[1]["filters"].as_of_date is None
     assert len(search.calls) == 2 and len(claim_calls) == 5
 
 
@@ -129,18 +133,23 @@ def test_clean_errors_and_database_unconfigured(monkeypatch):
         assert response.status_code == 503 and response.json()["detail"] == "Database is not configured"
 
     class BrokenSearch(FakeSearch):
-        def search(self, **kwargs):
+        def search(self, *args, **kwargs):
             raise RetrievalUnavailableError("Knowledge index is missing")
 
-    with TestClient(create_app(knowledge_retriever_loader=lambda: BrokenSearch())) as client:
+    with TestClient(create_app(AppConfig(knowledge_retriever_loader=lambda: BrokenSearch()))) as client:
         assert client.post("/v1/knowledge/search", json={"query": "test", "source_type": "POLICY"}).status_code == 503
 
     class BrokenRag(FakeRag):
-        def answer(self, **kwargs):
+        def answer(self, *args, **kwargs):
             raise GroundingError("Unknown citation")
 
     with TestClient(
-        create_app(knowledge_retriever_loader=lambda: FakeSearch(), knowledge_rag_loader=lambda _: BrokenRag())
+        create_app(
+            AppConfig(
+                knowledge_retriever_loader=lambda: FakeSearch(),
+                knowledge_rag_loader=lambda _: BrokenRag(),
+            )
+        )
     ) as client:
         assert (
             client.post("/v1/knowledge/answer", json={"question": "test", "source_type": "POLICY"}).status_code == 502

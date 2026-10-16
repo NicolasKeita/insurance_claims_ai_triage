@@ -3,6 +3,7 @@
 import hashlib
 import math
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from threading import Lock
@@ -167,20 +168,25 @@ def category_mapping_from_model_names(names: Any, *, require_complete: bool = Fa
     return mapping
 
 
-def map_ultralytics_result(
-    result: Any,
-    *,
-    filename: str,
-    width: int,
-    height: int,
-    confidence_threshold: float,
-    model_identifier: str,
-    model_version: str | None = None,
-) -> ImageDamageAssessment:
+@dataclass
+class DamageMappingConfig:
+    """Image dimensions, confidence threshold and damage model provenance."""
+
+    filename: str
+    width: int
+    height: int
+    confidence_threshold: float
+    model_identifier: str
+    model_version: str | None = None
+
+
+def map_ultralytics_result(result: Any, *, config: DamageMappingConfig) -> ImageDamageAssessment:
     """Convert framework-like values without importing Ultralytics or torch."""
-    VisionSettings(confidence_threshold=confidence_threshold)
+    VisionSettings(confidence_threshold=config.confidence_threshold)
     mapping = category_mapping_from_model_names(result.names)
-    coordinates, classes, confidences, polygons = extract_ultralytics_rows(result, width=width, height=height)
+    coordinates, classes, confidences, polygons = extract_ultralytics_rows(
+        result, width=config.width, height=config.height
+    )
     detections = []
     assessment_warnings = []
     for index, (box, class_id, confidence) in enumerate(zip(coordinates, classes, confidences)):
@@ -208,15 +214,15 @@ def map_ultralytics_result(
             assessment_warnings.extend(warnings)
             if polygons is not None and polygons[index] is None:
                 assessment_warnings.append(f"Detection {index} has an empty binary mask; bounding box retained.")
-            if confidence >= confidence_threshold:
+            if confidence >= config.confidence_threshold:
                 detections.append(
                     VisualDamageDetection(
                         damage_type=mapping[int(class_id)],
                         confidence=confidence,
                         bounding_box=bounding_box,
                         polygon=polygon,
-                        model_identifier=model_identifier,
-                        model_version=model_version,
+                        model_identifier=config.model_identifier,
+                        model_version=config.model_version,
                     )
                 )
         except ValidationError as error:
@@ -224,9 +230,9 @@ def map_ultralytics_result(
     if polygons is None and detections:
         assessment_warnings.append("Segmentation masks unavailable for these detections; bounding boxes retained.")
     return ImageDamageAssessment(
-        filename=filename,
-        width=width,
-        height=height,
+        filename=config.filename,
+        width=config.width,
+        height=config.height,
         detections=detections,
         warnings=assessment_warnings,
     )
@@ -294,12 +300,14 @@ class UltralyticsDamageDetector:
             metadata = self.model_metadata
             assessment = map_ultralytics_result(
                 result,
-                filename=path.name,
-                width=image.width,
-                height=image.height,
-                confidence_threshold=self.confidence_threshold,
-                model_identifier=metadata.identifier,
-                model_version=metadata.version,
+                config=DamageMappingConfig(
+                    filename=path.name,
+                    width=image.width,
+                    height=image.height,
+                    confidence_threshold=self.confidence_threshold,
+                    model_identifier=metadata.identifier,
+                    model_version=metadata.version,
+                ),
             )
             return assessment.model_copy(update={"asset_reference": str(path)})
         finally:

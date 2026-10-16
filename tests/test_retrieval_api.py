@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from persistence.repositories import ClaimNotFoundError
 from retrieval.models import RetrievalUnavailableError, SimilarClaimsResponse
 from retrieval.representation import CLAIM_RETRIEVAL_REPRESENTATION_VERSION
@@ -29,7 +29,11 @@ def test_similar_service_cached_and_unknown_404():
         loaded.append(factory)
         return FakeService()
 
-    with TestClient(create_app(forbidden, forbidden, similar_service_loader=loader)) as client:
+    with TestClient(
+        create_app(
+            AppConfig(predictor_loader=forbidden, anomaly_predictor_loader=forbidden, similar_service_loader=loader)
+        )
+    ) as client:
         for limit in (1, 5, 20):
             response = client.get(f"/v1/claims/demo/similar?limit={limit}")
             assert response.status_code == 200
@@ -45,7 +49,7 @@ def test_similar_service_cached_and_unknown_404():
 
 @pytest.mark.parametrize("limit", ["0", "-1", "21", "1.5", "abc"])
 def test_api_rejects_invalid_limit_without_service_load(limit):
-    with TestClient(create_app(similar_service_loader=lambda _: forbidden())) as client:
+    with TestClient(create_app(AppConfig(similar_service_loader=lambda _: forbidden()))) as client:
         assert client.get(f"/v1/claims/demo/similar?limit={limit}").status_code == 422
 
 
@@ -54,7 +58,7 @@ def test_api_index_unavailable_is_clean_503():
         def search(self, *_):
             raise RetrievalUnavailableError("Similar claims index is unavailable")
 
-    with TestClient(create_app(similar_service_loader=lambda _: BrokenService())) as client:
+    with TestClient(create_app(AppConfig(similar_service_loader=lambda _: BrokenService()))) as client:
         response = client.get("/v1/claims/demo/similar")
         assert response.status_code == 503
         assert response.json() == {"detail": "Similar claims index is unavailable"}

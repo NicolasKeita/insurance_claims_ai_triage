@@ -4,7 +4,7 @@ import pytest
 from knowledge_fakes import FakeStructuredLlm
 
 from knowledge.config import ROOT
-from knowledge.models import GroundingError, RetrievedKnowledgeChunk
+from knowledge.models import GroundingError, KnowledgeFilter, RetrievedKnowledgeChunk
 from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.rag import KnowledgeRagService
 from knowledge.sources import KnowledgeCatalog
@@ -34,12 +34,14 @@ def test_citations_resolved_from_retrieval_and_context_is_bounded():
         {"answer": "Demo answer.", "cited_chunk_ids": [chunk.chunk_id, chunk.chunk_id], "insufficient_evidence": False}
     )
     retriever = FakeRetriever([chunk])
-    answer = KnowledgeRagService(retriever, llm).answer("test", Kind.POLICY, product="AUTO_BASIC")
+    answer = KnowledgeRagService(retriever, llm).answer(
+        "test", Kind.POLICY, filters=KnowledgeFilter(product="AUTO_BASIC")
+    )
     assert len(answer.citations) == 1
     assert answer.citations[0].source_id == chunk.source_id
     assert answer.citations[0].source_version == chunk.source_version
     assert answer.citations[0].section == chunk.section and answer.citations[0].title == chunk.title
-    assert retriever.calls[0][1]["product"] == "AUTO_BASIC"
+    assert retriever.calls[0][1]["filters"].product == "AUTO_BASIC"
     prompt = llm.prompts[0]
     context = json.loads(prompt.split("INPUT DATA:\n", 1)[1])
     assert len(context["retrieved_sources"]) == 1

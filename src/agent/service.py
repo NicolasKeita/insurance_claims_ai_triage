@@ -1,6 +1,7 @@
 """Run lifecycle, observability and append-only audit persistence."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
 from uuid import uuid4
@@ -12,6 +13,18 @@ from agent.models import AgentRunResult, RunStatus
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class AgentServiceConfig:
+    """Dependencies and execution limits for claim reviews."""
+
+    tools: object
+    planner: object
+    finalizer: object
+    run_store: object = None
+    max_iterations: int = DEFAULT_MAX_ITERATIONS
+    llm_model: object = None
+
+
 class AgentRunError(RuntimeError):
     def __init__(self, message: str, *, run_id: str, failure_kind: str = "TOOL"):
         super().__init__(message)
@@ -19,14 +32,12 @@ class AgentRunError(RuntimeError):
 
 
 class ClaimsAgentService:
-    def __init__(
-        self, tools, planner, finalizer, *, run_store=None, max_iterations=DEFAULT_MAX_ITERATIONS, llm_model=None
-    ):
-        if type(max_iterations) is not int or not 1 <= max_iterations <= MAX_ITERATIONS:
+    def __init__(self, config: AgentServiceConfig):
+        if type(config.max_iterations) is not int or not 1 <= config.max_iterations <= MAX_ITERATIONS:
             raise ValueError(f"max_iterations must be between 1 and {MAX_ITERATIONS}")
-        self.tools, self.run_store = tools, run_store
-        self.max_iterations, self.llm_model = max_iterations, llm_model
-        self.graph = build_agent_graph(tools, planner, finalizer)
+        self.tools, self.run_store = config.tools, config.run_store
+        self.max_iterations, self.llm_model = config.max_iterations, config.llm_model
+        self.graph = build_agent_graph(config.tools, config.planner, config.finalizer)
 
     def review_claim(self, claim_id: str, objective: str | None = None) -> AgentRunResult:
         """

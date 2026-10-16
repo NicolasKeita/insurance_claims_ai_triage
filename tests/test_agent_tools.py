@@ -23,7 +23,7 @@ from agent.models import (
 from agent.tools import ReadOnlyAgentTools
 from claims.loader import load_claim_case
 from investigation.history import HistoricalClaimProfile
-from knowledge.models import RetrievedKnowledgeChunk
+from knowledge.models import KnowledgeFilter, RetrievedKnowledgeChunk
 from persistence.mappers import AssessmentRecord
 from persistence.repositories import ClaimNotFoundError
 from retrieval.models import RetrievalUnavailableError, SimilarClaim, SimilarClaimsResponse
@@ -237,10 +237,8 @@ def test_retrieval_callbacks_load_once_and_sessions_close(configured):
         result = tools.execute(claim.claim_id, plan("SEARCH_POLICY", query="collision coverage", limit=2))
         assert result.evidence[0].evidence_id == "knowledge:synthetic-policy-chunk"
     assert loaded == [True]
-    assert all(
-        filters == {"product": claim.policy.product, "as_of_date": claim.incident.date, "limit": 2}
-        for _, _, filters in searched
-    )
+    expected_filters = KnowledgeFilter(product=claim.policy.product, as_of_date=claim.incident.date)
+    assert all(filters == {"filters": expected_filters, "limit": 2} for _, _, filters in searched)
     tools.close()
     assert closed == [True]
 
@@ -276,7 +274,7 @@ def test_procedure_preserves_global_scope(configured):
     observation = ReadOnlyAgentTools(factory, knowledge_retriever=Retriever()).execute(
         claim.claim_id, plan("SEARCH_PROCEDURE", query="review process")
     )
-    assert filters == [("PROCEDURE", {"product": None, "as_of_date": None, "limit": 3})]
+    assert filters == [("PROCEDURE", {"filters": KnowledgeFilter(), "limit": 3})]
     assert observation.evidence[0].source_type == EvidenceSourceType.PROCEDURE_CHUNK
 
 

@@ -9,6 +9,7 @@ from qdrant_integration_support import temporary_qdrant_collections
 from knowledge.config import ROOT, KnowledgeConfig
 from knowledge.evaluation import evaluate_retrieval, load_benchmark
 from knowledge.indexing import KnowledgeIndexer
+from knowledge.models import KnowledgeFilter
 from knowledge.models import KnowledgeSourceType as Kind
 from knowledge.qdrant_store import PAYLOAD_INDEXES, QdrantKnowledgeStore
 from knowledge.retrieval import KnowledgeRetriever
@@ -52,10 +53,12 @@ def test_real_retrieval_index_filters_and_complete_benchmark(tmp_path, monkeypat
             assert store.count(kind) == entry["number_of_chunks"]
             assert set(PAYLOAD_INDEXES) <= set(client.get_collection(config.collection(kind)).payload_schema)
         retriever = KnowledgeRetriever(store)
-        results = retriever.search("collision deductible", Kind.POLICY, product="AUTO_PREMIUM", limit=3)
+        results = retriever.search(
+            "collision deductible", Kind.POLICY, filters=KnowledgeFilter(product="AUTO_PREMIUM"), limit=3
+        )
         assert results and all(r.product == "AUTO_PREMIUM" for r in results)
         assert len(results) <= 3
-        assert retriever.search("test", Kind.POLICY, language="fr") == []
+        assert retriever.search("test", Kind.POLICY, filters=KnowledgeFilter(language="fr")) == []
         assert all(r.source_type == Kind.PROCEDURE for r in retriever.search("missing documents", Kind.PROCEDURE))
         report = evaluate_retrieval(retriever, load_benchmark(ROOT / "data/evaluation/rag_retrieval_v1.json"))
         assert report["evaluated_cases"] == 13

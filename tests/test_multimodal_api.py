@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
 from test_multimodal_investigation import make_visual_assessment
 
-from api.main import create_app
+from api.main import AppConfig, create_app
 from persistence.repositories import ClaimNotFoundError
 from persistence.vision_assessments import StoredVisionAssessment
 
@@ -30,7 +30,9 @@ def test_stored_vision_read_loads_once_without_any_predictor():
         return Store()
 
     with TestClient(
-        create_app(predictor_loader=forbidden, anomaly_predictor_loader=forbidden, vision_store_loader=loader)
+        create_app(
+            AppConfig(predictor_loader=forbidden, anomaly_predictor_loader=forbidden, vision_store_loader=loader)
+        )
     ) as client:
         for _ in range(2):
             response = client.get("/v1/claims/CLAIM-2026-00001/vision/latest")
@@ -53,7 +55,7 @@ def test_stored_vision_database_failure_is_sanitized_and_never_returns_an_assess
         def latest_for_claim(self, claim_id):
             raise SQLAlchemyError("private database connection detail")
 
-    with TestClient(create_app(vision_store_loader=lambda _: UnavailableStore())) as client:
+    with TestClient(create_app(AppConfig(vision_store_loader=lambda _: UnavailableStore()))) as client:
         response = client.get("/v1/claims/CLAIM-2026-00001/vision/latest")
     assert response.status_code == 503
     assert response.json() == {"detail": "Database operation failed"}

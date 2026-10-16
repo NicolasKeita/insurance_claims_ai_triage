@@ -212,7 +212,7 @@ class ClaimsEvaluationPipeline:
         from qdrant_client import QdrantClient
 
         from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
-        from agent.service import ClaimsAgentService
+        from agent.service import AgentServiceConfig, ClaimsAgentService
         from evaluation.fakes import (
             FakeAnomalyPredictor,
             FakeEmbeddings,
@@ -226,7 +226,7 @@ class ClaimsEvaluationPipeline:
         from investigation.engine import assess_investigation
         from investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
         from knowledge.config import KnowledgeConfig
-        from knowledge.models import KnowledgeSourceType
+        from knowledge.models import KnowledgeFilter, KnowledgeSourceType
         from knowledge.qdrant_store import QdrantKnowledgeStore
         from knowledge.rag import KnowledgeRagService
         from knowledge.retrieval import KnowledgeRetriever
@@ -449,9 +449,11 @@ class ClaimsEvaluationPipeline:
                             for chunk in retriever.search(
                                 question,
                                 KnowledgeSourceType.POLICY,
-                                product=case.claim.policy.product,
-                                source_id=scenario.inputs.get("rag_source_id"),
-                                as_of_date=case.claim.incident.date,
+                                filters=KnowledgeFilter(
+                                    product=case.claim.policy.product,
+                                    source_id=scenario.inputs.get("rag_source_id"),
+                                    as_of_date=case.claim.incident.date,
+                                ),
                                 limit=5,
                             )
                         ]
@@ -496,11 +498,13 @@ class ClaimsEvaluationPipeline:
                 agent = record(
                     "agent",
                     lambda: ClaimsAgentService(
-                        tools,
-                        StructuredAgentPlanner(llm),
-                        StructuredAgentFinalizer(llm),
-                        max_iterations=8,
-                        llm_model="fake-structured-e2e-v1",
+                        AgentServiceConfig(
+                            tools,
+                            StructuredAgentPlanner(llm),
+                            StructuredAgentFinalizer(llm),
+                            max_iterations=8,
+                            llm_model="fake-structured-e2e-v1",
+                        )
                     ).review_claim(case.claim.claim_id),
                 )
                 output.agent = agent.model_dump(mode="json")

@@ -1,7 +1,6 @@
 import logging
-from datetime import date
 
-from knowledge.models import KnowledgeSourceType, RetrievedKnowledgeChunk, applicable_on
+from knowledge.models import KnowledgeFilter, KnowledgeSourceType, RetrievedKnowledgeChunk, applicable_on
 from knowledge.qdrant_store import QdrantKnowledgeStore
 from knowledge.sources import KnowledgeCatalog
 from retrieval.config import validate_limit
@@ -19,10 +18,7 @@ class KnowledgeRetriever:
         query: str,
         source_type: KnowledgeSourceType,
         *,
-        product: str | None = None,
-        language: str | None = None,
-        source_id: str | None = None,
-        as_of_date: date | None = None,
+        filters: KnowledgeFilter | None = None,
         limit: int = 5,
     ) -> list[RetrievedKnowledgeChunk]:
         """
@@ -30,6 +26,9 @@ class KnowledgeRetriever:
 
         INFO contains operational IDs only. Queries may contain sensitive data.
         """
+        active = filters or KnowledgeFilter()
+        product, language = active.product, active.language
+        source_id, as_of_date = active.source_id, active.as_of_date
         validate_limit(limit)
         if not query.strip() or len(query) > 4000:
             raise ValueError("query must contain 1 to 4000 characters")
@@ -46,10 +45,7 @@ class KnowledgeRetriever:
             hits, exhausted = self.store.query(
                 source_type,
                 vector,
-                product=product,
-                language=language,
-                source_id=source_id,
-                as_of_date=as_of_date,
+                filters=filters,
                 limit=min(page_size, 1000 - offset),
                 offset=offset,
             )

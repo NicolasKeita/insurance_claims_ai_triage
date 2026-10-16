@@ -1,6 +1,7 @@
 import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from threading import Lock
 from typing import Self
 
@@ -10,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from api.agent import install_agent_routes
+from api.agent import AgentRouteConfig, install_agent_routes
 from api.knowledge import install_knowledge_routes
 from api.vision import install_vision_routes
 from claims.consistency import ClaimConsistencyReport
@@ -75,19 +76,40 @@ class StoredInvestigationRequest(BaseModel):
     consistency: ClaimConsistencyReport
 
 
-def create_app(
-    predictor_loader: PredictorLoader = load_candidate_predictor,
-    anomaly_predictor_loader: AnomalyPredictorLoader = load_candidate_anomaly_predictor,
-    session_factory: sessionmaker[Session] | None = None,
-    similar_service_loader: Callable | None = None,
-    knowledge_retriever_loader: Callable | None = None,
-    knowledge_rag_loader: Callable | None = None,
-    knowledge_claim_loader: Callable | None = None,
-    agent_service_loader: Callable | None = None,
-    agent_claim_loader: Callable | None = None,
-    agent_run_store_loader: Callable | None = None,
-    vision_store_loader: Callable | None = None,
-) -> FastAPI:
+@dataclass
+class AppConfig:
+    """Application service loaders and persistence configuration."""
+
+    predictor_loader: PredictorLoader = load_candidate_predictor
+    anomaly_predictor_loader: AnomalyPredictorLoader = load_candidate_anomaly_predictor
+    session_factory: sessionmaker[Session] | None = None
+    similar_service_loader: Callable | None = None
+    knowledge_retriever_loader: Callable | None = None
+    knowledge_rag_loader: Callable | None = None
+    knowledge_claim_loader: Callable | None = None
+    agent_service_loader: Callable | None = None
+    agent_claim_loader: Callable | None = None
+    agent_run_store_loader: Callable | None = None
+    vision_store_loader: Callable | None = None
+
+
+def create_app(config: AppConfig | None = None) -> FastAPI:
+    config = config or AppConfig()
+    predictor_loader, anomaly_predictor_loader = config.predictor_loader, config.anomaly_predictor_loader
+    session_factory = config.session_factory
+    similar_service_loader = config.similar_service_loader
+    knowledge_retriever_loader, knowledge_rag_loader, knowledge_claim_loader = (
+        config.knowledge_retriever_loader,
+        config.knowledge_rag_loader,
+        config.knowledge_claim_loader,
+    )
+    agent_service_loader, agent_claim_loader, agent_run_store_loader, vision_store_loader = (
+        config.agent_service_loader,
+        config.agent_claim_loader,
+        config.agent_run_store_loader,
+        config.vision_store_loader,
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.triage_predictor = None
@@ -260,11 +282,13 @@ def create_app(
     )
     install_agent_routes(
         app,
-        service_loader=agent_service_loader,
-        claim_loader=agent_claim_loader,
-        run_store_loader=agent_run_store_loader,
-        similar_service_loader=similar_service_loader,
-        knowledge_retriever_loader=knowledge_retriever_loader,
+        config=AgentRouteConfig(
+            service_loader=agent_service_loader,
+            claim_loader=agent_claim_loader,
+            run_store_loader=agent_run_store_loader,
+            similar_service_loader=similar_service_loader,
+            knowledge_retriever_loader=knowledge_retriever_loader,
+        ),
     )
     install_vision_routes(app, store_loader=vision_store_loader)
     return app

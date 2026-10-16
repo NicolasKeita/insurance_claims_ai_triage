@@ -19,7 +19,7 @@ from agent.models import (
     ToolObservation,
 )
 from claims.models import Claim
-from knowledge.models import KnowledgeSourceType, applicable_on
+from knowledge.models import KnowledgeFilter, KnowledgeSourceType, applicable_on
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import AssessmentRepository, ClaimNotFoundError, ClaimRepository
 from persistence.vision_assessments import VisionAssessmentRepository
@@ -356,7 +356,10 @@ class ReadOnlyAgentTools:
             if retriever is None:
                 return self._missing(tool, "Knowledge retrieval is not configured", unavailable=True)
             chunks = retriever.search(
-                arguments.query, source_type, product=product, as_of_date=as_of_date, limit=arguments.limit
+                arguments.query,
+                source_type,
+                filters=KnowledgeFilter(product=product, as_of_date=as_of_date),
+                limit=arguments.limit,
             )
         except RetrievalUnavailableError:
             return self._missing(tool, "Knowledge retrieval is unavailable", unavailable=True)
