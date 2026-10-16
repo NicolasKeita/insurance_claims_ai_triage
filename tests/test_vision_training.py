@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from vision.error_analysis import ErrorInstance, analyze_instances, box_iou, save_error_examples
-from vision.evaluation import extract_segmentation_metrics, run_evaluation, selected_checkpoint
+from vision.evaluation import extract_segmentation_metrics, run_evaluation
 from vision.tracking import VisionMLflowTracking, vision_tracking_run
 from vision.training import (
     DamageTrainingConfig,

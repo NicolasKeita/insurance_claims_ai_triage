@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from api.main import create_app
 from knowledge.models import GroundedAnswer, GroundingError
-from knowledge.models import KnowledgeSourceType as Kind
 from persistence.repositories import ClaimNotFoundError
 from retrieval.models import RetrievalUnavailableError
 

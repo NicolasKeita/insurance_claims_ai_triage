@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from claims.assets import resolve_document_assets
-from claims.case import ClaimCase
 from claims.consistency import (
     compare_claim_documents,
 )

@@ -13,7 +13,6 @@ from pydantic import ValidationError
 
 from agent.config import DEFAULT_MAX_ITERATIONS
 from agent.models import (
-    AgentPlanStep,
     AgentRecommendation,
     AgentToolName,
     ObservationStatus,

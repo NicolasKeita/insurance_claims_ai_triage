@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from claims import case
 from claims.enums import (
     ClaimType,
     DamageType,

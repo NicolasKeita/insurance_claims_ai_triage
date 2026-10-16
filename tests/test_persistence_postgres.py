@@ -21,7 +21,6 @@ from persistence.models import (
     DeclaredDamageRow,
     DocumentRow,
     PolicyRow,
-    TriageAssessmentRow,
 )
 from persistence.repositories import (
     AssessmentRepository,

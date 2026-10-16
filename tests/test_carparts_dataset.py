@@ -1,7 +1,6 @@
 """Local tiny dataset fixtures; no official dataset or framework downloads."""
 
 import json
-from pathlib import Path
 
 import pytest
 from PIL import Image
