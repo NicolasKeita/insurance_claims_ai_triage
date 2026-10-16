@@ -396,7 +396,8 @@ def run_training(
             "elapsed_seconds": previous_elapsed + time.perf_counter() - started,
             "elapsed_seconds_before_resume": previous_elapsed,
             "elapsed_seconds_this_execution": time.perf_counter() - started,
-            "elapsed_seconds_method": "Sum of checkpoint-recorded prior duration and this execution; excludes interruption downtime. Native results.csv time restarts for resumed segments.",
+            "elapsed_seconds_method": "Sum of checkpoint-recorded prior duration and this execution; "
+            "excludes interruption downtime. Native results.csv time restarts for resumed segments.",
             "resumed": resume,
             "resume_from_epoch": recovery["epochs_completed"] if recovery else None,
             "resume_input_checkpoint_sha256": recovery["last_checkpoint_sha256"] if recovery else None,

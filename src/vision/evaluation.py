@@ -102,7 +102,8 @@ def extract_segmentation_metrics(
             for row in ranked[:3]
         ],
         "unavailable_classes": [row["name"] for row in rows if not row["mask_metrics_available"]],
-        "metric_semantics": "Ultralytics aggregate precision/recall use its confidence curves; conf filters predictions. Fixed-threshold box counts are separate error-analysis approximations.",
+        "metric_semantics": "Ultralytics aggregate precision/recall use its confidence curves; "
+        "conf filters predictions. Fixed-threshold box counts are separate error-analysis approximations.",
     }
 
 
@@ -188,7 +189,8 @@ def run_evaluation(
         raise ValueError("Confidence threshold must be finite and between zero and one")
     if threshold != summary.get("confidence_threshold"):
         raise ValueError(
-            "Confidence threshold differs from training metadata. Configure it before training or calibrate on VAL in a new version; never select it on TEST."
+            "Confidence threshold differs from training metadata. "
+            "Configure it before training or calibrate on VAL in a new version; never select it on TEST."
         )
     evaluation_dir = config.output_dir / "evaluation"
     metrics_path = config.output_dir / "test_metrics.json"

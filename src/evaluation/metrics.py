@@ -116,11 +116,17 @@ def aggregate_metrics(results):
         "forbidden_action_count": sum(len(a.actual or []) for a in group("safety:forbidden_actions")),
         "latencies": timings,
         "definitions": {
-            "scenario_pass_rate": "PASS / (PASS + FAIL); SKIP excluded and separately counted; partial scenarios never PASS.",
-            "component_success_rate": "Technical PASS / (PASS + FAIL) among attempted applicable components; requested_completion_rate includes unavailable requests.",
-            "expected_fact_recall": "Matched controlled structured fact assertions / executed controlled fact assertions; no unlabelled ML accuracy.",
-            "unexpected_fact_count": "Extra members only for exact expected list/set assertions; not arbitrary scalar model predictions.",
+            "scenario_pass_rate": "PASS / (PASS + FAIL); SKIP excluded and separately counted; "
+            "partial scenarios never PASS.",
+            "component_success_rate": "Technical PASS / (PASS + FAIL) among attempted applicable components; "
+            "requested_completion_rate includes unavailable requests.",
+            "expected_fact_recall": "Matched controlled structured fact assertions / "
+            "executed controlled fact assertions; "
+            "no unlabelled ML accuracy.",
+            "unexpected_fact_count": "Extra members only for exact expected list/set assertions; "
+            "not arbitrary scalar model predictions.",
             "required_signal_recall": "Present required signals / executed required signal expectations.",
-            "citation_validity": "Scenarios with valid retrieved citation IDs AND source/version/section metadata / scenarios with checked generated answers.",
+            "citation_validity": "Scenarios with valid retrieved citation IDs AND source/version/section metadata / "
+            "scenarios with checked generated answers.",
         },
     }

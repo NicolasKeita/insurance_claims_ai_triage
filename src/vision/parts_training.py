@@ -59,7 +59,8 @@ def require_requested_device(config: VehiclePartTrainingConfig, environment: dic
         raise RuntimeError(
             "GPU training/evaluation requested but torch.cuda.is_available() is False in "
             f"{environment.get('python_executable')}; torch={environment.get('torch_version')}, "
-            f"CUDA build={environment.get('cuda_runtime_version')}. Select a CUDA-enabled Python; CPU fallback is forbidden."
+            f"CUDA build={environment.get('cuda_runtime_version')}. "
+            "Select a CUDA-enabled Python; CPU fallback is forbidden."
         )
     if gpu_requested and requested != "0":
         raise ValueError("Carparts V1 CUDA baseline requires explicit device=0")
@@ -100,7 +101,8 @@ def run_parts_training(
                 evidence = f"nvidia-smi unavailable: {type(exc).__name__}"
             with path.open("a", encoding="utf-8") as stream:
                 stream.write(
-                    f"\nUTC={datetime.now(timezone.utc).isoformat()} Python PID={os.getpid()} trainer.device={device} epoch={int(epoch) + 1}\n{evidence}\n"
+                    f"\nUTC={datetime.now(timezone.utc).isoformat()} Python PID={os.getpid()} "
+                    f"trainer.device={device} epoch={int(epoch) + 1}\n{evidence}\n"
                 )
 
         if config.device == "0":

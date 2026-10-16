@@ -297,7 +297,8 @@ class RealClaimsEvaluationPipeline:
             self._skip(
                 observed,
                 "vision",
-                "Golden vision uses deterministic detectors; no matching real image ground truth. Real external CarDD diagnostic is reported separately",
+                "Golden vision uses deterministic detectors; no matching real image ground truth. "
+                "Real external CarDD diagnostic is reported separately",
             )
         elif self._available(observed, "vision", ["damage_vision", "part_vision"]):
             from claims.assets import resolve_image_assets
@@ -581,7 +582,8 @@ class RealClaimsEvaluationPipeline:
             self._skip(
                 observed,
                 "agent",
-                "Requested deterministic tool outage cannot be safely imposed on the real application service; no fake tools used",
+                "Requested deterministic tool outage cannot be safely imposed on the real application service; "
+                "no fake tools used",
             )
             return
         if (
@@ -745,7 +747,8 @@ class RealClaimsEvaluationPipeline:
                 "ground_truth_available": False,
                 "detection_truth_labels_loaded": False,
                 "meaning": "Conditional integration diagnostic; does not establish facts about an insurance claim",
-                "existing_visualizations": "artifacts/environment_merge/gpu-smoke/run_20261015T135812_022547Z/summary.json",
+                "existing_visualizations": "artifacts/environment_merge/gpu-smoke/"
+                "run_20261015T135812_022547Z/summary.json",
             }
             return ClaimMultimodalVisionAssessment(
                 claim_id="E2E-DIAGNOSTIC-CARDD",
@@ -878,7 +881,8 @@ def isolated_demo_stack(config, preflight, output_dir):
                         status="PASS",
                         reason=None,
                         collections=names[2:],
-                        setup="New owned isolated demo collection; indexed from run's real PostgreSQL rows per scenario",
+                        setup="New owned isolated demo collection; "
+                        "indexed from run's real PostgreSQL rows per scenario",
                     )
             write_audit()
             yield

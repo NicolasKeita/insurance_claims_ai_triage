@@ -86,15 +86,22 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
     vehicle = f"{payload['vehicle']['make']} {payload['vehicle']['model']}"
     injuries = "Yes" if payload["incident"]["injuries_declared"] else "No"
     texts = {
-        "CLAIM_FORM": f"DEMO SYNTHETIC CLAIM FORM\nClaim ID: {payload['claim_id']}\nIncident date: {date}\nLocation: {payload['incident']['location']}\nVehicle: {vehicle}\nVehicle year: {payload['vehicle']['year']}\nCollision type: Front collision\nDeclared damage:\n{damage}\nInjuries declared: {injuries}",
-        "ACCIDENT_REPORT": f"DEMO SYNTHETIC ACCIDENT REPORT\nClaim ID: {payload['claim_id']}\nDate: {date}\nLocation: {payload['incident']['location']}\nVehicle:\n{vehicle}\nCollision type: Front collision\nReported damage:\n{damage}\nPassengers: 1\nInjuries: {injuries}",
-        "POLICE_REPORT": f"DEMO SYNTHETIC SUPPORTING RECORD\nClaim ID: {payload['claim_id']}\nNo inference of misconduct is made.",
+        "CLAIM_FORM": f"DEMO SYNTHETIC CLAIM FORM\nClaim ID: {payload['claim_id']}\nIncident date: {date}\n"
+        f"Location: {payload['incident']['location']}\nVehicle: {vehicle}\n"
+        f"Vehicle year: {payload['vehicle']['year']}\nCollision type: Front collision\n"
+        f"Declared damage:\n{damage}\nInjuries declared: {injuries}",
+        "ACCIDENT_REPORT": f"DEMO SYNTHETIC ACCIDENT REPORT\nClaim ID: {payload['claim_id']}\nDate: {date}\n"
+        f"Location: {payload['incident']['location']}\nVehicle:\n{vehicle}\n"
+        f"Collision type: Front collision\nReported damage:\n{damage}\nPassengers: 1\nInjuries: {injuries}",
+        "POLICE_REPORT": f"DEMO SYNTHETIC SUPPORTING RECORD\nClaim ID: {payload['claim_id']}\n"
+        "No inference of misconduct is made.",
     }
     part_amount = (amount / Decimal(max(1, len(quoted) + 1))).quantize(Decimal("0.01"))
     labor = amount - part_amount * len(quoted)
     parts = "\n".join(f"{item.lower().replace('_', ' ')}: {part_amount} EUR" for item in quoted)
     texts["REPAIR_QUOTE"] = (
-        f"DEMO SYNTHETIC GARAGE QUOTE\nGarage: Demo Garage\nClaim ID: {payload['claim_id']}\n{parts}\nLabor: {labor} EUR\nTotal: {amount} EUR"
+        f"DEMO SYNTHETIC GARAGE QUOTE\nGarage: Demo Garage\nClaim ID: {payload['claim_id']}\n{parts}\n"
+        f"Labor: {labor} EUR\nTotal: {amount} EUR"
     )
     for kind, overrides in inputs.get("document_overrides", {}).items():
         if isinstance(overrides, str):
@@ -122,7 +129,8 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
                 "scenario_id": scenario.scenario_id,
                 "source_claim": str(source),
                 "provenance": SYNTHETIC_PROVENANCE,
-                "vision_semantics": "Generated pixels exercise geometry only; fake detections are explicit test inputs.",
+                "vision_semantics": "Generated pixels exercise geometry only; "
+                "fake detections are explicit test inputs.",
             },
             indent=2,
         ),
@@ -382,7 +390,8 @@ class ClaimsEvaluationPipeline:
                             "filename": filename,
                             "synthetic": True,
                             "asset_sha256": sha256(case.image_path(filename).read_bytes()).hexdigest(),
-                            "description": "Generated geometry-only pixels; detector observations supplied explicitly by the scenario.",
+                            "description": "Generated geometry-only pixels; "
+                            "detector observations supplied explicitly by the scenario.",
                         }
                         for filename in case.claim.images
                     ]

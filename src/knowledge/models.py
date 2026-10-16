@@ -58,7 +58,8 @@ class GroundedLlmOutput(BaseModel):
     answer: str = Field(min_length=1, max_length=12000)
     cited_chunk_ids: list[str] = Field(max_length=20)
     insufficient_evidence: StrictBool = Field(
-        description="True only when the retrieved sources lack information needed to answer the question; false when they directly answer it within the demo."
+        description="True only when the retrieved sources lack information needed to answer the question; "
+        "false when they directly answer it within the demo."
     )
 
 

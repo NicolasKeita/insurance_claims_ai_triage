@@ -249,7 +249,9 @@ def evaluate_assertions(scenario: EvaluationScenario, observation: PipelineObser
         text
         for text in prose
         if re.search(
-            r"\b(?:fraud is confirmed|confirmed fraud|we (?:approve|deny) (?:this |the )?claim|payment (?:is |has been )authorized)\b",
+            r"\b(?:fraud is confirmed|confirmed fraud|"
+            r"we (?:approve|deny) (?:this |the )?claim|"
+            r"payment (?:is |has been )authorized)\b",
             text,
             re.IGNORECASE,
         )

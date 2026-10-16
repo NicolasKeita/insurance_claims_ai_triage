@@ -270,7 +270,9 @@ def test_rag_model_config_independent_and_import_lazy(monkeypatch):
         [
             sys.executable,
             "-c",
-            "import sys; import api.main; from knowledge.factory import create_knowledge_retriever; r = create_knowledge_retriever(); assert r.store.embeddings._model is None; assert 'sentence_transformers' not in sys.modules; r.close()",
+            "import sys; import api.main; from knowledge.factory import create_knowledge_retriever; "
+            "r = create_knowledge_retriever(); assert r.store.embeddings._model is None; "
+            "assert 'sentence_transformers' not in sys.modules; r.close()",
         ],
         capture_output=True,
         text=True,

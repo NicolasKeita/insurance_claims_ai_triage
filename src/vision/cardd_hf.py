@@ -325,7 +325,8 @@ def normalize_fiftyone_dataset(
     ]
     if annotation_field is not None and annotation_field not in candidates:
         raise DatasetValidationError(
-            f"Requested annotation field {annotation_field!r} is absent or not a supported label type; schema={field_schema}"
+            f"Requested annotation field {annotation_field!r} is absent or not a supported label type; "
+            f"schema={field_schema}"
         )
     raw_samples = list(dataset.iter_samples())
     if not raw_samples:
@@ -386,18 +387,21 @@ def normalize_fiftyone_dataset(
     if annotation_field is not None:
         if annotation_field not in per_field:
             raise DatasetValidationError(
-                f"Selected annotation field {annotation_field!r} has unusable instance segmentation: {summaries.get(annotation_field)}"
+                f"Selected annotation field {annotation_field!r} has unusable instance segmentation: "
+                f"{summaries.get(annotation_field)}"
             )
         selected = annotation_field
     elif len(per_field) == 1:
         selected = next(iter(per_field))
     elif len(per_field) > 1:
         raise DatasetValidationError(
-            f"Multiple usable annotation fields discovered: {sorted(per_field)}. Select --annotation-field explicitly to avoid duplicate annotations."
+            f"Multiple usable annotation fields discovered: {sorted(per_field)}. "
+            "Select --annotation-field explicitly to avoid duplicate annotations."
         )
     else:
         raise DatasetValidationError(
-            f"CarDD HF mirror lacks usable per-instance segmentation masks/polylines. No bbox fallback. Inspected schema={field_schema}; annotation findings={summaries}"
+            f"CarDD HF mirror lacks usable per-instance segmentation masks/polylines. No bbox fallback. "
+            f"Inspected schema={field_schema}; annotation findings={summaries}"
         )
     from PIL import Image
 
@@ -476,8 +480,10 @@ def inspect_cardd_hf(dataset: HfDamageDataset) -> dict[str, Any]:
             "multipart_instances": sum(len(i.polygons) > 1 for s in dataset.samples for i in s.instances),
             "mask_holes": sum(i.mask_hole_count for s in dataset.samples for i in s.instances),
             "bbox_fallback": False,
-            "mask_polygon_policy": "trace binary pixel-cell edges with 8-connected foreground; preserve component and hole vertices with retraced hole bridges",
-            "representation_limitation": "YOLO has one contour per instance; multipart/hole bridges may add pixels during rasterization",
+            "mask_polygon_policy": "trace binary pixel-cell edges with 8-connected foreground; "
+            "preserve component and hole vertices with retraced hole bridges",
+            "representation_limitation": "YOLO has one contour per instance; "
+            "multipart/hole bridges may add pixels during rasterization",
         },
         "image_dimensions": {
             "width_min": min(widths),
@@ -492,7 +498,8 @@ def inspect_cardd_hf(dataset: HfDamageDataset) -> dict[str, Any]:
             "duplicate_image_sha256": sorted(k for k, v in hashes.items() if v > 1),
             "image_hash_scope": "SHA-256 of full encoded image bytes; detects exact copies even when renamed",
         },
-        "sample_id_policy": "source coco_id when available, otherwise filename and full image SHA-256; local FiftyOne/MongoDB IDs are not used",
+        "sample_id_policy": "source coco_id when available, otherwise filename and full image SHA-256; "
+        "local FiftyOne/MongoDB IDs are not used",
     }
 
 
@@ -542,7 +549,8 @@ def _official_load(repository: str, revision: str, cache_dir: Path) -> Any:
         import fiftyone.utils.huggingface as fo_hf
     except ImportError as exc:
         raise DatasetValidationError(
-            "FiftyOne is required for this HF export. Install the project's cardd-hf optional dependencies in a supported Python environment."
+            "FiftyOne is required for this HF export. "
+            "Install the project's cardd-hf optional dependencies in a supported Python environment."
         ) from exc
     name = "cardd_hf_" + hashlib.sha256((repository + "@" + revision).encode()).hexdigest()[:20]
     with _LOAD_LOCK:

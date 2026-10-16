@@ -240,7 +240,8 @@ def prepare_cardd_hf_yolo(
         raise DatasetValidationError("Generated manifest must be outside the HF source dataset")
     if output.exists():
         raise DatasetValidationError(
-            f"Prepared output already exists: {output}. Choose a new versioned --output-dir; existing data is never overwritten."
+            f"Prepared output already exists: {output}. "
+            "Choose a new versioned --output-dir; existing data is never overwritten."
         )
     split_document = create_or_load_cardd_hf_split(
         dataset, manifest_path=split_manifest_path or DEFAULT_SPLIT_MANIFEST_PATH
@@ -282,9 +283,11 @@ def prepare_cardd_hf_yolo(
         "prepared_files": {},
         "license_provenance": {
             "repository_file": "CarDD_license.pdf",
-            "conditions": "The Hugging Face mirror does not supersede the original image licensing conditions. Images are not redistributed in the Git repository.",
+            "conditions": "The Hugging Face mirror does not supersede the original image licensing conditions. "
+            "Images are not redistributed in the Git repository.",
         },
-        "metrics_scope": f"Metrics are evaluated on the project's deterministic held-out split of the {len(dataset.samples):,}-sample Hugging Face CarDD mirror, not on the official CarDD test split.",
+        "metrics_scope": "Metrics are evaluated on the project's deterministic held-out split of the "
+        f"{len(dataset.samples):,}-sample Hugging Face CarDD mirror, not on the official CarDD test split.",
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".cardd-hf-preparation-", dir=output.parent) as temporary:
@@ -324,7 +327,8 @@ def prepare_cardd_hf_yolo(
                     polygon, reason = _polygon({"segmentation": parts}, sample.width, sample.height)
                     if reason or polygon is None:
                         raise DatasetValidationError(
-                            f"HF sample {sample_id} instance {instance_index}: unusable segmentation ({reason}); no bounding-box fallback"
+                            f"HF sample {sample_id} instance {instance_index}: unusable segmentation ({reason}); "
+                            "no bounding-box fallback"
                         )
                     class_id = class_ids[instance.label]
                     if (class_id, polygon) in rows:
@@ -419,7 +423,9 @@ def prepare_cardd_hf_yolo(
             "bbox_fallback": False,
             "source_format": "FiftyOne normalized instance polygons",
             "multipart_policy": "preserve component vertices using retraced nearest-vertex bridges",
-            "multipart_limitation": "YOLO uses one polygon per instance; disconnected topology and holes cannot be represented exactly, and rasterization may include bridge pixels",
+            "multipart_limitation": "YOLO uses one polygon per instance; "
+            "disconnected topology and holes cannot be represented exactly, "
+            "and rasterization may include bridge pixels",
             "use_segments": True,
             "cls91to80": False,
         }

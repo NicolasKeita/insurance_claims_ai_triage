@@ -236,7 +236,10 @@ def test_hf_no_overwrite_and_no_source_modification(tmp_path):
 
 
 def test_hf_preparation_module_does_not_import_frameworks_or_download():
-    code = "import sys; import vision.cardd_hf_preparation; assert not {'fiftyone', 'ultralytics', 'torch', 'huggingface_hub'} & set(sys.modules)"
+    code = (
+        "import sys; import vision.cardd_hf_preparation; "
+        "assert not {'fiftyone', 'ultralytics', 'torch', 'huggingface_hub'} & set(sys.modules)"
+    )
     result = subprocess.run([sys.executable, "-c", code], text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
 

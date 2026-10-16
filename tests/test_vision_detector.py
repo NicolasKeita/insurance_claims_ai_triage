@@ -171,7 +171,8 @@ def test_domain_imports_do_not_import_ultralytics_or_torch():
         [
             sys.executable,
             "-c",
-            "import sys; import vision; import vision.detector; import vision.service; assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules",
+            "import sys; import vision; import vision.detector; import vision.service; "
+            "assert 'ultralytics' not in sys.modules; assert 'torch' not in sys.modules",
         ],
         capture_output=True,
         text=True,

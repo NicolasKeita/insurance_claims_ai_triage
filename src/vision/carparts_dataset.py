@@ -167,7 +167,9 @@ def inspect_carparts_dataset(dataset_yaml: Path = DEFAULT_DATASET_YAML) -> dict[
             f"{left}_{right}": len(source_names[left] & source_names[right])
             for left, right in (("train", "val"), ("train", "test"), ("val", "test"))
         },
-        "limitation": "Supplied splits are preserved. Shared filename identifiers suggest related/augmented source images across splits; they do not prove identical pixels or independent unseen-photo generalization.",
+        "limitation": "Supplied splits are preserved. Shared filename identifiers suggest related/augmented "
+        "source images across splits; they do not prove identical pixels or independent unseen-photo "
+        "generalization.",
     }
     report["valid"] = all(value["image_count"] > 0 for value in report["splits"].values()) and not any(
         report[key]

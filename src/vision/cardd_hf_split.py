@@ -242,7 +242,8 @@ def _packing_exists(sizes: tuple[int, ...], capacities: tuple[int, ...], singles
         return True
     if len(sizes) > 100:
         raise DatasetValidationError(
-            "Duplicate image groups require complex packing; cannot safely preserve exact split sizes. Use a new reviewed split version or remove duplicate samples explicitly."
+            "Duplicate image groups require complex packing; cannot safely preserve exact split sizes. "
+            "Use a new reviewed split version or remove duplicate samples explicitly."
         )
     visited = 0
 
@@ -465,11 +466,13 @@ def _split_metadata(context: dict[str, Any], assignments: dict[str, list[str]], 
         independent = sum(label in group.image_counts for group in groups)
         if independent < len(SPLITS):
             warnings.append(
-                f"Class {label!r} has only {independent} independent image groups; representation in all three splits is impossible."
+                f"Class {label!r} has only {independent} independent image groups; "
+                "representation in all three splits is impossible."
             )
         elif any(not split_counts[name]["images_per_category"][label] for name in SPLITS):
             warnings.append(
-                f"Class {label!r} is absent from at least one split: multilabel overlap, duplicate grouping and exact capacities prevented full coverage."
+                f"Class {label!r} is absent from at least one split: "
+                "multilabel overlap, duplicate grouping and exact capacities prevented full coverage."
             )
     return {
         "splits": split_counts,
@@ -513,7 +516,9 @@ def validate_cardd_hf_split(
     )
     if not isinstance(manifest, dict) or any(manifest.get(key) != value for key, value in expected.items()):
         raise DatasetValidationError(
-            "Frozen HF split manifest is inconsistent with the source revision, samples, annotations, taxonomy or requested parameters. Do not overwrite or regenerate this version; review the change and use a new split version."
+            "Frozen HF split manifest is inconsistent with the source revision, samples, annotations, taxonomy "
+            "or requested parameters. Do not overwrite or regenerate this version; review the change and "
+            "use a new split version."
         )
     assignments = manifest.get("sample_ids")
     if not isinstance(assignments, dict) or set(assignments) != set(SPLITS):

@@ -125,7 +125,8 @@ def vision_tracking_run(
         return
     if not os.environ.get("MLFLOW_TRACKING_URI"):
         warnings.warn(
-            "Vision MLflow tracking unavailable: MLFLOW_TRACKING_URI is not configured; continuing CV without tracking.",
+            "Vision MLflow tracking unavailable: MLFLOW_TRACKING_URI is not configured; "
+            "continuing CV without tracking.",
             RuntimeWarning,
         )
         yield None

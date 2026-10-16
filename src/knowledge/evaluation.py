@@ -91,14 +91,17 @@ def evaluate_retrieval(retriever, benchmark: RetrievalBenchmark) -> dict:
         "evaluated_cases": len(rows),
         "answerable_cases": len(answerable),
         "unsupported_cases": len(unsupported),
-        "ground_truth": "Exact source_id + section pairs; macro Recall@K, MRR truncated at 5; duplicate chunks count once for recall",
+        "ground_truth": "Exact source_id + section pairs; macro Recall@K, MRR truncated at 5; "
+        "duplicate chunks count once for recall",
         **metrics,
         "unsupported": {
             "empty_result_rate": sum(r["returned_count"] == 0 for r in unsupported) / len(unsupported)
             if unsupported
             else None,
             "cases": unsupported,
-            "interpretation": "Diagnostic only. Dense retrieval always ranks candidates; no calibrated abstention threshold. Unsupported cases excluded from recall/MRR; generation abstention tested separately.",
+            "interpretation": "Diagnostic only. Dense retrieval always ranks candidates; "
+            "no calibrated abstention threshold. Unsupported cases excluded from recall/MRR; "
+            "generation abstention tested separately.",
         },
         "cases": rows,
     }

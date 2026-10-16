@@ -113,7 +113,8 @@ def _discover_path(root: Path, candidates: list[str], kind: str, split: str) -> 
     if len(found) != 1:
         detail = "none found" if not found else "ambiguous: " + ", ".join(str(p) for p in found)
         raise DatasetValidationError(
-            f"CarDD {split} {kind}: {detail}. Expected one of {candidates}; use explicit path mappings for a custom layout."
+            f"CarDD {split} {kind}: {detail}. Expected one of {candidates}; "
+            "use explicit path mappings for a custom layout."
         )
     return found[0].resolve()
 
@@ -128,12 +129,14 @@ def discover_cardd_dataset(
     configured = dataset_dir if dataset_dir is not None else os.environ.get("CARDD_DATASET_DIR")
     if not configured:
         raise DatasetValidationError(
-            "CarDD dataset unavailable. Obtain CarDD manually from its official site under its conditions, then set CARDD_DATASET_DIR to the CarDD_COCO directory. No automatic download is performed."
+            "CarDD dataset unavailable. Obtain CarDD manually from its official site under its conditions, "
+            "then set CARDD_DATASET_DIR to the CarDD_COCO directory. No automatic download is performed."
         )
     root = Path(configured).expanduser().resolve()
     if not root.is_dir():
         raise DatasetValidationError(
-            f"CARDD_DATASET_DIR does not exist or is not a directory: {root}. Set it to the manually obtained CarDD_COCO directory."
+            f"CARDD_DATASET_DIR does not exist or is not a directory: {root}. "
+            "Set it to the manually obtained CarDD_COCO directory."
         )
     for mapping in (annotation_files, image_directories):
         if mapping is not None and set(mapping) != set(SPLITS):
@@ -363,7 +366,8 @@ def _check_image(path: Path, width: int, height: int) -> None:
                 raise DatasetValidationError(f"Image dimensions disagree with COCO/prepared metadata: {path}")
             if image.getexif().get(274, 1) not in (None, 1):
                 raise DatasetValidationError(
-                    f"EXIF orientation would change annotation coordinates: {path}; source needs correctly oriented COCO annotations"
+                    f"EXIF orientation would change annotation coordinates: {path}; "
+                    "source needs correctly oriented COCO annotations"
                 )
             image.load()
     except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
@@ -455,7 +459,8 @@ def prepare_cardd_yolo(
         raise DatasetValidationError("Generated manifest must be outside the source dataset")
     if output.exists():
         raise DatasetValidationError(
-            f"Prepared output already exists: {output}. Choose a new versioned --output-dir; existing data is never overwritten."
+            f"Prepared output already exists: {output}. "
+            "Choose a new versioned --output-dir; existing data is never overwritten."
         )
     from vision.taxonomy import map_category_name
 
@@ -495,7 +500,9 @@ def prepare_cardd_yolo(
                     skipped_by_class[class_names[annotation["category_id"]]] += 1
                     if unsupported == "error":
                         raise DatasetValidationError(
-                            f"{split_name} annotation {annotation['id']}: unusable segmentation ({reason}). Fix the source annotations or explicitly choose --unsupported skip to measure and exclude it; no bounding-box fallback."
+                            f"{split_name} annotation {annotation['id']}: unusable segmentation ({reason}). "
+                            "Fix the source annotations or explicitly choose --unsupported skip to measure "
+                            "and exclude it; no bounding-box fallback."
                         )
                     continue
                 stitched_multipart_count += len(annotation.get("segmentation", [])) > 1
@@ -585,7 +592,9 @@ def prepare_cardd_yolo(
             "segmentation_enabled": True,
             "bbox_fallback": False,
             "multipart_policy": "preserve component vertices using retraced nearest-vertex bridges",
-            "multipart_limitation": "YOLO uses one polygon per instance; disconnected topology and holes cannot be represented exactly, and rasterization may include bridge pixels",
+            "multipart_limitation": "YOLO uses one polygon per instance; "
+            "disconnected topology and holes cannot be represented exactly, "
+            "and rasterization may include bridge pixels",
             "use_segments": True,
             "cls91to80": False,
         }
@@ -599,7 +608,8 @@ def prepare_cardd_yolo(
                         f"Official COCO segmentation conversion failed validation: {exc}"
                     ) from exc
                 conversion["fallback_reason"] = (
-                    f"{type(exc).__name__}: official converter unavailable, incompatible, or failed strict polygon validation"
+                    f"{type(exc).__name__}: official converter unavailable, incompatible, "
+                    "or failed strict polygon validation"
                 )
         manifest["conversion"] = conversion
         for files in manifest["prepared_files"].values():

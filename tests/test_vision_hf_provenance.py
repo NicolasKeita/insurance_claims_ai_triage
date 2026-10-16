@@ -15,7 +15,10 @@ def test_default_training_config_uses_hf_mirror_and_external_yaml_override(tmp_p
 
 
 def test_training_provenance_keeps_custom_split_scope_and_actual_source_fields(tmp_path):
-    scope = "Metrics are evaluated on the project's deterministic held-out split of the 3-sample Hugging Face CarDD mirror, not on the official CarDD test split."
+    scope = (
+        "Metrics are evaluated on the project's deterministic held-out split of the "
+        "3-sample Hugging Face CarDD mirror, not on the official CarDD test split."
+    )
     manifest = {
         "source_name": "CarDD HF mirror",
         "source_repository": "fixture/mirror",
