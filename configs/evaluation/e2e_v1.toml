@@ -1,0 +1,27 @@
+# Real evaluation never starts services, downloads weights, or substitutes fakes.
+benchmark_version = "e2e_claims_v1"
+include_vision = true
+include_agent = true
+include_rag = true
+include_similar = true
+fail_fast = false
+dependency_unavailable = "SKIP"
+timeout_seconds = 2.0
+
+[models]
+# Used only when MLFLOW_TRACKING_URI is absent/unavailable or its candidate cannot load.
+# These are existing, trained project artifacts, never retrained by evaluation.
+triage_checkpoint = "artifacts/triage_v1/logistic_regression.joblib"
+anomaly_checkpoint = "artifacts/anomaly_v1/anomaly_detector.joblib"
+damage_checkpoint = "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
+part_checkpoint = "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
+vision_device = "0"
+
+[vision_diagnostic]
+# Existing source manifest; images remain outside Git and are never copied/redistributed.
+source_summary = "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json"
+training_summary = "artifacts/vision/damage_segmentation_v1/training_summary.json"
+max_images = 2
+synthetic_declared_damage = ["FRONT_BUMPER"]
+synthetic_quoted_damage = []
+ground_truth_available = false

@@ -965,3 +965,38 @@ reference script provide the inference path.
 The durable `CODEX_REPORT_STEP_30.md` records actual execution status, GPU proof,
 counts, metrics, tests and limitations. Reference photos that are empty or invalid
 produce a saved `NOT EXECUTED` status instead of invented observations.
+
+## End-to-End Evaluation
+
+The versioned `e2e_claims_v1` benchmark covers ten controlled golden scenarios
+from document ingestion and structured extraction through investigation, RAG,
+multimodal evidence and advisory agent recommendations. Fast deterministic tests
+under `tests/e2e/` run offline in ordinary pytest; real PostgreSQL, Qdrant,
+embeddings, Ollama and local model evaluation run through the dedicated script.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/e2e -q
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
+$env:OLLAMA_HOST = 'http://127.0.0.1:11434'
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v1/real
+```
+
+The isolated mode validates the explicit test database and uses a temporary
+migrated PostgreSQL schema plus temporary Qdrant collections. It seeds only
+controlled demo data, then cleans up its own schema/collections. Preflight stays
+read-only. The command uses the existing installed local model and test-service
+ports; no model download is performed.
+
+The manifest is `data/evaluation/e2e_v1/scenarios.json`. Reports distinguish
+`PASS`, `FAIL` and `SKIP`; a skip never counts as a pass, and an unavailable
+mandatory component leaves the run `PARTIAL`. The two empty reference JPEGs
+remain unchanged. Separate local vision diagnostics preserve asset/model
+provenance and do not imply golden-label accuracy. JSON/CSV artifacts and
+structured traces are saved under `artifacts/evaluation/e2e_v1/`.
+
+The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.
+
+See [the evaluation guide](docs/END_TO_END_EVALUATION.md) for configuration,
+golden cases, metrics, safety/provenance checks, stable baseline comparison and
+limitations. [CODEX_REPORT_STEP_31.md](CODEX_REPORT_STEP_31.md) records actual
+deterministic and real-stack execution results.

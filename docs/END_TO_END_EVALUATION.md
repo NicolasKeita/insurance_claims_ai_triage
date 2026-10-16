@@ -1,0 +1,186 @@
+# End-to-End Evaluation
+
+The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.
+
+## Two execution levels
+
+`tests/e2e/` is the fast, offline deterministic suite. It exercises existing
+document ingestion/extraction, consistency, feature engineering, investigation,
+knowledge grounding, vision fusion and agent services. Model predictions,
+embeddings and structured LLM responses use explicit deterministic dependencies;
+storage is in memory. It requires no PostgreSQL, Qdrant server, Ollama, MLflow,
+GPU, external checkpoints or Internet. These tests run in ordinary pytest and CI.
+
+The dedicated `scripts/evaluate_end_to_end.py --mode real` runner uses real
+available application services and local assets. It runs separately from pytest,
+performs preflight checks, and never substitutes deterministic detectors or an
+LLM fake for an unavailable real component. A component disabled or unavailable
+has an explicit `SKIP` reason. A report with unavailable mandatory expectations
+remains `PARTIAL`, even when every component that actually ran succeeded.
+
+## Frozen golden cases
+
+`E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.
+The versioned manifest is `data/evaluation/e2e_v1/scenarios.json`. An important
+change to scenarios or their expected behavior requires a new benchmark version.
+The loader rejects unknown versions, duplicate IDs and unknown scenario fields.
+
+| Scenario | Required behavior |
+| --- | --- |
+| `simple_coherent_claim` | Structured extraction and matching document fields; no invented discrepancy. |
+| `additional_quote_damage` | HOOD appears beyond declared FRONT_BUMPER, with quote evidence. |
+| `missing_documents` | One unavailable document, completeness 3/4, policy-driven factual follow-up. |
+| `recent_claim_history` | Inclusive 30/90/365 counts; same-day, future and other-customer claims excluded. |
+| `statistically_unusual_claim` | Explicit fake anomaly path; no fraud conclusion. Real predictions remain observations. |
+| `policy_answerable` | Expected demo policy and Deductible section retrieved; grounded valid citation. |
+| `policy_insufficient_evidence` | Unsupported volcanic-ash question produces insufficient evidence without invented clauses. |
+| `agent_missing_tool_data` | Unavailable history tool produces uncertainty and mandatory human review. |
+| `visual_additional_damage` | SCRATCH morphology associates with HOOD geometry; policy v3 emits visual evidence. |
+| `visual_non_detection` | Unconfirmed LEFT_HEADLIGHT remains informational; non-detection alone adds no risk or review points. |
+
+Every entry declares its source, controlled inputs, files, external assets,
+structured expected facts, required/forbidden signals, acceptable agent actions,
+knowledge sources, uncertainty and infrastructure requirements. Facts use paths
+such as `features.missing_document_count` and
+`vision.consistency.additional_visual_damage`. Expected lists, sets and counts
+are explicit. Exact generated LLM sentences and an exact ML workflow are not
+ground truth. Entries can mark fake-only expectations through
+`deterministic_only_facts` and `deterministic_only_signals` in their inputs;
+the real runner records the model result without imposing those fake labels.
+
+The controlled documents are generated from manifest inputs in an isolated
+temporary directory. Their provenance identifies the synthetic benchmark;
+the original reference claim is preserved. Geometric visual golden cases use
+explicit synthetic observations rather than third-party photographs. Real vision
+cannot establish those particular golden labels without appropriate controlled
+image assets, even when model checkpoints are loadable.
+
+`data/evaluation/e2e_v1/diagnostics.json` separately versions two real execution
+diagnostics: the original `CLAIM-2026-00001` documents and prior locally available
+CarDD photographs with documented source IDs. Diagnostics do not enter the ten
+golden cases' pass-rate denominator. The reference claim's two JPEGs are empty;
+it is a document-centric case with vision skipped. Local CarDD diagnostics use
+synthetic claim context and make no claim about actual declaration accuracy or
+insurance ground truth. External images are referenced locally and are not
+redistributed by the benchmark.
+
+## Commands
+
+From the repository root in PowerShell:
+
+```powershell
+# Deterministic E2E tests only; no service or checkpoint initialization.
+.\.venv\Scripts\python.exe -m pytest tests/e2e -q
+
+# The complete standard suite, including existing integrations when available.
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest -rs
+
+# Persist a deterministic benchmark run.
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/evaluation/e2e_v1/deterministic
+
+# Real-stack availability and model-loading checks before running scenarios.
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
+
+# Request the available real components; unavailable components remain explicit.
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v1/real
+
+# Run controlled claims against this project's local, isolated test services.
+# This uses the already installed model; it never pulls an Ollama model.
+$env:OLLAMA_HOST = 'http://127.0.0.1:11434'
+.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --save-baseline --output-dir artifacts/evaluation/e2e_v1/isolated_real
+
+# Select a case (repeat --scenario to select multiple).
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --scenario visual_non_detection --output-dir artifacts/evaluation/e2e_v1/non_detection
+
+# A successful complete real-stack run may create the stable baseline.
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --save-baseline --output-dir artifacts/evaluation/e2e_v1
+
+# Compare a later real run against that baseline.
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --baseline artifacts/evaluation/e2e_v1/baseline_summary.json --output-dir artifacts/evaluation/e2e_v1/current
+```
+
+`--isolated-demo-stack` validates an explicitly selected test database, creates
+a random schema migrated to the current Alembic head, and seeds only the
+controlled demo claims/history. It creates three randomly named Qdrant
+collections through the existing real embedding and indexing services. Actual
+computed assessments are persisted for the real agent's existing tools; no
+fake prediction is inserted. On completion it drops only the exact schema and
+collections owned by that run. The setup audit is saved with the artifacts.
+`--preflight-only` remains read-only, including when this flag is supplied.
+The endpoints above are this project's local test-service ports; they are
+explicit rather than inferred from the production application database.
+
+Without isolated setup, the runner requires matching already prepared claims
+in its configured database for history, similar claims and agent tools.
+Unseeded controlled cases remain explicitly incomplete. The installed
+`gemma3:4b` model and IPv4 Ollama host above reproduce the local execution;
+other environments can select another already installed model explicitly.
+
+`--fail-fast` is opt-in; the default tries every compatible scenario.
+`--no-include-vision`, `--no-include-agent`, `--no-include-rag` and
+`--no-include-similar-claims` disable individual components explicitly.
+`--no-include-diagnostics` omits the supplemental real diagnostics. Configuration
+defaults and local checkpoint/source paths are in
+`configs/evaluation/e2e_v1.toml`. The existing environment configuration controls
+PostgreSQL, Qdrant, embedding and Ollama services. MLflow is optional; the report
+records actual local model/checkpoint versions and loading sources.
+
+When a restricted Windows sandbox cannot create pytest's default temporary
+directory, use a writable workspace `--basetemp` directory after creating its
+parent. This is an execution-environment workaround, not a reason to skip tests.
+
+## Assertions, metrics and artifacts
+
+`PASS` means every mandatory expectation was checked and satisfied. `FAIL`
+means an executed expectation or component failed. `SKIP` means required
+execution could not be completed; it never counts as a pass. The scenario pass
+rate is `PASS / (PASS + FAIL)`; an all-skipped run has no rate. Coverage and
+component skipped counts are reported alongside that denominator. Technical
+component completion is not model accuracy.
+
+Assertions validate the application's schemas first. Agent/investigation
+decision values must never be `FRAUD_CONFIRMED`, `APPROVE_CLAIM`, `DENY_CLAIM` or
+`PAYMENT_AUTHORIZED`. Human review stays mandatory. Agent rationale IDs must
+resolve to collected `EvidenceItem`s; policy citations must resolve to retrieved
+chunks with matching source/version/section. Document conclusions retain source
+filename/type/page. Vision preserves image reference, damage/part model versions,
+geometry and fusion policy. `VisualDamageType`, `VehiclePartType` and `DamageType`
+remain separate typed domains. Anomaly and non-detection never establish fraud.
+
+The report includes controlled fact recall, unexpected list members, required
+signal recall, forbidden signal count, expected-source retrieval, citation
+validity, agent schema/action/evidence validity, tool/blocked-duplicate counts,
+and component durations. It reuses existing RAG source/section evaluation rather
+than defining a competing retrieval accuracy benchmark. With fewer than twenty
+timing samples, it reports individual durations and means; median/p95 require
+sufficient samples. These timings identify bottlenecks, not hardware performance.
+
+The output directory contains `summary.json`, `scenario_results.json`,
+`scenario_results.csv`, `timings.csv`, structured `traces/` and `failures/`.
+Failures retain expected, actual, component and source/trace information. Traces
+contain structured inputs, outputs, tool calls, IDs and timings, with no hidden
+chain-of-thought. Existing visualizations are referenced rather than duplicated.
+
+Baseline creation is withheld for a partial run or a deterministic run. A valid
+real baseline retains benchmark/model/policy versions, scenario statuses and
+stable structured expectations. Comparison detects scenario regressions, missing
+required or newly forbidden signals, retrieval failures and invalid citations.
+Changing a saved expectation under the same benchmark version is also reported
+as `benchmark_expectation_changed`.
+Exact elapsed times, LLM prose and floating-point confidence values are excluded
+from regression gates. A version or evaluation-mode mismatch is an error.
+
+## Interpretation and limitations
+
+The cases, policies and procedures are synthetic demonstrations. Some ML
+components use synthetic training data. Vision evidence inherits the CarDD HF
+mirror's custom test split and possible CV domain shift. Local LLMs may abstain,
+fail structured output, or vary despite temperature zero; wording is not tested
+for equality. A small controlled benchmark does not prove production insurance
+accuracy, calibrated fraud probabilities or generalization to real claims.
+
+Actual results, preflight versions, remaining pytest skips, observed failures,
+limitations and exact reproduction commands are recorded in
+`CODEX_REPORT_STEP_31.md`. Existing skip history remains in
+`CODEX_TEST_SKIP_AUDIT.md`; new evaluation tests do not introduce skip gates.

@@ -1,0 +1,767 @@
+{
+  "benchmark_version": "e2e_claims_v1",
+  "scenarios": [
+    {
+      "scenario_id": "simple_coherent_claim",
+      "description": "Complete, plausible synthetic documents agree on the collision and the quote contains only declared damage. ML workflow remains an observation.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "consistency.claim_id_match": true,
+        "consistency.incident_date_match": true,
+        "consistency.location_match": true,
+        "consistency.vehicle_match": true,
+        "consistency.collision_type_match": true,
+        "consistency.injuries_match": true,
+        "consistency.declared_damage_match": true,
+        "consistency.additional_quote_damage": [],
+        "features.missing_document_count": 0,
+        "features.document_completeness_ratio": 1.0,
+        "investigation.signals": [],
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-COHERENT-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-COHERENT-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-COHERENT-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [],
+      "forbidden_signals": [
+        "MISSING_DOCUMENTS",
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "CONTINUE_STANDARD_REVIEW",
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "NO_RECOMMENDATION"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "claim_id": "E2E-COHERENT-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "repair_amount": 1200,
+        "deterministic_only_facts": [
+          "investigation.signals"
+        ]
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "additional_quote_damage",
+      "description": "The quote adds HOOD to the declared FRONT_BUMPER. The signal preserves the document source and remains advisory.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "consistency.additional_quote_damage": [
+          "HOOD"
+        ],
+        "features.additional_damage_count": 1,
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-QUOTE-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-QUOTE-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-QUOTE-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [
+        "ADDITIONAL_QUOTE_DAMAGE"
+      ],
+      "forbidden_signals": [
+        "VISUAL_ADDITIONAL_DAMAGE",
+        "MISSING_DOCUMENTS"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "REFER_TO_EXPERT",
+        "REFER_FOR_INVESTIGATION_REVIEW"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "claim_id": "E2E-QUOTE-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER",
+          "HOOD"
+        ],
+        "missing_documents": [],
+        "repair_amount": 2200
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "missing_documents",
+      "description": "The police report is unavailable. Under the current completeness policy 3/4 available documents produce a factual follow-up signal.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "features.document_count": 4,
+        "features.missing_document_count": 1,
+        "features.document_completeness_ratio": 0.75,
+        "consistency.additional_quote_damage": [],
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-MISSING-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-MISSING-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-MISSING-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [
+        "MISSING_DOCUMENTS"
+      ],
+      "forbidden_signals": [
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "NO_RECOMMENDATION"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "claim_id": "E2E-MISSING-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [
+          "POLICE_REPORT"
+        ],
+        "repair_amount": 1200
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "recent_claim_history",
+      "description": "Previous claims exercise inclusive 30/90/365 day boundaries. Same-day, future, and other-customer rows must be excluded.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "history.previous_claim_count": 6,
+        "history.claims_last_30_days": 3,
+        "history.claims_last_90_days": 4,
+        "history.claims_last_365_days": 5,
+        "history.days_since_previous_claim": 1,
+        "investigation.policy_version": "investigation_policy_v2",
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-HISTORY-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-HISTORY-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-HISTORY-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [
+        "RECENT_CLAIM_FREQUENCY"
+      ],
+      "forbidden_signals": [
+        "PREVIOUS_ANOMALOUS_CLAIMS",
+        "VISUAL_ADDITIONAL_DAMAGE",
+        "ADDITIONAL_QUOTE_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "REFER_FOR_INVESTIGATION_REVIEW",
+        "REFER_TO_EXPERT"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "claim_id": "E2E-HISTORY-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "history_claims": [
+          {
+            "claim_id": "E2E-HIST-D1",
+            "days_before": 1,
+            "amount": 1000,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-D10",
+            "days_before": 10,
+            "amount": 1100,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-D30",
+            "days_before": 30,
+            "amount": 1200,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-D90",
+            "days_before": 90,
+            "amount": 1300,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-D365",
+            "days_before": 365,
+            "amount": 1400,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-D366",
+            "days_before": 366,
+            "amount": 1500,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-SAMEDAY",
+            "days_before": 0,
+            "amount": 1600,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-FUTURE",
+            "days_before": -1,
+            "amount": 1700,
+            "currency": "EUR",
+            "is_anomalous": false
+          },
+          {
+            "claim_id": "E2E-HIST-OTHER",
+            "days_before": 1,
+            "amount": 1800,
+            "currency": "EUR",
+            "is_anomalous": false,
+            "customer_id": "UNRELATED-CUSTOMER"
+          }
+        ]
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "statistically_unusual_claim",
+      "description": "A valid high-value claim exercises anomaly handling through a deterministic predictor. Real-model anomaly labels are observations without actuarial ground truth.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "anomaly.is_anomalous": true,
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-ANOMALY-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-ANOMALY-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-ANOMALY-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [
+        "ANOMALOUS_PATTERN"
+      ],
+      "forbidden_signals": [
+        "VISUAL_ADDITIONAL_DAMAGE",
+        "ADDITIONAL_QUOTE_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "REFER_FOR_INVESTIGATION_REVIEW",
+        "REFER_TO_EXPERT"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "claim_id": "E2E-ANOMALY-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "repair_amount": 95000,
+        "anomaly_fixture": {
+          "is_anomalous": true,
+          "anomaly_score": 0.9,
+          "threshold": 0.5,
+          "reference_percentile": 0.98
+        },
+        "deterministic_only_facts": [
+          "anomaly.is_anomalous"
+        ],
+        "deterministic_only_signals": [
+          "ANOMALOUS_PATTERN"
+        ]
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "policy_answerable",
+      "description": "The synthetic AUTO_PREMIUM policy answers a deductible question; retrieved source/section and structured citations provide the ground truth.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "rag.answer.insufficient_evidence": false,
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-POLICY-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-POLICY-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-POLICY-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [],
+      "forbidden_signals": [
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "MISSING_DOCUMENTS",
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "CONTINUE_STANDARD_REVIEW",
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "NO_RECOMMENDATION"
+      ],
+      "expected_knowledge_sources": [
+        "AUTO_PREMIUM_POLICY"
+      ],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly",
+        "qdrant",
+        "knowledge_collections",
+        "embeddings",
+        "ollama"
+      ],
+      "inputs": {
+        "claim_id": "E2E-POLICY-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "rag_question": "How much is the collision deductible under the demo AUTO_PREMIUM policy?",
+        "rag_source_id": "AUTO_PREMIUM_POLICY",
+        "rag_section": "Deductible",
+        "rag_supported": true
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json",
+        "data/knowledge/policies/auto_premium_v1.md",
+        "data/knowledge/policies/auto_premium_v1.metadata.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "policy_insufficient_evidence",
+      "description": "Volcanic ash coverage is absent from the demo corpus. The generated answer must abstain and may cite only actually retrieved chunks.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "rag.answer.insufficient_evidence": true,
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-UNSUPPORTED-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-UNSUPPORTED-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-UNSUPPORTED-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [],
+      "forbidden_signals": [
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "MISSING_DOCUMENTS",
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "NO_RECOMMENDATION",
+        "CONTINUE_STANDARD_REVIEW"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly",
+        "qdrant",
+        "knowledge_collections",
+        "embeddings",
+        "ollama"
+      ],
+      "inputs": {
+        "claim_id": "E2E-UNSUPPORTED-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "rag_question": "Does AUTO_PREMIUM cover damage caused by volcanic ash?",
+        "rag_source_id": "AUTO_PREMIUM_POLICY",
+        "rag_supported": false
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json",
+        "data/knowledge/policies/auto_premium_v1.md",
+        "data/knowledge/policies/auto_premium_v1.metadata.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "agent_missing_tool_data",
+      "description": "The history tool is explicitly unavailable. The agent must retain uncertainty and human review rather than supplying outside knowledge.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-TOOLGAP-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-TOOLGAP-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-TOOLGAP-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [],
+      "forbidden_signals": [
+        "RECENT_CLAIM_FREQUENCY",
+        "PREVIOUS_ANOMALOUS_CLAIMS",
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "acceptable_agent_actions": [
+        "NO_RECOMMENDATION",
+        "REQUEST_ADDITIONAL_INFORMATION"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [
+        "history"
+      ],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly",
+        "ollama"
+      ],
+      "inputs": {
+        "claim_id": "E2E-TOOLGAP-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "unavailable_tools": [
+          "GET_HISTORY"
+        ]
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "visual_additional_damage",
+      "description": "Independent fake detectors observe a SCRATCH associated geometrically with HOOD while the declaration covers FRONT_BUMPER only. No real-photo ground truth is claimed.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "vision.aggregate_mapped_damage_types": [
+          "HOOD"
+        ],
+        "vision.consistency.additional_visual_damage": [
+          "HOOD"
+        ],
+        "investigation.policy_version": "investigation_policy_v3",
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-VISUAL-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-VISUAL-0001",
+        "extraction.report.reported_damage": [
+          "FRONT_BUMPER"
+        ],
+        "extraction.quote.claim_id": "E2E-VISUAL-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [
+        "VISUAL_ADDITIONAL_DAMAGE"
+      ],
+      "forbidden_signals": [
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "MISSING_DOCUMENTS"
+      ],
+      "acceptable_agent_actions": [
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "REFER_TO_EXPERT",
+        "REFER_FOR_INVESTIGATION_REVIEW"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": true,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly",
+        "damage_vision",
+        "part_vision",
+        "visual_golden_asset"
+      ],
+      "inputs": {
+        "claim_id": "E2E-VISUAL-0001",
+        "declared_damage": [
+          "FRONT_BUMPER"
+        ],
+        "quote_damage": [
+          "FRONT_BUMPER"
+        ],
+        "missing_documents": [],
+        "vision_fixture": {
+          "damage_type": "SCRATCH",
+          "vehicle_part": "HOOD"
+        },
+        "fixture_provenance": "Geometry-only synthetic detector observations; no licensed external photograph required."
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "visual_non_detection",
+      "description": "LEFT_HEADLIGHT is declared and quoted but the fake detectors find no damage. Non-detection remains informational and adds no risk signal or review points.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {
+        "extraction.success": true,
+        "vision.aggregate_mapped_damage_types": [],
+        "vision.consistency.additional_visual_damage": [],
+        "vision.consistency.declared_damage_not_visually_confirmed": [
+          "LEFT_HEADLIGHT"
+        ],
+        "investigation.policy_version": "investigation_policy_v3",
+        "investigation.review_score": 0,
+        "investigation.signals": [],
+        "agent.recommendation.human_review_required": true,
+        "extraction.form.claim_id": "E2E-NONDETECTION-0001",
+        "extraction.form.incident_date": "2026-09-20",
+        "extraction.form.location": "Bordeaux",
+        "extraction.form.vehicle_make": "Renault",
+        "extraction.form.vehicle_model": "Clio",
+        "extraction.form.vehicle_year": 2021,
+        "extraction.form.declared_damage": [
+          "LEFT_HEADLIGHT"
+        ],
+        "extraction.form.injuries_declared": false,
+        "extraction.report.claim_id": "E2E-NONDETECTION-0001",
+        "extraction.report.reported_damage": [
+          "LEFT_HEADLIGHT"
+        ],
+        "extraction.quote.claim_id": "E2E-NONDETECTION-0001",
+        "extraction.quote.total.currency": "EUR"
+      },
+      "expected_signals": [],
+      "forbidden_signals": [
+        "VISUAL_ADDITIONAL_DAMAGE",
+        "DOCUMENT_FIELD_MISMATCH",
+        "ADDITIONAL_QUOTE_DAMAGE",
+        "MISSING_DOCUMENTS"
+      ],
+      "acceptable_agent_actions": [
+        "CONTINUE_STANDARD_REVIEW",
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "NO_RECOMMENDATION"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": true,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly",
+        "damage_vision",
+        "part_vision",
+        "visual_golden_asset"
+      ],
+      "inputs": {
+        "claim_id": "E2E-NONDETECTION-0001",
+        "declared_damage": [
+          "LEFT_HEADLIGHT"
+        ],
+        "quote_damage": [
+          "LEFT_HEADLIGHT"
+        ],
+        "missing_documents": [],
+        "vision_fixture": {
+          "detections": []
+        },
+        "deterministic_only_facts": [
+          "investigation.review_score",
+          "investigation.signals"
+        ],
+        "fixture_provenance": "Empty synthetic detector observations; non-detection is not evidence of absence."
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json"
+      ],
+      "external_assets": []
+    }
+  ]
+}
