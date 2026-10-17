@@ -53,15 +53,14 @@ class InvestigationSteps:
         consistency, features = sources["consistency"], sources["features"]
         anomaly, history, vision = sources["anomaly"], sources["history"], sources["vision"]
         if all(value is not None for value in (consistency, features, anomaly, history)):
-            from investigation.engine import assess_investigation
+            from investigation.engine import InvestigationContext, assess_investigation
 
             return assess_investigation(
                 consistency=consistency,
                 anomaly=anomaly,
                 features=features,
-                history=history,
                 policy=policy,
-                visual_assessment=vision,
+                context=InvestigationContext(history=history, visual_assessment=vision),
             )
         from investigation.models import InvestigationAssessment
 

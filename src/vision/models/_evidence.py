@@ -4,7 +4,7 @@ from pydantic import Field, computed_field, model_validator
 
 from claims.enums import DamageType
 from vision.fusion_config import VisionFusionPolicy
-from vision.models._assessments import VisualDamageDetection, VisionModelMetadata
+from vision.models._assessments import VisionModelMetadata, VisualDamageDetection
 from vision.models._association import AssociationStatus, DamagePartAssociation
 from vision.models._base import UnitFloat, VisionDomainModel
 from vision.taxonomy import VehiclePartType, VisualDamageType, map_vehicle_part_to_damage

@@ -24,7 +24,7 @@ def score_models(run):
 
 def investigate(run):
     """Assess investigation signals with the production engine and policy."""
-    from investigation.engine import assess_investigation
+    from investigation.engine import InvestigationContext, assess_investigation
     from investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
 
     policy = INVESTIGATION_POLICY_V3 if run.visual is not None else INVESTIGATION_POLICY_V2
@@ -34,9 +34,8 @@ def investigate(run):
             consistency=run.consistency,
             anomaly=run.anomaly.assessment,
             features=run.features,
-            history=run.history,
             policy=policy,
-            visual_assessment=run.visual,
+            context=InvestigationContext(history=run.history, visual_assessment=run.visual),
         ),
     )
     run.output.investigation = investigation.model_dump(mode="json")

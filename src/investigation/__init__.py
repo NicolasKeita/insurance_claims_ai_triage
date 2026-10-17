@@ -1,6 +1,6 @@
 """Deterministic investigation signals and human review prioritization."""
 
-from investigation.engine import assess_investigation
+from investigation.engine import InvestigationContext, assess_investigation
 from investigation.history import HistoricalClaimProfile
 from investigation.models import (
     InvestigationAssessment,
@@ -26,6 +26,7 @@ __all__ = [
     "INVESTIGATION_POLICY_V3",
     "DEFAULT_INVESTIGATION_POLICY",
     "InvestigationAssessment",
+    "InvestigationContext",
     "InvestigationPolicy",
     "InvestigationSignal",
     "ReviewPriority",

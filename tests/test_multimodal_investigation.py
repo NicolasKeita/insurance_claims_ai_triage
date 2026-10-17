@@ -10,6 +10,7 @@ from investigation import (
     INVESTIGATION_POLICY_V1,
     INVESTIGATION_POLICY_V2,
     INVESTIGATION_POLICY_V3,
+    InvestigationContext,
     SignalCode,
     assess_investigation,
 )
@@ -152,7 +153,7 @@ def investigate(visual, policy=INVESTIGATION_POLICY_V3):
         anomaly=make_anomaly(),
         features=make_features(),
         policy=policy,
-        visual_assessment=visual,
+        context=InvestigationContext(visual_assessment=visual),
     )
 
 
