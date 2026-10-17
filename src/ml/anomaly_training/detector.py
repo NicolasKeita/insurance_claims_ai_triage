@@ -1,4 +1,4 @@
-"""Novelty detection against an unmodified reference population."""
+"""Persistable novelty detector and its scoring helpers."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -6,15 +6,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field
-from sklearn.ensemble import IsolationForest
 from sklearn.pipeline import Pipeline
 
 from ml.features import TriageFeatures
-from ml.training import (
-    CATEGORICAL_FEATURES,
-    NUMERICAL_FEATURES,
-    build_preprocessor,
-)
+from ml.training import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
 
 # This is the complete model input. Workflow and synthetic benchmark labels are
 # intentionally absent, even when they are present in a source DataFrame.
@@ -37,7 +32,6 @@ def select_anomaly_features(dataset: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("Dataset is missing anomaly features: " + ", ".join(sorted(missing)))
     if dataset.empty:
         raise ValueError("Dataset is empty")
-
     features = dataset.loc[:, list(ANOMALY_FEATURE_COLUMNS)].copy()
     if features.isna().any().any():
         raise ValueError("Dataset contains missing anomaly feature values")
@@ -95,7 +89,6 @@ class AnomalyDetector:
             else:
                 payload = dict(claim)
             frame = select_anomaly_features(pd.DataFrame([payload]))
-
         score = float(self.score_samples(frame)[0])
         is_anomalous = bool(score >= self.threshold)
         percentile = float(self.reference_percentiles(np.array([score]))[0])
@@ -106,59 +99,3 @@ class AnomalyDetector:
             reference_percentile=percentile,
             statistical_signals=(self._statistical_signals(frame.iloc[0]) if is_anomalous else []),
         )
-
-
-def train_anomaly_detector(
-    reference: pd.DataFrame,
-    *,
-    seed: int = 42,
-    threshold_percentile: float = 0.98,
-    n_estimators: int = 200,
-) -> AnomalyDetector:
-    """Fit solely on reference claims and calibrate a reference score quantile."""
-    if not 0 < threshold_percentile < 1:
-        raise ValueError("threshold_percentile must be between 0 and 1")
-    if n_estimators <= 0:
-        raise ValueError("n_estimators must be positive")
-    if "is_synthetic_anomaly" in reference.columns:
-        labels = reference["is_synthetic_anomaly"].astype(str).str.strip().str.lower()
-        if not labels.isin(("false", "0")).all():
-            raise ValueError("Reference population must not contain injected anomalies")
-
-    features = select_anomaly_features(reference)
-    pipeline = Pipeline(
-        steps=[
-            ("preprocessor", build_preprocessor()),
-            (
-                "isolation_forest",
-                IsolationForest(
-                    n_estimators=n_estimators,
-                    contamination="auto",
-                    random_state=seed,
-                ),
-            ),
-        ]
-    )
-    pipeline.fit(features)
-    reference_scores = np.sort(-np.asarray(pipeline.score_samples(features), dtype=float))
-    threshold = float(np.quantile(reference_scores, threshold_percentile))
-    numerical_reference_bounds = {
-        name: (
-            float(features[name].quantile(0.01)),
-            float(features[name].quantile(0.99)),
-        )
-        for name in ANOMALY_NUMERICAL_FEATURES
-    }
-    return AnomalyDetector(
-        pipeline=pipeline,
-        threshold=threshold,
-        threshold_percentile=threshold_percentile,
-        reference_scores=reference_scores,
-        numerical_reference_bounds=numerical_reference_bounds,
-        metadata={
-            "seed": seed,
-            "reference_count": len(reference),
-            "n_estimators": n_estimators,
-            "score_convention": "higher_is_more_anomalous",
-        },
-    )
