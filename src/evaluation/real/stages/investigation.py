@@ -64,6 +64,20 @@ class InvestigationSteps:
                 visual_assessment=vision,
             )
         from investigation.models import InvestigationAssessment
+
+        signals = InvestigationSteps._partial_signals(policy, sources)
+        score = policy.score_signals(signals)
+        return InvestigationAssessment(
+            review_score=score,
+            review_priority=policy.priority_for_score(score),
+            review_recommended=policy.review_recommended_for_score(score),
+            policy_version=policy.version,
+            signals=signals,
+        )
+
+    @staticmethod
+    def _partial_signals(policy, sources):
+        """Translate whichever partial inputs were actually observed."""
         from investigation.signals import (
             signals_from_anomaly,
             signals_from_completeness,
@@ -72,18 +86,12 @@ class InvestigationSteps:
             signals_from_multimodal,
         )
 
-        signals = (
+        consistency, features = sources["consistency"], sources["features"]
+        anomaly, history, vision = sources["anomaly"], sources["history"], sources["vision"]
+        return (
             *(signals_from_consistency(consistency) if consistency is not None else ()),
             *(signals_from_anomaly(anomaly, policy) if anomaly is not None else ()),
             *(signals_from_completeness(features, policy) if features is not None else ()),
             *(signals_from_history(history, policy) if history is not None else ()),
             *(signals_from_multimodal(vision, policy) if vision is not None else ()),
-        )
-        score = policy.score_signals(signals)
-        return InvestigationAssessment(
-            review_score=score,
-            review_priority=policy.priority_for_score(score),
-            review_recommended=policy.review_recommended_for_score(score),
-            policy_version=policy.version,
-            signals=signals,
         )

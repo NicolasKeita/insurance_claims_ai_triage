@@ -4,8 +4,6 @@ Unavailable components remain explicit. Independent document parsing, model
 inference and local multimodal diagnostics do not require a running database.
 """
 
-from time import perf_counter
-
 from evaluation.models import EvaluationScenario, PipelineObservation
 from evaluation.preflight import PreflightReport, RealEvaluationConfig, run_preflight
 from evaluation.real.context import ComponentRecorder, RealRun

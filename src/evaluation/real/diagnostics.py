@@ -1,9 +1,6 @@
 """Standalone external-image diagnostic steps and manifest."""
 
-import json
-
-from evaluation.models import EvaluationScenario
-from evaluation.preflight import ROOT
+from evaluation.real.diagnostic_manifest import diagnostic_context
 
 DIAGNOSTIC_COMPONENTS = (
     "claim",
@@ -18,27 +15,6 @@ DIAGNOSTIC_COMPONENTS = (
     "similar_claims",
     "agent",
 )
-
-
-def real_diagnostic_scenarios() -> list[EvaluationScenario]:
-    """Diagnostics supplement the frozen golden manifest without invented truth."""
-    path = ROOT / "data/evaluation/e2e_v1/diagnostics.json"
-    manifest = json.loads(path.read_text(encoding="utf-8"))
-    if manifest["benchmark_version"] != "e2e_claims_v1":
-        raise ValueError("Unsupported diagnostic manifest version")
-    return [EvaluationScenario.model_validate(item) for item in manifest["diagnostics"]]
-
-
-def diagnostic_context(declared_damage):
-    return {
-        "declaration_is_synthetic": True,
-        "quoted_damage_is_synthetic": True,
-        "declared_damage": list(declared_damage),
-        "ground_truth_available": False,
-        "detection_truth_labels_loaded": False,
-        "meaning": "Conditional integration diagnostic; does not establish facts about an insurance claim",
-        "existing_visualizations": "artifacts/environment_merge/gpu-smoke/run_20261015T135812_022547Z/summary.json",
-    }
 
 
 class DiagnosticSteps:
@@ -76,7 +52,7 @@ class DiagnosticSteps:
     def infer_diagnostic(self, run):
         """Assess the selected real image sources with the production fusion service."""
         from claims.enums import DamageType
-        from scripts.check_multimodal_integration_smoke import diagnostic_case, select_sources
+        from scripts.check_multimodal_integration_smoke import select_sources
         from vision.fusion_config import DEFAULT_FUSION_POLICY
         from vision.models import ClaimMultimodalVisionAssessment
         from vision.multimodal_service import ClaimMultimodalVisionService, assess_multimodal_consistency
@@ -90,11 +66,7 @@ class DiagnosticSteps:
         declared = [DamageType(item) for item in self.config.synthetic_declared_damage]
         quoted = [DamageType(item) for item in self.config.synthetic_quoted_damage]
         service = ClaimMultimodalVisionService(self.resources["damage_detector"], self.resources["part_detector"])
-        images = []
-        for index, source in enumerate(sources, 1):
-            case = diagnostic_case(dataset_root, source, index, declared)
-            result = service.assess_claim(case, quoted_damage_types=quoted)
-            images.extend(result.images)
+        images = self._diagnostic_images(service, dataset_root, sources, declared, quoted)
         observed.provenance["external_assets"] = [
             {
                 "path": str(source.path),
@@ -115,3 +87,15 @@ class DiagnosticSteps:
                 images, declared_damage_types=declared, quoted_damage_types=quoted
             ),
         )
+
+    @staticmethod
+    def _diagnostic_images(service, dataset_root, sources, declared, quoted):
+        """Assess each selected real image and collect the per-image results."""
+        from scripts.check_multimodal_integration_smoke import diagnostic_case
+
+        images = []
+        for index, source in enumerate(sources, 1):
+            case = diagnostic_case(dataset_root, source, index, declared)
+            result = service.assess_claim(case, quoted_damage_types=quoted)
+            images.extend(result.images)
+        return images

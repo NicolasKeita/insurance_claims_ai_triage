@@ -1,5 +1,7 @@
 """Similar-claims search over the real repository and Qdrant store."""
 
+import os
+
 
 class SimilarClaimsSteps:
     """Search similar claims without a fake repository or fake vectors."""

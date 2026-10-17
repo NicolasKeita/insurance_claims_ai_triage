@@ -1,24 +1,11 @@
 """Real agent review stage and its lazy service loaders."""
 
 import os
-from contextlib import contextmanager
 
 from evaluation.models import EvaluationStatus
+from evaluation.real.agent_environment import llm_environment
 
 ASSESSMENT_TOOLS = {"GET_TRIAGE", "GET_ANOMALY", "GET_INVESTIGATION", "GET_VISUAL_ASSESSMENT"}
-
-
-@contextmanager
-def llm_environment(model):
-    previous = os.environ.get("CLAIMS_LLM_MODEL")
-    os.environ["CLAIMS_LLM_MODEL"] = model
-    try:
-        yield
-    finally:
-        if previous is None:
-            os.environ.pop("CLAIMS_LLM_MODEL", None)
-        else:
-            os.environ["CLAIMS_LLM_MODEL"] = previous
 
 
 class AgentSteps:
@@ -30,11 +17,17 @@ class AgentSteps:
         owned by this service, not preflight clients.
         """
         observed, scenario = run.observed, run.scenario
+        if self._skip_agent(observed, scenario):
+            return
+        self._run_agent(run, observed)
+
+    def _skip_agent(self, observed, scenario):
+        """Report every precondition that prevents the real agent stage from running."""
         if not self.config.include_agent:
             self._skip(observed, "agent", "Disabled by configuration")
-            return
+            return True
         if not self._available(observed, "agent", ["postgresql", "ollama"]):
-            return
+            return True
         unavailable = set(scenario.inputs.get("unavailable_tools", []))
         if unavailable and (not self.config.isolated_demo_stack or unavailable - ASSESSMENT_TOOLS):
             self._skip(
@@ -43,7 +36,7 @@ class AgentSteps:
                 "Requested deterministic tool outage cannot be safely imposed on the real application service; "
                 "no fake tools used",
             )
-            return
+            return True
         vision = observed.components.get("vision")
         if scenario.vision_required and vision and vision.status == "SKIP":
             self._skip(
@@ -51,13 +44,17 @@ class AgentSteps:
                 "agent",
                 "This golden case requires unavailable real visual ground truth; its document subset remains observed",
             )
-            return
+            return True
         history = observed.components.get("history")
         if history and history.status != "PASS":
             self._skip(
                 observed, "agent", "Controlled claim has no matching stored source; no fake agent tool backend used"
             )
-            return
+            return True
+        return False
+
+    def _run_agent(self, run, observed):
+        """Run the real application service and record its review result."""
         from agent.factory import create_claims_agent_service
 
         with llm_environment(self.resources["llm_model"]):
@@ -74,13 +71,17 @@ class AgentSteps:
             )
             service.tools.close()
         if result is not None:
-            observed.agent = result.model_dump(mode="json")
-            observed.facts["agent"] = observed.agent
-            observed.model_versions["agent_llm"] = self.resources["llm_model"]
-            if result.status != "COMPLETED":
-                observed.components["agent"].status = EvaluationStatus.FAIL
-                observed.components["agent"].reason = result.error or "Real agent did not complete"
-                observed.errors.append("agent: " + observed.components["agent"].reason)
+            self._record_result(observed, result)
+
+    def _record_result(self, observed, result):
+        """Store a completed review and flag any non-completed status."""
+        observed.agent = result.model_dump(mode="json")
+        observed.facts["agent"] = observed.agent
+        observed.model_versions["agent_llm"] = self.resources["llm_model"]
+        if result.status != "COMPLETED":
+            observed.components["agent"].status = EvaluationStatus.FAIL
+            observed.components["agent"].reason = result.error or "Real agent did not complete"
+            observed.errors.append("agent: " + observed.components["agent"].reason)
 
     def review(self, service, run):
         """Review the stored claim, tolerating a completed run recorded as an error."""

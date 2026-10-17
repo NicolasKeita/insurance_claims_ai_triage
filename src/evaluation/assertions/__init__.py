@@ -5,9 +5,9 @@ from evaluation.assertions.facts import check_expected_facts, check_expected_sig
 from evaluation.assertions.matching import FORBIDDEN_ACTIONS, fact_at, forbidden_decisions, matches_fact
 from evaluation.assertions.observation import (
     check_affirmative_prose,
-    check_provenance,
     check_structured_coherence,
 )
+from evaluation.assertions.provenance import check_provenance
 from evaluation.assertions.recording import AssertionRecorder
 from evaluation.assertions.retrieval import check_rag_expectations
 from evaluation.assertions.schemas import check_component_schemas, check_document_schemas

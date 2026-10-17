@@ -4,9 +4,7 @@ Heavy adapters are loaded once and retained for the run. No downloaded models,
 service startup, writes to the database/vector stores, or fake replacements.
 """
 
-from evaluation.preflight.components import ComponentProbes
 from evaluation.preflight.config import DEFAULT_CONFIG, ROOT, RealEvaluationConfig
-from evaluation.preflight.models import ModelProbes
 from evaluation.preflight.report import PreflightReport, checkpoint_version, print_preflight_row
 from evaluation.preflight.session import PreflightSession
 

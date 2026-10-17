@@ -16,7 +16,15 @@ class RetrievalSteps:
         if not self._available(observed, "retrieval", ["qdrant", "knowledge_collections", "embeddings"]):
             self._skip(observed, "rag_generation", "Retrieval unavailable")
             return
-        from knowledge.evaluation import section_metrics
+        retriever, results, question = self._search(run)
+        if results is None:
+            self._skip(observed, "rag_generation", "Retrieval failed")
+            return
+        self._record_hits(run, results, question)
+        self.generate_answer(run, retriever, results, question)
+
+    def _search(self, run):
+        """Search the real knowledge collections and record the raw retrieval."""
         from knowledge.models import KnowledgeFilter, KnowledgeSourceType
         from knowledge.qdrant_store import QdrantKnowledgeStore
         from knowledge.retrieval import KnowledgeRetriever
@@ -32,7 +40,7 @@ class RetrievalSteps:
         )
         kind = KnowledgeSourceType(scenario.inputs.get("rag_source_type", "POLICY"))
         results = self._record(
-            observed,
+            run.observed,
             "retrieval",
             lambda: retriever.search(
                 question,
@@ -42,16 +50,20 @@ class RetrievalSteps:
             ),
             inputs={"question": question, "source_type": kind.value},
         )
-        if results is None:
-            self._skip(observed, "rag_generation", "Retrieval failed")
-            return
+        return retriever, results, question
+
+    def _record_hits(self, run, results, question):
+        """Store retrieved chunks, optional section metrics and provenance."""
+        from knowledge.evaluation import section_metrics
+
+        observed = run.observed
+        scenario = run.scenario
         observed.rag = {"results": [payload(item) for item in results], "question": question, "answer": None}
         if scenario.inputs.get("rag_supported") and scenario.inputs.get("rag_section"):
             observed.rag["retrieval_metrics"] = section_metrics(
                 results, scenario.inputs.get("rag_source_id"), [scenario.inputs["rag_section"]]
             )
         observed.provenance["rag"] = {"retrieved_chunk_ids": [item.chunk_id for item in results]}
-        self.generate_answer(run, retriever, results, question)
 
     def generate_answer(self, run, retriever, results, question):
         """Generate and record a grounded answer with the configured local LLM."""
