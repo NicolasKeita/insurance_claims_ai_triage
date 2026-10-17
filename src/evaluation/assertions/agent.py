@@ -18,9 +18,7 @@ def _valid_schema(model, payload):
 def _citations_resolve(agent):
     try:
         parsed = AgentRunResult.model_validate(agent)
-        resolved = validate_recommendation(
-            parsed.recommendation, {item.evidence_id: item for item in parsed.evidence}
-        )
+        resolved = validate_recommendation(parsed.recommendation, {item.evidence_id: item for item in parsed.evidence})
         return parsed.recommendation.citations == resolved
     except (ValidationError, ValueError, AttributeError):
         return False
@@ -38,7 +36,9 @@ def check_agent_schema(recorder):
     evidence = agent.get("evidence", [])
     registry = {item.get("evidence_id") for item in evidence}
     recorder.record(
-        Check("agent:unique_evidence_ids", "agent", "unique registry IDs", len(evidence), len(registry) == len(evidence))
+        Check(
+            "agent:unique_evidence_ids", "agent", "unique registry IDs", len(evidence), len(registry) == len(evidence)
+        )
     )
 
 
@@ -112,7 +112,13 @@ def check_agent_scenario(recorder):
     if scenario.acceptable_agent_actions:
         action = recommendation.get("recommended_next_action")
         recorder.record(
-            Check("agent:acceptable_action", "agent", scenario.acceptable_agent_actions, action, action in scenario.acceptable_agent_actions)
+            Check(
+                "agent:acceptable_action",
+                "agent",
+                scenario.acceptable_agent_actions,
+                action,
+                action in scenario.acceptable_agent_actions,
+            )
         )
     if scenario.expected_uncertainties:
         unavailable = [item.get("observation_status") for item in agent.get("trace", [])]

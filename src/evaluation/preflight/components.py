@@ -26,9 +26,7 @@ class ComponentProbes:
                 with engine.connect() as connection:
                     version = connection.execute(text("SHOW server_version")).scalar_one()
                     tables = connection.execute(text("SELECT to_regclass('claims')")).scalar_one()
-                self.report.resources.update(
-                    database_engine=engine, session_factory=create_session_factory(engine)
-                )
+                self.report.resources.update(database_engine=engine, session_factory=create_session_factory(engine))
             except Exception:
                 engine.dispose()
                 raise
@@ -73,8 +71,7 @@ class ComponentProbes:
             self.report.resources["ollama_models"] = names
             if not model:
                 raise RuntimeError(
-                    "Ollama reachable but CLAIMS_LLM_MODEL is not configured; installed models: "
-                    + ", ".join(names)
+                    "Ollama reachable but CLAIMS_LLM_MODEL is not configured; installed models: " + ", ".join(names)
                 )
             if model not in names and model + ":latest" not in names:
                 raise RuntimeError(f"Requested Ollama model {model!r} is not installed; no pull attempted")

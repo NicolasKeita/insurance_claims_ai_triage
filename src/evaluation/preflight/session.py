@@ -61,9 +61,7 @@ class PreflightSession(ComponentProbes, ModelProbes):
         if self.config.qdrant_url:
             self.knowledge_config = replace(self.knowledge_config, qdrant_url=self.config.qdrant_url)
             self.retrieval_config = replace(self.retrieval_config, qdrant_url=self.config.qdrant_url)
-        self.report.resources.update(
-            knowledge_config=self.knowledge_config, retrieval_config=self.retrieval_config
-        )
+        self.report.resources.update(knowledge_config=self.knowledge_config, retrieval_config=self.retrieval_config)
 
     def collections(self, names):
         if not self.report.available("qdrant"):

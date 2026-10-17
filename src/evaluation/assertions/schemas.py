@@ -81,7 +81,14 @@ def _check_component_schema(recorder, component, payload, schema):
             )
         if component == "agent":
             recorder.record(
-                Check("agent:final_schema", component, "AgentRecommendation", None, False, blocked=recorder.skipped(component))
+                Check(
+                    "agent:final_schema",
+                    component,
+                    "AgentRecommendation",
+                    None,
+                    False,
+                    blocked=recorder.skipped(component),
+                )
             )
         return
     try:
@@ -89,4 +96,6 @@ def _check_component_schema(recorder, component, payload, schema):
         valid, error = True, None
     except (ValidationError, ValueError) as exc:
         valid, error = False, str(exc)[:2000]
-    recorder.record(Check(f"schema:{component}", component, "valid application schema", "valid" if valid else error, valid))
+    recorder.record(
+        Check(f"schema:{component}", component, "valid application schema", "valid" if valid else error, valid)
+    )

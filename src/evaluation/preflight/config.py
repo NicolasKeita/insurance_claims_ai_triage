@@ -1,9 +1,10 @@
 """Versioned real-evaluation configuration and environment overrides."""
 
 import os
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v1.toml"

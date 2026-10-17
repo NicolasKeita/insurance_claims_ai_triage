@@ -55,9 +55,7 @@ class ModelProbes:
                 raise ValueError("Triage checkpoint does not implement the existing trained Pipeline contract")
             from ml.inference import RegisteredTriagePredictor
 
-            return RegisteredTriagePredictor(
-                model, "local:" + path.name, checkpoint_version(path), "local-artifact"
-            )
+            return RegisteredTriagePredictor(model, "local:" + path.name, checkpoint_version(path), "local-artifact")
         from ml.anomaly_training import AnomalyDetector
 
         if not isinstance(model, AnomalyDetector):

@@ -31,8 +31,7 @@ def check_expected_facts(recorder):
             component = "rag_generation"
         actual = fact_at(observation.facts, path, MISSING)
         blocked = recorder.skipped(component) or (
-            actual is MISSING
-            and any(recorder.skipped(item) for item in BLOCKING_COMPONENTS.get(component, []))
+            actual is MISSING and any(recorder.skipped(item) for item in BLOCKING_COMPONENTS.get(component, []))
         )
         if (
             recorder.mode == "real"
