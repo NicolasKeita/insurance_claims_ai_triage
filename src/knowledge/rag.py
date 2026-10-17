@@ -1,3 +1,5 @@
+"""Grounded answers with strict citation validation and ID cleanup."""
+
 import json
 import logging
 import re
@@ -48,53 +50,12 @@ class KnowledgeRagService:
                 citations=[],
                 insufficient_evidence=True,
             )
-        context = [
-            {
-                "chunk_id": c.chunk_id,
-                "source_id": c.source_id,
-                "source_version": c.source_version,
-                "title": c.title,
-                "section": c.section,
-                "text": c.text,
-            }
-            for c in chunks
-        ]
-        prompt = (
-            RAG_SYSTEM_PROMPT
-            + "\n\nINPUT DATA:\n"
-            + json.dumps(
-                {"question": question, "retrieved_sources": context},
-                ensure_ascii=False,
-            )
-        )
-        output = self.llm.generate(prompt=prompt, response_model=GroundedLlmOutput)
+        context = [_context_entry(chunk) for chunk in chunks]
+        output = self.llm.generate(prompt=_prompt(question, context), response_model=GroundedLlmOutput)
         by_id = {c.chunk_id: c for c in chunks}
-        uuid_pattern = r"\b[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\b"
-        inline_ids = re.findall(uuid_pattern, output.answer)
-        inline_ids += [value.strip() for value in re.findall(r"\[chunk_id\s*:\s*([^\]]+)\]", output.answer)]
-        cited_ids = list(dict.fromkeys([*output.cited_chunk_ids, *inline_ids]))
-        unknown = set(cited_ids) - set(by_id)
-        if unknown:
-            raise GroundingError("LLM cited chunk IDs absent from the retrieved context")
-        if not output.insufficient_evidence and not output.cited_chunk_ids:
-            raise GroundingError("An answer claiming sufficient evidence must cite a retrieved chunk")
-        answer_text = output.answer
-        for chunk_id in inline_ids:
-            escaped = re.escape(chunk_id)
-            answer_text = re.sub(r"\[\s*(?:chunk_id\s*:\s*)?" + escaped + r"\s*\]|" + escaped, "", answer_text)
-        answer_text = re.sub(r" +([.,;:])", r"\1", answer_text).strip()
-        if not answer_text:
-            raise GroundingError("LLM answer contains only citation IDs")
-        citations = [
-            KnowledgeCitation(
-                chunk_id=by_id[i].chunk_id,
-                source_id=by_id[i].source_id,
-                source_version=by_id[i].source_version,
-                title=by_id[i].title,
-                section=by_id[i].section,
-            )
-            for i in cited_ids
-        ]
+        cited_ids, inline_ids = _cited_ids(output, by_id)
+        answer_text = _clean_answer(output.answer, inline_ids)
+        citations = [_citation(by_id[chunk_id]) for chunk_id in cited_ids]
         logger.info(
             "knowledge_answer retrieved=%s cited=%s insufficient_evidence=%s",
             list(by_id),
@@ -104,3 +65,56 @@ class KnowledgeRagService:
         return GroundedAnswer(
             answer=answer_text, citations=citations, insufficient_evidence=output.insufficient_evidence
         )
+
+
+def _context_entry(chunk):
+    return {
+        "chunk_id": chunk.chunk_id,
+        "source_id": chunk.source_id,
+        "source_version": chunk.source_version,
+        "title": chunk.title,
+        "section": chunk.section,
+        "text": chunk.text,
+    }
+
+
+def _prompt(question, context):
+    return (
+        RAG_SYSTEM_PROMPT
+        + "\n\nINPUT DATA:\n"
+        + json.dumps({"question": question, "retrieved_sources": context}, ensure_ascii=False)
+    )
+
+
+def _cited_ids(output, by_id):
+    """Validate every cited ID, including prose markers, against the retrieved context."""
+    uuid_pattern = r"\b[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\b"
+    inline_ids = re.findall(uuid_pattern, output.answer)
+    inline_ids += [value.strip() for value in re.findall(r"\[chunk_id\s*:\s*([^\]]+)\]", output.answer)]
+    cited_ids = list(dict.fromkeys([*output.cited_chunk_ids, *inline_ids]))
+    if set(cited_ids) - set(by_id):
+        raise GroundingError("LLM cited chunk IDs absent from the retrieved context")
+    if not output.insufficient_evidence and not output.cited_chunk_ids:
+        raise GroundingError("An answer claiming sufficient evidence must cite a retrieved chunk")
+    return cited_ids, inline_ids
+
+
+def _clean_answer(answer_text, inline_ids):
+    """Strip inline citation markers and reject answers made only of IDs."""
+    for chunk_id in inline_ids:
+        escaped = re.escape(chunk_id)
+        answer_text = re.sub(r"\[\s*(?:chunk_id\s*:\s*)?" + escaped + r"\s*\]|" + escaped, "", answer_text)
+    answer_text = re.sub(r" +([.,;:])", r"\1", answer_text).strip()
+    if not answer_text:
+        raise GroundingError("LLM answer contains only citation IDs")
+    return answer_text
+
+
+def _citation(chunk):
+    return KnowledgeCitation(
+        chunk_id=chunk.chunk_id,
+        source_id=chunk.source_id,
+        source_version=chunk.source_version,
+        title=chunk.title,
+        section=chunk.section,
+    )
