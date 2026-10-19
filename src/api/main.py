@@ -1,87 +1,29 @@
+"""FastAPI application factory and public app configuration."""
+
 import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from threading import Lock
-from typing import Self
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, model_validator
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import FastAPI
 from sqlalchemy.orm import Session, sessionmaker
 
-from api.agent import AgentRouteConfig, install_agent_routes
-from api.knowledge import install_knowledge_routes
-from api.vision import install_vision_routes
-from claims.consistency import ClaimConsistencyReport
-from investigation.engine import assess_investigation
-from investigation.history import HistoricalClaimProfile
-from investigation.models import InvestigationAssessment
-from investigation.policy import DEFAULT_INVESTIGATION_POLICY
-from investigation.service import assess_stored_claim
-from ml.anomaly_inference import (
-    RegisteredAnomalyAssessment,
-    RegisteredAnomalyPredictor,
-    load_candidate_anomaly_predictor,
-)
-from ml.anomaly_training import AnomalyAssessment
-from ml.features import TriageFeatures, count_consistency_issues
-from ml.inference import (
-    RegisteredTriagePredictor,
-    TriagePrediction,
-    load_candidate_predictor,
-)
+from api.model_routes import register_investigation_routes, register_model_routes
+from api.routes import install_feature_routes, register_data_routes, register_error_handlers
+from ml.anomaly_inference import RegisteredAnomalyPredictor, load_candidate_anomaly_predictor
+from ml.inference import RegisteredTriagePredictor, load_candidate_predictor
 from persistence.database import DatabaseConfig, create_database_engine, create_session_factory
-from persistence.history import HistoricalClaimRepository
-from persistence.repositories import ClaimNotFoundError
-from retrieval.config import DEFAULT_LIMIT, MAX_LIMIT
-from retrieval.models import RetrievalUnavailableError, SimilarClaimsResponse
-from retrieval.similar_claims import create_similar_claims_service
 
-PredictorLoader = Callable[[], RegisteredTriagePredictor]
-AnomalyPredictorLoader = Callable[[], RegisteredAnomalyPredictor]
-
-
-class ClaimsAssessment(BaseModel):
-    triage: TriagePrediction
-    anomaly: RegisteredAnomalyAssessment
-    investigation: InvestigationAssessment
-
-
-class StructuredEvidenceRequest(BaseModel):
-    features: TriageFeatures
-    consistency: ClaimConsistencyReport
-
-    @model_validator(mode="after")
-    def validate_consistency_counts(self) -> Self:
-        if self.features.additional_damage_count != len(self.consistency.additional_quote_damage):
-            raise ValueError("additional_damage_count must match additional_quote_damage")
-        if self.features.consistency_issue_count != count_consistency_issues(self.consistency):
-            raise ValueError("consistency_issue_count must match consistency report")
-        return self
-
-
-class InvestigationAssessmentRequest(StructuredEvidenceRequest):
-    anomaly: AnomalyAssessment
-
-
-class ClaimsAssessmentRequest(StructuredEvidenceRequest):
-    pass
-
-
-class StoredInvestigationRequest(BaseModel):
-    # Only comparisons are supplied: stored claims and history are authoritative.
-    model_config = ConfigDict(extra="forbid")
-    consistency: ClaimConsistencyReport
+__all__ = ["AppConfig", "app", "create_app"]
 
 
 @dataclass
 class AppConfig:
     """Application service loaders and persistence configuration."""
 
-    predictor_loader: PredictorLoader = load_candidate_predictor
-    anomaly_predictor_loader: AnomalyPredictorLoader = load_candidate_anomaly_predictor
+    predictor_loader: Callable[[], RegisteredTriagePredictor] = load_candidate_predictor
+    anomaly_predictor_loader: Callable[[], RegisteredAnomalyPredictor] = load_candidate_anomaly_predictor
     session_factory: sessionmaker[Session] | None = None
     similar_service_loader: Callable | None = None
     knowledge_retriever_loader: Callable | None = None
@@ -94,204 +36,62 @@ class AppConfig:
 
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
+    """Build the application with the configured service loaders."""
     config = config or AppConfig()
-    predictor_loader, anomaly_predictor_loader = config.predictor_loader, config.anomaly_predictor_loader
-    session_factory = config.session_factory
-    similar_service_loader = config.similar_service_loader
-    knowledge_retriever_loader, knowledge_rag_loader, knowledge_claim_loader = (
-        config.knowledge_retriever_loader,
-        config.knowledge_rag_loader,
-        config.knowledge_claim_loader,
-    )
-    agent_service_loader, agent_claim_loader, agent_run_store_loader, vision_store_loader = (
-        config.agent_service_loader,
-        config.agent_claim_loader,
-        config.agent_run_store_loader,
-        config.vision_store_loader,
-    )
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        app.state.triage_predictor = None
-        app.state.anomaly_predictor = None
-        app.state.model_lock = Lock()
-        app.state.similar_service = None
-        app.state.knowledge_retriever = None
-        app.state.knowledge_rag = None
-        app.state.agent_service = None
-        app.state.agent_run_store = None
-        app.state.vision_store = None
-        engine = None
-        app.state.session_factory = session_factory
-        if session_factory is None and os.environ.get("DATABASE_URL"):
-            engine = create_database_engine(DatabaseConfig.from_env())
-            app.state.session_factory = create_session_factory(engine)
-        try:
-            yield
-        finally:
-            service = app.state.similar_service
-            if service is not None and hasattr(service, "close"):
-                service.close()
-            knowledge_service = app.state.knowledge_retriever
-            if knowledge_service is not None and hasattr(knowledge_service, "close"):
-                knowledge_service.close()
-            if engine is not None:
-                engine.dispose()
-
-    def predictor(request: Request, kind: str):
-        """
-        Read-only history remains usable without loading any MLflow model.
-        """
-        with request.app.state.model_lock:
-            attribute = f"{kind}_predictor"
-            value = getattr(request.app.state, attribute)
-            if value is None:
-                loader = predictor_loader if kind == "triage" else anomaly_predictor_loader
-                value = loader()
-                setattr(request.app.state, attribute, value)
-            return value
-
-    def database_session(request: Request):
-        """
-        One fresh session/transaction, with rollback on any exception.
-        """
-        factory = request.app.state.session_factory
-        if factory is None:
-            raise HTTPException(status_code=503, detail="Database is not configured")
-        try:
-            with factory.begin() as session:
-                yield session
-        except SQLAlchemyError as error:
-            raise HTTPException(status_code=503, detail="Database operation failed") from error
-
     app = FastAPI(
         title="Insurance Claims AI Assessment API",
         version="0.1.0",
-        lifespan=lifespan,
+        lifespan=_lifespan(config),
     )
-
-    @app.exception_handler(ClaimNotFoundError)
-    async def claim_not_found(request: Request, error: ClaimNotFoundError):
-        return JSONResponse(status_code=404, content={"detail": str(error)})
-
-    @app.get("/v1/claims/{claim_id}/history", response_model=HistoricalClaimProfile)
-    def historical_profile(claim_id: str, session: Session = Depends(database_session, scope="function")):
-        return HistoricalClaimRepository(session).get_profile(claim_id)
-
-    @app.get("/v1/claims/{claim_id}/similar", response_model=SimilarClaimsResponse)
-    def similar_claims(
-        claim_id: str,
-        request: Request,
-        limit: int = Query(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
-    ):
-        try:
-            with request.app.state.model_lock:
-                if request.app.state.similar_service is None:
-                    factory = request.app.state.session_factory
-                    if similar_service_loader is None and factory is None:
-                        raise HTTPException(status_code=503, detail="Database is not configured")
-                    try:
-                        request.app.state.similar_service = (
-                            similar_service_loader(factory)
-                            if similar_service_loader is not None
-                            else create_similar_claims_service(factory)
-                        )
-                    except (ValueError, RuntimeError) as error:
-                        raise HTTPException(
-                            status_code=503, detail="Similar claims service configuration failed"
-                        ) from error
-                service = request.app.state.similar_service
-            return service.search(claim_id, limit)
-        except RetrievalUnavailableError as error:
-            raise HTTPException(status_code=503, detail=str(error)) from error
-        except SQLAlchemyError as error:
-            raise HTTPException(status_code=503, detail="Database operation failed") from error
-
-    @app.post("/v1/claims/{claim_id}/investigation/assess", response_model=InvestigationAssessment)
-    def stored_investigation(
-        claim_id: str,
-        payload: StoredInvestigationRequest,
-        request: Request,
-        session: Session = Depends(database_session, scope="function"),
-    ):
-        return assess_stored_claim(
-            session,
-            claim_id,
-            payload.consistency,
-            lambda features: predictor(request, "anomaly").assess(features),
-        )
-
-    @app.get("/health")
-    def health(request: Request):
-        triage = predictor(request, "triage")
-        anomaly = predictor(request, "anomaly")
-        return {
-            "status": "ok",
-            "models": {
-                "triage": {
-                    "name": triage.registered_model,
-                    "version": triage.version,
-                    "alias": triage.alias,
-                },
-                "anomaly": {
-                    "name": anomaly.registered_model,
-                    "version": anomaly.version,
-                    "alias": anomaly.alias,
-                },
-            },
-            "investigation_policy_version": DEFAULT_INVESTIGATION_POLICY.version,
-        }
-
-    @app.post("/v1/triage/predict", response_model=TriagePrediction)
-    def predict_triage(features: TriageFeatures, request: Request) -> TriagePrediction:
-        return predictor(request, "triage").predict(features)
-
-    @app.post("/v1/anomaly/assess", response_model=RegisteredAnomalyAssessment)
-    def assess_anomaly(features: TriageFeatures, request: Request) -> RegisteredAnomalyAssessment:
-        return predictor(request, "anomaly").assess(features)
-
-    @app.post("/v1/investigation/assess", response_model=InvestigationAssessment)
-    def assess_investigation_request(
-        payload: InvestigationAssessmentRequest,
-    ) -> InvestigationAssessment:
-        return assess_investigation(
-            consistency=payload.consistency,
-            anomaly=payload.anomaly,
-            features=payload.features,
-        )
-
-    @app.post("/v1/claims/assess", response_model=ClaimsAssessment)
-    def assess_claim(payload: ClaimsAssessmentRequest, request: Request) -> ClaimsAssessment:
-        triage = predictor(request, "triage").predict(payload.features)
-        anomaly = predictor(request, "anomaly").assess(payload.features)
-        return ClaimsAssessment(
-            triage=triage,
-            anomaly=anomaly,
-            investigation=assess_investigation(
-                consistency=payload.consistency,
-                anomaly=anomaly.assessment,
-                features=payload.features,
-            ),
-        )
-
-    install_knowledge_routes(
-        app,
-        retriever_loader=knowledge_retriever_loader,
-        rag_loader=knowledge_rag_loader,
-        claim_loader=knowledge_claim_loader,
-    )
-    install_agent_routes(
-        app,
-        config=AgentRouteConfig(
-            service_loader=agent_service_loader,
-            claim_loader=agent_claim_loader,
-            run_store_loader=agent_run_store_loader,
-            similar_service_loader=similar_service_loader,
-            knowledge_retriever_loader=knowledge_retriever_loader,
-        ),
-    )
-    install_vision_routes(app, store_loader=vision_store_loader)
+    register_error_handlers(app)
+    register_data_routes(app, config)
+    register_model_routes(app, config)
+    register_investigation_routes(app, config)
+    install_feature_routes(app, config)
     return app
+
+
+def _lifespan(config: AppConfig):
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        _initialise_state(app, config)
+        engine = _start_database(app, config)
+        try:
+            yield
+        finally:
+            _close_services(app, engine)
+
+    return lifespan
+
+
+def _initialise_state(app, config):
+    app.state.triage_predictor = None
+    app.state.anomaly_predictor = None
+    app.state.model_lock = Lock()
+    app.state.similar_service = None
+    app.state.knowledge_retriever = None
+    app.state.knowledge_rag = None
+    app.state.agent_service = None
+    app.state.agent_run_store = None
+    app.state.vision_store = None
+    app.state.session_factory = config.session_factory
+
+
+def _start_database(app, config):
+    if config.session_factory is None and os.environ.get("DATABASE_URL"):
+        engine = create_database_engine(DatabaseConfig.from_env())
+        app.state.session_factory = create_session_factory(engine)
+        return engine
+    return None
+
+
+def _close_services(app, engine):
+    for attribute in ("similar_service", "knowledge_retriever"):
+        service = getattr(app.state, attribute)
+        if service is not None and hasattr(service, "close"):
+            service.close()
+    if engine is not None:
+        engine.dispose()
 
 
 app = create_app()

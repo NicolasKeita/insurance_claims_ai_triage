@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 from test_investigation import make_anomaly, make_consistency, make_features
 
-from investigation.engine import assess_investigation
+from investigation.engine import InvestigationContext, assess_investigation
 from investigation.history import HistoricalClaimProfile, history_window_start
 from investigation.models import SignalCategory, SignalCode
 from investigation.policy import INVESTIGATION_POLICY_V1, INVESTIGATION_POLICY_V2, InvestigationPolicy
@@ -142,14 +142,15 @@ def test_v1_original_rules_and_v2_determinism():
     ) == (20, 50, 20, 100)
     assert (v1.extreme_anomaly_percentile, v1.minimum_document_completeness_ratio) == (0.99, 0.80)
     assert signals_from_history(profile(), v1) == ()
-    inputs = dict(consistency=make_consistency(), anomaly=make_anomaly(), features=make_features(), history=profile())
-    assert assess_investigation(**inputs, policy=v1).review_score == 0
-    first = assess_investigation(**inputs)
-    assert first == assess_investigation(**inputs)
+    inputs = dict(consistency=make_consistency(), anomaly=make_anomaly(), features=make_features())
+    context = InvestigationContext(history=profile())
+    assert assess_investigation(**inputs, policy=v1, context=context).review_score == 0
+    first = assess_investigation(**inputs, context=context)
+    assert first == assess_investigation(**inputs, context=context)
     assert first.policy_version == "investigation_policy_v2"
     assert first.review_score == 33
     assert INVESTIGATION_POLICY_V2.score_signals(first.signals * 100) == 100
-    assert assess_investigation(**{**inputs, "history": None}).review_score == 0
+    assert assess_investigation(**inputs).review_score == 0
 
 
 def test_thresholds_are_configurable_and_v1_cannot_enable_history():

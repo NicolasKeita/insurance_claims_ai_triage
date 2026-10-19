@@ -27,6 +27,13 @@ class HistoricalClaimRepository:
         Rank only assessments of eligible claims. One row per claim is joined, so append-only
         assessment histories cannot multiply claim aggregates.
         """
+        current = self._current_claim(claim_id)
+        previous = self._previous_claims(current)
+        latest = self._latest_anomalies(previous)
+        values = dict(self.session.execute(self._aggregate_query(previous, latest, current)).one()._mapping)
+        return self._profile(values, current)
+
+    def _current_claim(self, claim_id: str):
         current = self.session.execute(
             select(
                 ClaimRow.customer_pk,
@@ -36,8 +43,11 @@ class HistoricalClaimRepository:
         ).one_or_none()
         if current is None:
             raise ClaimNotFoundError(f"Claim {claim_id} does not exist")
+        return current
 
-        previous = (
+    @staticmethod
+    def _previous_claims(current):
+        return (
             select(
                 ClaimRow.id,
                 ClaimRow.incident_date,
@@ -47,7 +57,10 @@ class HistoricalClaimRepository:
             .where(previous_claim_predicate(current))
             .cte("previous_claims")
         )
-        latest = (
+
+    @staticmethod
+    def _latest_anomalies(previous):
+        return (
             select(
                 AnomalyAssessmentRow.claim_pk,
                 AnomalyAssessmentRow.is_anomalous,
@@ -61,8 +74,11 @@ class HistoricalClaimRepository:
             .join(previous, previous.c.id == AnomalyAssessmentRow.claim_pk)
             .subquery()
         )
+
+    @staticmethod
+    def _aggregate_query(previous, latest, current):
         same_currency = previous.c.repair_estimate_currency == current.repair_estimate_currency
-        query = select(
+        return select(
             func.count(previous.c.id).label("previous_claim_count"),
             *(
                 func.count(previous.c.id)
@@ -85,7 +101,9 @@ class HistoricalClaimRepository:
                 ),
             )
         )
-        values = dict(self.session.execute(query).one()._mapping)
+
+    @staticmethod
+    def _profile(values, current):
         latest_date = values.pop("latest_incident")
         values["days_since_previous_claim"] = (current.incident_date - latest_date).days if latest_date else None
         values["total_previous_repair_amount"] = values["total_previous_repair_amount"] or Decimal("0")

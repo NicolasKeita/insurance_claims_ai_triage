@@ -311,6 +311,5 @@ def test_engine_has_no_triage_workflow_input():
         "anomaly",
         "features",
         "policy",
-        "history",
-        "visual_assessment",
+        "context",
     }

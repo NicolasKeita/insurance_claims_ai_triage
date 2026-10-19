@@ -2,55 +2,26 @@
 
 import os
 import re
-from collections.abc import Iterator
-from contextlib import contextmanager
-from dataclasses import dataclass
 from ipaddress import ip_address
 
-from sqlalchemy import Engine, create_engine
-from sqlalchemy.engine import URL, make_url
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine import URL
 
+from persistence.database_config import (
+    DatabaseConfig,
+    DatabaseConfigurationError,
+    create_database_engine,
+    create_session_factory,
+    transaction,
+)
 
-class DatabaseConfigurationError(ValueError):
-    pass
-
-
-@dataclass(frozen=True)
-class DatabaseConfig:
-    url: URL
-
-    @classmethod
-    def from_env(cls, variable: str = "DATABASE_URL") -> "DatabaseConfig":
-        value = os.environ.get(variable)
-        if not value:
-            raise DatabaseConfigurationError(f"{variable} is required")
-        return cls.from_url(value)
-
-    @classmethod
-    def from_url(cls, value: str | URL) -> "DatabaseConfig":
-        try:
-            url = make_url(value)
-        except Exception as error:
-            raise DatabaseConfigurationError("Invalid database URL") from error
-        if url.drivername != "postgresql+psycopg" or not url.database:
-            raise DatabaseConfigurationError("A postgresql+psycopg URL with an explicit database is required")
-        return cls(url)
-
-
-def create_database_engine(config: DatabaseConfig) -> Engine:
-    return create_engine(config.url, pool_pre_ping=True, hide_parameters=True)
-
-
-def create_session_factory(engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(engine, expire_on_commit=False)
-
-
-@contextmanager
-def transaction(factory: sessionmaker[Session]) -> Iterator[Session]:
-    """The application owns this atomic commit/rollback and session lifetime."""
-    with factory.begin() as session:
-        yield session
+__all__ = [
+    "DatabaseConfig",
+    "DatabaseConfigurationError",
+    "create_database_engine",
+    "create_session_factory",
+    "require_test_database",
+    "transaction",
+]
 
 
 def require_test_database(value: str | URL) -> DatabaseConfig:
@@ -66,6 +37,14 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
     """
     config = DatabaseConfig.from_url(value)
     target = config.url
+    _validate_test_database_name(target)
+    _validate_test_host(target)
+    _validate_test_query(target)
+    _validate_distinct_from_development(target)
+    return DatabaseConfig(target.set(port=target.port or 5432))
+
+
+def _validate_test_database_name(target):
     if (
         target.database in {"insurance_claims", "postgres", "template0", "template1"}
         or not re.fullmatch(r"[a-z][a-z0-9_]*_test", target.database)
@@ -75,6 +54,9 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
             "TEST_DATABASE_URL must name an explicit non-system database ending in _test; "
             "the application database insurance_claims is forbidden"
         )
+
+
+def _validate_test_host(target):
     host = target.host
     if not host:
         raise DatabaseConfigurationError("TEST_DATABASE_URL requires an explicit host")
@@ -87,6 +69,9 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
             ) from None
     if target.port is not None and not 1 <= target.port <= 65535:
         raise DatabaseConfigurationError("TEST_DATABASE_URL port must be between 1 and 65535")
+
+
+def _validate_test_query(target):
     for key, entry in target.query.items():
         if (
             key != "sslmode"
@@ -105,9 +90,11 @@ def require_test_database(value: str | URL) -> DatabaseConfig:
                 "TEST_DATABASE_URL query only permits one sslmode value; "
                 "connection, driver, database and search_path overrides are forbidden"
             )
+
+
+def _validate_distinct_from_development(target):
     development = os.environ.get("DATABASE_URL")
     if development:
         dev = DatabaseConfig.from_url(development).url
         if dev.database == target.database:
             raise DatabaseConfigurationError("Test and development databases must differ")
-    return DatabaseConfig(target.set(port=target.port or 5432))

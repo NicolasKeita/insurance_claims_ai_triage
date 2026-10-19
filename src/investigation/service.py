@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from claims.consistency import ClaimConsistencyReport
 from claims.models import Claim
-from investigation.engine import assess_investigation
+from investigation.engine import InvestigationContext, assess_investigation
 from investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.features import TriageFeatures, calculate_vehicle_age, count_consistency_issues
@@ -56,8 +56,8 @@ def assess_stored_claim(
         consistency=consistency,
         anomaly=anomaly.assessment,
         features=features,
-        history=history,
         policy=INVESTIGATION_POLICY_V2,
+        context=InvestigationContext(history=history),
     )
     repository = AssessmentRepository(session)
     repository.add_anomaly(claim_id, anomaly)
@@ -90,9 +90,8 @@ def assess_stored_claim_multimodal(
         consistency=consistency,
         anomaly=anomaly.assessment,
         features=features,
-        history=history,
         policy=INVESTIGATION_POLICY_V3,
-        visual_assessment=visual_assessment,
+        context=InvestigationContext(history=history, visual_assessment=visual_assessment),
     )
     VisionAssessmentRepository(session).add(visual_assessment)
     repository = AssessmentRepository(session)

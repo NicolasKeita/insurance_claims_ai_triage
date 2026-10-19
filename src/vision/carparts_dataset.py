@@ -201,10 +201,9 @@ def prepare_carparts_dataset(
 
     JSON is valid YAML; no download directive.
     """
+    import ultralytics
     from ultralytics.utils import ROOT as ULTRALYTICS_ROOT
     from ultralytics.utils.downloads import safe_download
-
-    import ultralytics
 
     dataset_root = Path(dataset_root).resolve()
     manifest_path = Path(manifest_path).resolve()
