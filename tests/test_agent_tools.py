@@ -10,6 +10,9 @@ from pydantic import ValidationError
 from test_persistence import make_anomaly, make_investigation, make_triage
 
 import agent.tools as adapters
+import agent.tools.assessments as assessment_tools
+import agent.tools.base as tool_base
+import agent.tools.observations as tool_observations
 from agent.evidence import EvidenceValidationError, validate_recommendation
 from agent.models import (
     AgentPlanStep,
@@ -110,9 +113,9 @@ def configured(monkeypatch):
 
         add_anomaly = add_investigation = add_triage
 
-    monkeypatch.setattr(adapters, "ClaimRepository", Claims)
-    monkeypatch.setattr(adapters, "HistoricalClaimRepository", History)
-    monkeypatch.setattr(adapters, "AssessmentRepository", Assessments)
+    monkeypatch.setattr(tool_base, "ClaimRepository", Claims)
+    monkeypatch.setattr(tool_observations, "HistoricalClaimRepository", History)
+    monkeypatch.setattr(assessment_tools, "AssessmentRepository", Assessments)
     return claim, factory, calls, records
 
 
