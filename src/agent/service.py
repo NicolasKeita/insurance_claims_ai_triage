@@ -1,16 +1,14 @@
 """Run lifecycle, observability and append-only audit persistence."""
 
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
 from uuid import uuid4
 
-from agent.config import DEFAULT_MAX_ITERATIONS, DEFAULT_OBJECTIVE, MAX_ITERATIONS, MAX_OBJECTIVE_CHARS
+from agent.config import DEFAULT_MAX_ITERATIONS, MAX_ITERATIONS
 from agent.graph import build_agent_graph
 from agent.models import AgentRunResult, RunStatus
-
-logger = logging.getLogger(__name__)
+from agent.run_state import initial_state, log_run, validated_objective
 
 
 @dataclass
@@ -47,46 +45,38 @@ class ClaimsAgentService:
         exception still needs a terminal audit record; partial runtime state is unavailable from a
         failed invoke.
         """
-        objective = DEFAULT_OBJECTIVE if objective is None else objective.strip()
-        if not 1 <= len(objective) <= MAX_OBJECTIVE_CHARS:
-            raise ValueError(f"objective must contain 1 to {MAX_OBJECTIVE_CHARS} characters")
+        objective = validated_objective(objective)
         self.tools.require_claim(claim_id)
         started, created_at = perf_counter(), datetime.now(timezone.utc)
         run_id = str(uuid4())
-        state = {
-            "run_id": run_id,
-            "claim_id": claim_id,
-            "objective": objective,
-            "iteration": 0,
-            "max_iterations": self.max_iterations,
-            "plan_history": [],
-            "observations": [],
-            "evidence_registry": {},
-            "current_plan": None,
-            "invocation_counts": {},
-            "trace": [],
-            "recommendation": None,
-            "status": RunStatus.RUNNING.value,
-            "error": None,
-            "failure_kind": None,
-            "stop_reason": None,
-            "tool_call_count": 0,
-        }
+        state = initial_state(run_id, claim_id, objective, self.max_iterations)
+        state = self._invoke_graph(state)
+        result = self._build_result(state, run_id, created_at, started)
+        if self.run_store is not None:
+            self.run_store.save(result)
+        log_run(result)
+        if result.status == RunStatus.FAILED:
+            raise AgentRunError(result.error, run_id=run_id, failure_kind=state["failure_kind"])
+        return result
+
+    def _invoke_graph(self, state):
         try:
-            state = self.graph.invoke(state, config={"recursion_limit": 2 * self.max_iterations + 6})
+            return self.graph.invoke(state, config={"recursion_limit": 2 * self.max_iterations + 6})
         except Exception:
-            state = {
+            return {
                 **state,
                 "status": RunStatus.FAILED.value,
                 "recommendation": None,
                 "error": "Agent orchestration failed.",
                 "failure_kind": "ORCHESTRATION",
             }
+
+    def _build_result(self, state, run_id, created_at, started):
         tools_used = list(dict.fromkeys(t["tool_invoked"] for t in state["trace"] if t["tool_invoked"]))
-        result = AgentRunResult(
+        return AgentRunResult(
             run_id=run_id,
-            claim_id=claim_id,
-            objective=objective,
+            claim_id=state["claim_id"],
+            objective=state["objective"],
             status=state["status"],
             llm_model=self.llm_model,
             recommendation=state["recommendation"],
@@ -100,17 +90,3 @@ class ClaimsAgentService:
             elapsed_seconds=perf_counter() - started,
             error=state["error"],
         )
-        if self.run_store is not None:
-            self.run_store.save(result)
-        logger.info(
-            "claims_agent run=%s status=%s iterations=%s tools=%s calls=%s elapsed=%.3f",
-            run_id,
-            result.status,
-            result.iteration_count,
-            [t.value for t in result.tools_used],
-            result.tool_call_count,
-            result.elapsed_seconds,
-        )
-        if result.status == RunStatus.FAILED:
-            raise AgentRunError(result.error, run_id=run_id, failure_kind=state["failure_kind"])
-        return result

@@ -9,6 +9,8 @@ from test_agent_tools import plan
 from test_multimodal_investigation import make_visual_assessment
 
 import agent.tools as adapters
+import agent.tools.base as tool_base
+import agent.tools.observations as tool_observations
 from agent.tools import ReadOnlyAgentTools
 from persistence.vision_assessments import StoredVisionAssessment
 
@@ -24,14 +26,14 @@ def test_visual_tool_reads_existing_snapshot_only_and_closes_session(configured,
             self.session = session
 
         def latest_for_claim(self, claim_id):
-            adapters.ClaimRepository(self.session).require_pk(claim_id)
+            tool_base.ClaimRepository(self.session).require_pk(claim_id)
             calls.append(("vision", claim_id))
             return record if available else None
 
         def add(self, *_):
             raise AssertionError("The agent must never compute or persist visual assessments")
 
-    monkeypatch.setattr(adapters, "VisionAssessmentRepository", Vision)
+    monkeypatch.setattr(tool_observations, "VisionAssessmentRepository", Vision)
     result = ReadOnlyAgentTools(factory).execute(claim.claim_id, plan("GET_VISUAL_ASSESSMENT"))
     assert factory.open_count == 0
     if not available:
