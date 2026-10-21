@@ -6,7 +6,7 @@ from pydantic import Field
 
 from agent.config import CLAIMS_AGENT_PROMPT_VERSION, CLAIMS_AGENT_VERSION
 from agent.models._base import RecommendedNextAction, StrictModel
-from knowledge.models import KnowledgeCitation
+from retrieval.knowledge.models import KnowledgeCitation
 
 
 class RecommendationRationale(StrictModel):

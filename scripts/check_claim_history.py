@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from investigation.models import InvestigationAssessment
+from claims.investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.inference import TriagePrediction
 from persistence.database import DatabaseConfig, create_database_engine, create_session_factory

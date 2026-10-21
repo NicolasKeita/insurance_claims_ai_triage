@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from claims.case import ClaimCase
+from claims.investigation.history import HistoricalClaimProfile
+from claims.investigation.models import InvestigationAssessment
 from claims.models import Claim
-from investigation.history import HistoricalClaimProfile
-from investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.inference import TriagePrediction
 from persistence.database import transaction

@@ -5,7 +5,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from claims.consistency import ClaimConsistencyReport
-from investigation.models import InvestigationAssessment
+from claims.investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.anomaly_training import AnomalyAssessment
 from ml.features import TriageFeatures, count_consistency_issues

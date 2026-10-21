@@ -6,7 +6,7 @@ from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
 from agent.service import AgentRunError, AgentServiceConfig, ClaimsAgentService
 from tests.agent.safety._constants import CLAIM_ID
 from tests.agent.safety._support import make_service
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeAgentTools,
     FakeStructuredLlm,
     make_recommendation,

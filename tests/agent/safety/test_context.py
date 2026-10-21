@@ -7,7 +7,7 @@ from agent.config import MAX_FINALIZER_EVIDENCE_CHARS
 from agent.planner import StructuredAgentFinalizer
 from claims.llm import OllamaStructuredLlm
 from tests.agent.safety._constants import CLAIM_ID
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeStructuredLlm,
     make_evidence,
     make_recommendation,

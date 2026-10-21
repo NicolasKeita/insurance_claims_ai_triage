@@ -6,7 +6,7 @@ from agent.models import (
     EvidenceSourceType,
 )
 from agent.tools import ReadOnlyAgentTools
-from knowledge.models import KnowledgeFilter
+from retrieval.knowledge.models import KnowledgeFilter
 from tests.agent.tools._evidence import chunk, plan
 from tests.agent.tools._repositories import configured
 from tests.agent.tools._repositories import configured as configured

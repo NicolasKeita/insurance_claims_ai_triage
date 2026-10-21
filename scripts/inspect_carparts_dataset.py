@@ -4,8 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from vision.carparts_dataset import DEFAULT_DATASET_YAML, inspect_carparts_dataset
-from vision.training import write_json
+from vision.dataset.carparts_dataset import DEFAULT_DATASET_YAML, inspect_carparts_dataset
+from vision.damage.training import write_json
 
 
 def main() -> int:

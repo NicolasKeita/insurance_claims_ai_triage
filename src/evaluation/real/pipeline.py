@@ -81,8 +81,8 @@ class RealClaimsEvaluationPipeline(
         """Persist actually computed assessments into the isolated demo schema."""
         if not self.config.isolated_demo_stack:
             return
+        from claims.investigation.models import InvestigationAssessment
         from evaluation.isolated_stack import DemoAssessments, seed_case
-        from investigation.models import InvestigationAssessment
         from ml.anomaly_inference import RegisteredAnomalyAssessment
 
         observed = run.observed

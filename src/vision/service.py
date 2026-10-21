@@ -2,7 +2,7 @@
 
 from claims.assets import resolve_image_assets
 from claims.case import ClaimCase
-from vision.detector import DamageDetector
+from vision.damage.detector import DamageDetector
 from vision.images import ImageValidationError
 from vision.models import ClaimVisionAssessment
 

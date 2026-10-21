@@ -7,12 +7,12 @@ import pytest
 
 import agent.tools._adapter as claim_adapters
 import agent.tools._stored as assessment_adapters
+from claims.investigation.history import HistoricalClaimProfile
 from claims.loader import load_claim_case
-from investigation.history import HistoricalClaimProfile
 from persistence.mappers import AssessmentRecord
 from persistence.repositories import ClaimNotFoundError
 from tests.agent.tools._constants import ASSESSMENT_ID
-from tests.persistence.mapping._support import (
+from tests.domain.persistence.mapping._support import (
     make_anomaly,
     make_investigation,
     make_triage,

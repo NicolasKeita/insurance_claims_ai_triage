@@ -10,7 +10,7 @@ from agent.models import (
 from persistence.repositories import ClaimNotFoundError
 from tests.agent.graph._constants import CLAIM_ID
 from tests.agent.graph._support import service
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeAgentTools,
     FakeRunStore,
     make_evidence,

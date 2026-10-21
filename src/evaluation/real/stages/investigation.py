@@ -7,7 +7,7 @@ class InvestigationSteps:
     def investigate(self, run):
         """Assess investigation signals from every actually observed input."""
         observed = run.observed
-        from investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
+        from claims.investigation.policy import INVESTIGATION_POLICY_V2, INVESTIGATION_POLICY_V3
 
         policy = INVESTIGATION_POLICY_V3 if run.vision is not None else INVESTIGATION_POLICY_V2
         sources = {
@@ -53,7 +53,7 @@ class InvestigationSteps:
         consistency, features = sources["consistency"], sources["features"]
         anomaly, history, vision = sources["anomaly"], sources["history"], sources["vision"]
         if all(value is not None for value in (consistency, features, anomaly, history)):
-            from investigation.engine import InvestigationContext, assess_investigation
+            from claims.investigation.engine import InvestigationContext, assess_investigation
 
             return assess_investigation(
                 consistency=consistency,
@@ -62,7 +62,7 @@ class InvestigationSteps:
                 policy=policy,
                 context=InvestigationContext(history=history, visual_assessment=vision),
             )
-        from investigation.models import InvestigationAssessment
+        from claims.investigation.models import InvestigationAssessment
 
         signals = InvestigationSteps._partial_signals(policy, sources)
         score = policy.score_signals(signals)
@@ -77,7 +77,7 @@ class InvestigationSteps:
     @staticmethod
     def _partial_signals(policy, sources):
         """Translate whichever partial inputs were actually observed."""
-        from investigation.signals import (
+        from claims.investigation.signals import (
             signals_from_anomaly,
             signals_from_completeness,
             signals_from_consistency,

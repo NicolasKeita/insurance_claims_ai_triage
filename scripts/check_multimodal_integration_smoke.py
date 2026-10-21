@@ -111,7 +111,7 @@ class CountingFactory:
                 return getattr(model, name)
 
             def predict(self, **options):
-                from vision.detector import _list
+                from vision.damage.detector import _list
 
                 record = {"source_image": owner.active_source, "requested_device": options.get("device"),
                           "confidence_threshold": options.get("conf"), "status": "STARTED"}
@@ -183,11 +183,11 @@ def main(argv=None) -> int:
     }
     try:
         dataset_root, sources = select_sources(args.smoke_summary, args.training_summary, max_images=args.max_images, images=args.images)
-        from investigation.policy import INVESTIGATION_POLICY_V3
-        from investigation.signals import signals_from_multimodal
-        from vision.detector import UltralyticsDamageDetector
+        from claims.investigation.policy import INVESTIGATION_POLICY_V3
+        from claims.investigation.signals import signals_from_multimodal
+        from vision.damage.detector import UltralyticsDamageDetector
         from vision.multimodal_service import ClaimMultimodalVisionService
-        from vision.parts_detector import UltralyticsVehiclePartDetector, VehiclePartSettings
+        from vision.parts.detector import UltralyticsVehiclePartDetector, VehiclePartSettings
         from vision.visualization import save_multimodal_annotated_image
 
         damage_env, part_env = VisionSettings.from_env(), VehiclePartSettings.from_env()

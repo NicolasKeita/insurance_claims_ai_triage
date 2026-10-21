@@ -8,8 +8,8 @@ from fastapi import HTTPException
 from agent.factory import create_claims_agent_service
 from api.knowledge import load_stored_claim
 from claims.llm import LlmError
-from knowledge.factory import create_knowledge_retriever
 from persistence.agent_runs import AgentRunStore
+from retrieval.knowledge.factory import create_knowledge_retriever
 from retrieval.similar_claims import create_similar_claims_service
 
 

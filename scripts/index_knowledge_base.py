@@ -4,9 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
-from knowledge.config import ROOT
-from knowledge.factory import create_knowledge_store
-from knowledge.indexing import KnowledgeIndexer
+from retrieval.knowledge.config import ROOT
+from retrieval.knowledge.factory import create_knowledge_store
+from retrieval.knowledge.indexing import KnowledgeIndexer
 
 
 def main():

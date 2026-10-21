@@ -8,7 +8,7 @@ from agent.models import (
     EvidenceSourceType,
     RecommendedNextAction,
 )
-from knowledge.models import KnowledgeCitation
+from retrieval.knowledge.models import KnowledgeCitation
 
 
 class EvidenceValidationError(ValueError):

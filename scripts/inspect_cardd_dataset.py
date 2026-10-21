@@ -21,7 +21,7 @@ def add_hf_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def load_hf_arguments(args: argparse.Namespace):
-    from vision.cardd_hf import CarddHfConfig, default_hf_cache_dir, load_cardd_hf, normalize_fiftyone_dataset
+    from vision.dataset.cardd_hf import CarddHfConfig, default_hf_cache_dir, load_cardd_hf, normalize_fiftyone_dataset
 
     if args.dataset_dir is not None:
         raise DatasetValidationError("--dataset-dir requires --source coco; the default source is the HF mirror")
@@ -63,7 +63,7 @@ def main() -> int:
         if args.source == "coco":
             summary = inspect_cardd_dataset(discover_cardd_dataset(args.dataset_dir))
         else:
-            from vision.cardd_hf import inspect_cardd_hf
+            from vision.dataset.cardd_hf import inspect_cardd_hf
 
             summary = inspect_cardd_hf(load_hf_arguments(args))
     except (DatasetValidationError, OSError) as exc:

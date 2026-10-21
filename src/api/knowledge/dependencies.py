@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from claims.llm import LlmError
-from knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
-from knowledge.models import GroundingError, KnowledgeSourceType
 from persistence.repositories import ClaimNotFoundError, ClaimRepository
+from retrieval.knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
+from retrieval.knowledge.models import GroundingError, KnowledgeSourceType
 from retrieval.models import RetrievalUnavailableError
 
 

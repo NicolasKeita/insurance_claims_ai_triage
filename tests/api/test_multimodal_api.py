@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from api.main import AppConfig, create_app
 from persistence.repositories import ClaimNotFoundError
 from persistence.vision_assessments import StoredVisionAssessment
-from tests.investigation.multimodal._assessment import make_visual_assessment
+from tests.domain.investigation.multimodal._assessment import make_visual_assessment
 
 
 def test_stored_vision_read_loads_once_without_any_predictor():

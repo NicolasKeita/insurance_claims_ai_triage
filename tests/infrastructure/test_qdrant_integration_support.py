@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import tests.support.qdrant_integration_support as support
+import tests.infrastructure.support.qdrant_integration_support as support
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
 

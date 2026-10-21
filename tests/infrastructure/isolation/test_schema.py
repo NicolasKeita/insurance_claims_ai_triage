@@ -6,14 +6,14 @@ from contextlib import contextmanager
 import pytest
 from sqlalchemy.exc import OperationalError
 
-import tests.integration_support._postgres as integration_support
+import tests.infrastructure.integration_support._postgres as integration_support
+from tests.infrastructure.integration_support import (
+    isolated_postgres_schema,
+)
 from tests.infrastructure.isolation._constants import pytestmark as pytestmark
 from tests.infrastructure.isolation._support import RecordingConnection, RecordingEngine
 from tests.infrastructure.isolation._support import (
     isolated_configuration as isolated_configuration,
-)
-from tests.integration_support import (
-    isolated_postgres_schema,
 )
 
 

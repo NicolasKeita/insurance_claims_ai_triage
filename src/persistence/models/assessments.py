@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from claims.enums import TriageWorkflow
-from investigation.models import ReviewPriority
+from claims.investigation.models import ReviewPriority
 from persistence.models.base import Base, CreatedMixin, IdentityMixin, enum_column
 
 

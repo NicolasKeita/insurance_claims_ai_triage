@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from api.agent import AgentRouteConfig, install_agent_routes
 from api.knowledge import install_knowledge_routes
 from api.vision import install_vision_routes
-from investigation.history import HistoricalClaimProfile
+from claims.investigation.history import HistoricalClaimProfile
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import ClaimNotFoundError
 from retrieval.config import DEFAULT_LIMIT, MAX_LIMIT

@@ -5,9 +5,9 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from vision.carparts_dataset import prepare_carparts_dataset
-from vision.parts_training import DEFAULT_PARTS_CONFIG, load_parts_training_config, run_parts_training
-from vision.training import observe_environment, write_json
+from vision.dataset.carparts_dataset import prepare_carparts_dataset
+from vision.parts.training import DEFAULT_PARTS_CONFIG, load_parts_training_config, run_parts_training
+from vision.damage.training import observe_environment, write_json
 
 
 def main() -> int:
@@ -42,7 +42,7 @@ def main() -> int:
         summary = run_parts_training(config, model_factory=load_model, environment_provider=environment, resume=args.resume)
         print(f"Selected VAL best.pt: {config.output_dir / summary['best_checkpoint']}", flush=True)
         if args.evaluate_after_training:
-            from vision.parts_evaluation import run_parts_evaluation
+            from vision.parts.evaluation import run_parts_evaluation
             metrics = run_parts_evaluation(config, model_factory=load_model, environment_provider=environment)
             print(json.dumps({"box": metrics["box"], "mask": metrics["mask"]}, indent=2), flush=True)
     except (ImportError, OSError, ValueError, RuntimeError) as error:

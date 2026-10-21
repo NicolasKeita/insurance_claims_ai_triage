@@ -2,7 +2,7 @@
 
 from mlflow import MlflowClient
 
-from ml.anomaly_registry import (
+from ml.anomaly.registry import (
     ANOMALY_CANDIDATE_ALIAS,
     REGISTERED_ANOMALY_MODEL_NAME,
     find_latest_anomaly_candidate_source,

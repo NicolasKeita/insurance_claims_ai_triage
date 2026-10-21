@@ -5,9 +5,9 @@ import json
 import logging
 from pathlib import Path
 
-from knowledge.config import ROOT
-from knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
-from knowledge.models import KnowledgeFilter, KnowledgeSourceType
+from retrieval.knowledge.config import ROOT
+from retrieval.knowledge.factory import create_knowledge_rag_service, create_knowledge_retriever
+from retrieval.knowledge.models import KnowledgeFilter, KnowledgeSourceType
 
 SMOKE_CASES = [
     ("POLICY", "What is the AUTO_PREMIUM collision deductible and how is it applied?", "AUTO_PREMIUM", False),

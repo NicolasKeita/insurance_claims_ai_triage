@@ -25,9 +25,9 @@ class RetrievalSteps:
 
     def _search(self, run):
         """Search the real knowledge collections and record the raw retrieval."""
-        from knowledge.models import KnowledgeFilter, KnowledgeSourceType
-        from knowledge.qdrant_store import QdrantKnowledgeStore
-        from knowledge.retrieval import KnowledgeRetriever
+        from retrieval.knowledge.models import KnowledgeFilter, KnowledgeSourceType
+        from retrieval.knowledge.qdrant_store import QdrantKnowledgeStore
+        from retrieval.knowledge.retrieval import KnowledgeRetriever
 
         retriever = KnowledgeRetriever(
             QdrantKnowledgeStore(
@@ -54,7 +54,7 @@ class RetrievalSteps:
 
     def _record_hits(self, run, results, question):
         """Store retrieved chunks, optional section metrics and provenance."""
-        from knowledge.evaluation import section_metrics
+        from retrieval.knowledge.evaluation import section_metrics
 
         observed = run.observed
         scenario = run.scenario
@@ -73,7 +73,7 @@ class RetrievalSteps:
         import os
 
         from claims.llm import OllamaStructuredLlm
-        from knowledge.rag import RAG_SYSTEM_PROMPT, KnowledgeRagService
+        from retrieval.knowledge.rag import RAG_SYSTEM_PROMPT, KnowledgeRagService
 
         llm = OllamaStructuredLlm(
             model=self.resources["llm_model"],

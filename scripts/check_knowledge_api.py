@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from api.main import create_app
-from knowledge.config import ROOT
+from retrieval.knowledge.config import ROOT
 
 
 def main():

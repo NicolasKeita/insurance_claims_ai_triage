@@ -2,7 +2,7 @@
 
 from agent.planner import StructuredAgentFinalizer, StructuredAgentPlanner
 from agent.service import AgentServiceConfig, ClaimsAgentService
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeAgentTools,
     FakeStructuredLlm,
     make_recommendation,

@@ -20,11 +20,11 @@ def retrieve_similar(run, client):
 
 def index_knowledge(run, client):
     """Index the versioned knowledge catalog in the in-memory store."""
-    from knowledge.config import KnowledgeConfig
-    from knowledge.models import KnowledgeSourceType
-    from knowledge.qdrant_store import QdrantKnowledgeStore
-    from knowledge.retrieval import KnowledgeRetriever
-    from knowledge.sources import KnowledgeCatalog
+    from retrieval.knowledge.config import KnowledgeConfig
+    from retrieval.knowledge.models import KnowledgeSourceType
+    from retrieval.knowledge.qdrant_store import QdrantKnowledgeStore
+    from retrieval.knowledge.retrieval import KnowledgeRetriever
+    from retrieval.knowledge.sources import KnowledgeCatalog
 
     config = KnowledgeConfig(knowledge_dir=ROOT / "data/knowledge")
     store = QdrantKnowledgeStore(client, run.embeddings, config)
@@ -38,7 +38,7 @@ def index_knowledge(run, client):
 
 def search_knowledge(run, question):
     """Search the real knowledge collections and record the retrieved chunks."""
-    from knowledge.models import KnowledgeFilter, KnowledgeSourceType
+    from retrieval.knowledge.models import KnowledgeFilter, KnowledgeSourceType
 
     return run.recorder.record(
         "retrieval",
@@ -62,8 +62,8 @@ def search_knowledge(run, question):
 
 def retrieve_knowledge(run, client):
     """Index knowledge collections, retrieve chunks, then generate a grounded answer."""
-    from knowledge.models import RetrievedKnowledgeChunk
-    from knowledge.rag import KnowledgeRagService
+    from retrieval.knowledge.models import RetrievedKnowledgeChunk
+    from retrieval.knowledge.rag import KnowledgeRagService
 
     run.llm = FakeStructuredLlm(
         vision=run.scenario.vision_required, rag_supported=run.scenario.inputs.get("rag_supported", True)
@@ -91,8 +91,8 @@ def add_section_metrics(run, retrieved):
     scenario = run.scenario
     if not (scenario.expected_knowledge_sources and scenario.inputs.get("rag_section")):
         return
-    from knowledge.evaluation import section_metrics
-    from knowledge.models import RetrievedKnowledgeChunk
+    from retrieval.knowledge.evaluation import section_metrics
+    from retrieval.knowledge.models import RetrievedKnowledgeChunk
 
     run.output.rag["retrieval_metrics"] = section_metrics(
         [RetrievedKnowledgeChunk.model_validate(chunk) for chunk in retrieved["results"]],

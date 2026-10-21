@@ -5,7 +5,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from vision.training import DEFAULT_TRAINING_CONFIG, load_training_config, observe_environment, run_training
+from vision.damage.training import DEFAULT_TRAINING_CONFIG, load_training_config, observe_environment, run_training
 
 
 def main() -> int:

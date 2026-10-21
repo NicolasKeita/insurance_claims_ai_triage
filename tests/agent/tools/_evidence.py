@@ -4,7 +4,7 @@ from agent.models import (
     AgentPlanStep,
     AgentRecommendation,
 )
-from knowledge.models import RetrievedKnowledgeChunk
+from retrieval.knowledge.models import RetrievedKnowledgeChunk
 
 
 def plan(action, **arguments):

@@ -7,10 +7,10 @@ from evaluation.models import ComponentResult, TraceEvent
 
 def fake_vision_service(case, fixture):
     """Construct only explicit test observations; the fusion service is real."""
-    from vision.detector import FakeDamageDetector
+    from vision.damage.detector import FakeDamageDetector
     from vision.models import NormalizedBoundingBox, NormalizedPolygon, VehiclePartDetection, VisualDamageDetection
     from vision.multimodal_service import ClaimMultimodalVisionService
-    from vision.parts_detector import FakeVehiclePartDetector
+    from vision.parts.detector import FakeVehiclePartDetector
 
     detections, parts = [], []
     observations = fixture.get("detections", [fixture] if fixture.get("damage_type") else [])

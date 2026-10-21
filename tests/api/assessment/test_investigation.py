@@ -2,11 +2,11 @@
 
 from fastapi.testclient import TestClient
 
-from investigation.policy import DEFAULT_INVESTIGATION_POLICY
+from claims.investigation.policy import DEFAULT_INVESTIGATION_POLICY
 from ml.anomaly_training import AnomalyAssessment
 from tests.api.assessment._constants import app
 from tests.api.assessment._support import make_combined_payload
-from tests.ml.triage._inference_fakes import make_features
+from tests.intelligence.ml.triage._inference_fakes import make_features
 
 
 def test_investigation_assessment_uses_structured_evidence():

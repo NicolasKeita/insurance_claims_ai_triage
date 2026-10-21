@@ -29,7 +29,7 @@ containers, PostgreSQL, Qdrant, MLflow or Ollama, and never installs dependencie
 Missing Docker, a stopped engine/container, an unhealthy container or a refused
 connection produces an explicit diagnostic with the appropriate manual command.
 
-Defaults are centralized in `tests/integration_support/_constants.py`. CI may override
+Defaults are centralized in `tests/infrastructure/integration_support/_constants.py`. CI may override
 `TEST_DATABASE_URL`, `TEST_QDRANT_URL` and `TEST_QDRANT_API_KEY`; application
 `QDRANT_URL` does not select the test server. PostgreSQL URLs must identify an
 authorized `*_test` database and pass the safety checks before any DDL. Every
@@ -39,11 +39,15 @@ collections and cleans only those collections. An explicitly selected missing
 service, invalid connection, missing model or checkpoint fails the suite.
 
 Markers are `unit`, `integration`, `postgres`, `qdrant`, `rag` and `vision`.
-Suites live under their domains (`tests/agent`, `tests/claims`, `tests/vision`,
-etc.). Shared doubles live in `tests/support`; domain fixtures stay beside the
+Suites live under their domains (`tests/agent`, `tests/domain/claims`, `tests/intelligence/vision`,
+etc.). Shared doubles live in `tests/infrastructure/support`; domain fixtures stay beside the
 suites that use them. PostgreSQL setup/migrations and prerequisite probes live
-in `tests/integration_support` and `tests/integration_prerequisites`.
+in `tests/infrastructure/integration_support` and `tests/infrastructure/integration_prerequisites`.
 The deterministic CI command remains `python -m pytest tests/e2e -m unit`.
+
+The [directory layout](docs/DIRECTORY_LAYOUT.md) groups source packages and test
+suites by responsibility, within the eight-subdirectory limit checked by
+`nk-python check src tests`.
 
 `pytest -m postgres` and `pytest -m qdrant` include the PostgreSQL/Qdrant/API
 integration and therefore need both test services. For PostgreSQL alone use `pytest -m 'postgres and not qdrant'`;
@@ -292,11 +296,11 @@ are empty. These measurements describe this project's split of the HF mirror.
 
 `review_score` is a deterministic heuristic review-prioritization score defined by a versioned policy. It is not a probability of fraud.
 
-The investigation engine in `src/investigation/` translates a `ClaimConsistencyReport`, an `AnomalyAssessment`, and document completeness fields in `TriageFeatures` into ordered signals. The engine does not consume the triage workflow prediction. Neither an anomaly nor a review recommendation changes the operational triage output.
+The investigation engine in `src/claims/investigation/` translates a `ClaimConsistencyReport`, an `AnomalyAssessment`, and document completeness fields in `TriageFeatures` into ordered signals. The engine does not consume the triage workflow prediction. Neither an anomaly nor a review recommendation changes the operational triage output.
 
 ## Investigation policy
 
-`investigation_policy_v1` is preserved in `src/investigation/policy.py` as `INVESTIGATION_POLICY_V1`. The default is now `INVESTIGATION_POLICY_V2` (`investigation_policy_v2`), which keeps all original weights and thresholds and adds the historical rules described below. Its weights are transparent demonstration choices, not insurance industry standards.
+`investigation_policy_v1` is preserved in `src/claims/investigation/policy.py` as `INVESTIGATION_POLICY_V1`. The default is now `INVESTIGATION_POLICY_V2` (`investigation_policy_v2`), which keeps all original weights and thresholds and adds the historical rules described below. Its weights are transparent demonstration choices, not insurance industry standards.
 
 | Signal code | Weight |
 | --- | ---: |

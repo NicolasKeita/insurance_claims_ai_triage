@@ -7,7 +7,7 @@ from claims.assets import resolve_image_assets
 from claims.loader import load_claim_case
 from claims.validation import ClaimFileValidationError
 from vision.config import ROOT, VisionSettings
-from vision.detector import DamageDetectorError, UltralyticsDamageDetector, require_local_checkpoint
+from vision.damage.detector import DamageDetectorError, UltralyticsDamageDetector, require_local_checkpoint
 from vision.images import ImageValidationError, load_validated_image
 from vision.service import ClaimVisionService
 from vision.visualization import save_annotated_image

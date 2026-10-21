@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from investigation.history import HistoricalClaimProfile, history_window_start
+from claims.investigation.history import HistoricalClaimProfile, history_window_start
 from persistence.models import AnomalyAssessmentRow, ClaimRow
 from persistence.repositories import ClaimNotFoundError
 

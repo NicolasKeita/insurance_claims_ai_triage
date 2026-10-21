@@ -40,9 +40,9 @@ class IsolatedDemoSetup:
         self.preflight.resources.update(knowledge_config=knowledge_config, retrieval_config=retrieval_config)
 
     def index(self):
-        from knowledge.indexing import KnowledgeIndexer
-        from knowledge.qdrant_store import QdrantKnowledgeStore
         from retrieval.embeddings import SentenceTransformerEmbeddingProvider
+        from retrieval.knowledge.indexing import KnowledgeIndexer
+        from retrieval.knowledge.qdrant_store import QdrantKnowledgeStore
         from retrieval.qdrant_store import QdrantClaimStore
 
         if self.config.include_rag:

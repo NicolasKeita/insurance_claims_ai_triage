@@ -10,10 +10,10 @@ import mlflow.pyfunc
 import pandas as pd
 from mlflow.models import infer_signature
 
-from ml.anomaly_evaluation import evaluate_anomaly_detector
+from ml.anomaly.evaluation import evaluate_anomaly_detector
 from ml.anomaly_pyfunc import AnomalyPyfuncModel
-from ml.anomaly_registry import ANOMALY_EXPERIMENT_NAME
-from ml.anomaly_tracking import (
+from ml.anomaly.registry import ANOMALY_EXPERIMENT_NAME
+from ml.anomaly.tracking import (
     mlflow_anomaly_metrics,
     read_dataset_metadata,
     verify_anomaly_model_round_trip,

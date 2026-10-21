@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from vision.carparts_dataset import DEFAULT_DATASET_ROOT, DEFAULT_MANIFEST, prepare_carparts_dataset
+from vision.dataset.carparts_dataset import DEFAULT_DATASET_ROOT, DEFAULT_MANIFEST, prepare_carparts_dataset
 
 
 def main() -> int:

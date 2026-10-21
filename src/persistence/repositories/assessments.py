@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from investigation.models import InvestigationAssessment
+from claims.investigation.models import InvestigationAssessment
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.inference import TriagePrediction
 from persistence.mappers import (

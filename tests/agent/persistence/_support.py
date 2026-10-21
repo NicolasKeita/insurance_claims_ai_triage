@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from agent.models import AgentRecommendation, AgentRunResult, EvidenceItem
-from knowledge.models import KnowledgeCitation
+from retrieval.knowledge.models import KnowledgeCitation
 
 
 def make_agent_run(claim_id="CLAIM-2026-00001", *, timestamp=None, failed=False):

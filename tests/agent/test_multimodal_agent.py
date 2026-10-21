@@ -11,7 +11,7 @@ import agent.tools._visual as visual_adapters
 from agent.tools import ReadOnlyAgentTools
 from persistence.vision_assessments import StoredVisionAssessment
 from tests.agent.tools._evidence import plan
-from tests.investigation.multimodal._assessment import make_visual_assessment
+from tests.domain.investigation.multimodal._assessment import make_visual_assessment
 
 
 @pytest.mark.parametrize("available", [True, False])

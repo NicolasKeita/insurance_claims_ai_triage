@@ -6,7 +6,7 @@ import pytest
 
 
 def test_unit_and_vision_selections_do_not_probe_docker_or_services(monkeypatch):
-    import tests.integration_prerequisites._selection as support
+    import tests.infrastructure.integration_prerequisites._selection as support
 
     def forbidden(*args, **kwargs):
         pytest.fail("This selection must not inspect Docker or external services")
@@ -28,7 +28,7 @@ def test_unit_and_vision_selections_do_not_probe_docker_or_services(monkeypatch)
     ],
 )
 def test_only_selected_marker_dependencies_are_probed(monkeypatch, markers, services, probes):
-    import tests.integration_prerequisites._selection as support
+    import tests.infrastructure.integration_prerequisites._selection as support
 
     for name in ("TEST_DATABASE_URL", "TEST_QDRANT_URL", "DATABASE_URL"):
         monkeypatch.delenv(name, raising=False)
@@ -42,7 +42,7 @@ def test_only_selected_marker_dependencies_are_probed(monkeypatch, markers, serv
 
 
 def test_external_ci_services_do_not_require_docker(monkeypatch):
-    import tests.integration_prerequisites._selection as support
+    import tests.infrastructure.integration_prerequisites._selection as support
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("TEST_DATABASE_URL", "postgresql+psycopg://ci:secret@ci-db:5432/pipeline_test")

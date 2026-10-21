@@ -8,7 +8,7 @@ import pytest
 
 
 def test_missing_docker_has_a_different_diagnostic_from_a_stopped_engine(monkeypatch):
-    import tests.integration_prerequisites._compose as support
+    import tests.infrastructure.integration_prerequisites._compose as support
 
     monkeypatch.setattr(support.shutil, "which", lambda command: None)
     with pytest.raises(support.PrerequisiteError, match="Docker CLI is not installed"):
@@ -36,7 +36,7 @@ def test_missing_docker_has_a_different_diagnostic_from_a_stopped_engine(monkeyp
 def test_container_state_diagnostics_are_specific_and_commands_are_read_only(monkeypatch, state, message):
     import json
 
-    import tests.integration_prerequisites._compose as support
+    import tests.infrastructure.integration_prerequisites._compose as support
 
     calls = []
 
@@ -60,7 +60,7 @@ def test_container_state_diagnostics_are_specific_and_commands_are_read_only(mon
 
 
 def test_container_not_created_and_inspection_timeout_are_explicit(monkeypatch):
-    import tests.integration_prerequisites._compose as support
+    import tests.infrastructure.integration_prerequisites._compose as support
 
     monkeypatch.setattr(support.shutil, "which", lambda command: "docker")
     monkeypatch.setattr(

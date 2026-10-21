@@ -8,7 +8,7 @@ import pandas as pd
 from mlflow import MlflowClient
 from pydantic import BaseModel
 
-from ml.anomaly_registry import (
+from ml.anomaly.registry import (
     ANOMALY_CANDIDATE_ALIAS,
     REGISTERED_ANOMALY_MODEL_NAME,
 )

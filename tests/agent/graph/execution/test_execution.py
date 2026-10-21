@@ -10,7 +10,7 @@ from agent.models import (
 )
 from tests.agent.graph._constants import CLAIM_ID
 from tests.agent.graph._support import service
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeRunStore,
     make_recommendation,
     make_step,

@@ -7,7 +7,7 @@ from agent.models import (
     AgentRecommendation,
 )
 from tests.agent.graph._support import service
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     make_recommendation,
     make_step,
 )

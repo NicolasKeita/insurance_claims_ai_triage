@@ -53,8 +53,8 @@ class PreflightSession(ComponentProbes, ModelProbes):
         return self.report
 
     def load_configs(self):
-        from knowledge.config import KnowledgeConfig
         from retrieval.config import RetrievalConfig
+        from retrieval.knowledge.config import KnowledgeConfig
 
         self.knowledge_config = KnowledgeConfig.from_env()
         self.retrieval_config = RetrievalConfig.from_env()

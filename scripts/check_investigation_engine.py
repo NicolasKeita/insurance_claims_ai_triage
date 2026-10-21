@@ -19,7 +19,7 @@ from claims.document_extraction import (
 from claims.document_ingestion import extract_pdf_text
 from claims.enums import DocumentType
 from claims.loader import load_claim_case
-from investigation import assess_investigation
+from claims.investigation import assess_investigation
 from ml.anomaly_training import AnomalyAssessment
 from ml.features import build_triage_features
 

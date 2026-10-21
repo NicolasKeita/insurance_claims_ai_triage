@@ -4,8 +4,8 @@ from pydantic import ValidationError
 
 from agent.models import AgentRunResult
 from claims.document_models import AccidentReportExtraction, ClaimFormExtraction, GarageQuoteExtraction
+from claims.investigation.models import InvestigationAssessment
 from evaluation.assertions.recording import Check
-from investigation.models import InvestigationAssessment
 from vision.models import ClaimMultimodalVisionAssessment
 
 DOCUMENT_SCHEMAS = (

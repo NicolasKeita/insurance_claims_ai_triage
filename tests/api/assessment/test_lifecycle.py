@@ -8,7 +8,7 @@ from tests.api.assessment._support import (
     fake_predictor_loader,
     make_combined_payload,
 )
-from tests.ml.triage._inference_fakes import make_features
+from tests.intelligence.ml.triage._inference_fakes import make_features
 
 
 def test_models_are_loaded_once_per_lifespan():

@@ -12,9 +12,9 @@ from typing import Any
 
 from vision.config import VisionSettings
 from vision.dataset import load_prepared_dataset
-from vision.detector import DamageDetectorError, UltralyticsDamageDetector
-from vision.evaluation import selected_checkpoint
-from vision.training import DEFAULT_TRAINING_CONFIG, DamageTrainingConfig, load_training_config, write_json
+from vision.damage.detector import DamageDetectorError, UltralyticsDamageDetector
+from vision.damage.evaluation import selected_checkpoint
+from vision.damage.training import DEFAULT_TRAINING_CONFIG, DamageTrainingConfig, load_training_config, write_json
 from vision.visualization import save_annotated_image
 
 

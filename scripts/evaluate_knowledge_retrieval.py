@@ -4,10 +4,10 @@ import argparse
 import json
 from pathlib import Path
 
-from knowledge.config import ROOT
-from knowledge.evaluation import evaluate_retrieval, load_benchmark, write_evaluation
-from knowledge.factory import create_knowledge_retriever
-from knowledge.models import KnowledgeSourceType
+from retrieval.knowledge.config import ROOT
+from retrieval.knowledge.evaluation import evaluate_retrieval, load_benchmark, write_evaluation
+from retrieval.knowledge.factory import create_knowledge_retriever
+from retrieval.knowledge.models import KnowledgeSourceType
 
 
 def main():

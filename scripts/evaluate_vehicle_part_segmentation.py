@@ -5,9 +5,9 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from vision.parts_evaluation import run_parts_evaluation
-from vision.parts_training import DEFAULT_PARTS_CONFIG, load_parts_training_config
-from vision.training import observe_environment
+from vision.parts.evaluation import run_parts_evaluation
+from vision.parts.training import DEFAULT_PARTS_CONFIG, load_parts_training_config
+from vision.damage.training import observe_environment
 
 
 def main() -> int:

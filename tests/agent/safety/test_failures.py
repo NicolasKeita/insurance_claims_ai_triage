@@ -9,7 +9,7 @@ from agent.models import RunStatus, ToolObservation
 from agent.service import AgentRunError
 from tests.agent.safety._constants import CLAIM_ID
 from tests.agent.safety._support import make_service
-from tests.support.agent_fakes import (
+from tests.infrastructure.support.agent_fakes import (
     FakeAgentTools,
     FakeRunStore,
     make_recommendation,

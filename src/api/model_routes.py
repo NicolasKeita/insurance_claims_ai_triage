@@ -10,10 +10,10 @@ from api.schemas import (
     InvestigationAssessmentRequest,
     StoredInvestigationRequest,
 )
-from investigation.engine import assess_investigation
-from investigation.models import InvestigationAssessment
-from investigation.policy import DEFAULT_INVESTIGATION_POLICY
-from investigation.service import assess_stored_claim
+from claims.investigation.engine import assess_investigation
+from claims.investigation.models import InvestigationAssessment
+from claims.investigation.policy import DEFAULT_INVESTIGATION_POLICY
+from claims.investigation.service import assess_stored_claim
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.features import TriageFeatures
 from ml.inference import TriagePrediction

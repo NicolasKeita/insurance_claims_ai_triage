@@ -65,7 +65,7 @@ def _retrieval_loaders(
             return create_similar_claims_service(factory)
 
     if knowledge_retriever is None and knowledge_retriever_loader is None:
-        from knowledge.factory import create_knowledge_retriever
+        from retrieval.knowledge.factory import create_knowledge_retriever
 
         knowledge_retriever_loader = create_knowledge_retriever
     return similar_service_loader, knowledge_retriever_loader

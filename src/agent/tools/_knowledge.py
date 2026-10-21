@@ -3,7 +3,7 @@ from agent.models import (
     EvidenceItem,
     EvidenceSourceType,
 )
-from knowledge.models import KnowledgeFilter, KnowledgeSourceType, applicable_on
+from retrieval.knowledge.models import KnowledgeFilter, KnowledgeSourceType, applicable_on
 from retrieval.models import RetrievalUnavailableError
 
 from ._data import MAX_KNOWLEDGE_EXCERPT_CHARS, MAX_VALUE_CHARS

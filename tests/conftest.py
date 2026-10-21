@@ -3,9 +3,9 @@
 import pytest
 
 from tests.agent.tools._repositories import configured
-from tests.persistence.mapping._support import reference_claim
-from tests.persistence.postgres._support import factory, postgres_engine
-from tests.support.qdrant_fixtures import remote_store
+from tests.domain.persistence.mapping._support import reference_claim
+from tests.domain.persistence.postgres._support import factory, postgres_engine
+from tests.infrastructure.support.qdrant_fixtures import remote_store
 
 __all__ = ["configured", "factory", "postgres_engine", "reference_claim", "remote_store"]
 
@@ -32,7 +32,7 @@ def pytest_collection_modifyitems(items):
 def pytest_collection_finish(session):
     if session.config.option.collectonly or session.testsfailed:
         return
-    from tests.integration_prerequisites import (
+    from tests.infrastructure.integration_prerequisites import (
         PrerequisiteError,
         check_selected_prerequisites,
     )

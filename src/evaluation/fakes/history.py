@@ -3,7 +3,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from investigation.history import HistoricalClaimProfile
+from claims.investigation.history import HistoricalClaimProfile
 from persistence.repositories import ClaimNotFoundError
 
 

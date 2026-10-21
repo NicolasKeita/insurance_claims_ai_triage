@@ -6,8 +6,8 @@ import pytest
 
 
 def test_postgres_refused_connection_is_not_a_skip(monkeypatch):
-    import tests.integration_prerequisites._network as support
-    from tests.integration_support import get_test_database_config
+    import tests.infrastructure.integration_prerequisites._network as support
+    from tests.infrastructure.integration_support import get_test_database_config
 
     monkeypatch.delenv("TEST_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -31,7 +31,7 @@ def test_postgres_refused_connection_is_not_a_skip(monkeypatch):
     ],
 )
 def test_qdrant_network_and_readiness_diagnostics(monkeypatch, failure, message):
-    import tests.integration_prerequisites._network as support
+    import tests.infrastructure.integration_prerequisites._network as support
 
     def unavailable(*args, **kwargs):
         raise failure

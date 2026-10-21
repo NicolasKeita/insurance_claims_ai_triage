@@ -4,7 +4,7 @@ from claims.consistency import ClaimConsistencyReport
 from ml.anomaly_inference import RegisteredAnomalyAssessment
 from ml.anomaly_training import AnomalyAssessment
 from ml.inference import RegisteredTriagePredictor
-from tests.ml.triage._inference_fakes import FakePipeline, make_features
+from tests.intelligence.ml.triage._inference_fakes import FakePipeline, make_features
 
 
 def fake_predictor_loader():

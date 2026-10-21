@@ -3,8 +3,8 @@
 import argparse
 import json
 
-from investigation.policy import INVESTIGATION_POLICY_V2
-from investigation.signals import signals_from_history
+from claims.investigation.policy import INVESTIGATION_POLICY_V2
+from claims.investigation.signals import signals_from_history
 from persistence.database import DatabaseConfig, create_database_engine, create_session_factory
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import ClaimNotFoundError, ClaimRepository

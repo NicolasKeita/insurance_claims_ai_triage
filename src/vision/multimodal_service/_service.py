@@ -6,7 +6,7 @@ from pathlib import Path
 from claims.assets import ImageAsset, resolve_image_assets
 from claims.case import ClaimCase
 from claims.enums import DamageType
-from vision.detector import DamageDetector
+from vision.damage.detector import DamageDetector
 from vision.fusion import fuse_image_assessments
 from vision.fusion_config import DEFAULT_FUSION_POLICY, VisionFusionPolicy
 from vision.images import ImageValidationError
@@ -17,7 +17,7 @@ from vision.models import (
     ImageVisualAssessment,
 )
 from vision.multimodal_service._consistency import assess_multimodal_consistency
-from vision.parts_detector import VehiclePartDetector
+from vision.parts.detector import VehiclePartDetector
 
 
 class ClaimMultimodalVisionService:

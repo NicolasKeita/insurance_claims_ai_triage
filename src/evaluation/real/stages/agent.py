@@ -108,8 +108,8 @@ class AgentSteps:
             raise RetrievalUnavailableError("Knowledge retrieval unavailable or disabled by evaluation configuration")
         from qdrant_client import QdrantClient
 
-        from knowledge.qdrant_store import QdrantKnowledgeStore
-        from knowledge.retrieval import KnowledgeRetriever
+        from retrieval.knowledge.qdrant_store import QdrantKnowledgeStore
+        from retrieval.knowledge.retrieval import KnowledgeRetriever
 
         config = self.resources["knowledge_config"]
         client = QdrantClient(

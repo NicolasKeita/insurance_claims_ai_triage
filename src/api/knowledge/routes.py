@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from api.knowledge.dependencies import KnowledgeDependencies, register_knowledge_exception_handlers
-from knowledge.models import GroundedAnswer, KnowledgeFilter, KnowledgeSearchResponse, KnowledgeSourceType
+from retrieval.knowledge.models import GroundedAnswer, KnowledgeFilter, KnowledgeSearchResponse, KnowledgeSourceType
 
 
 class ClaimKnowledgeSearchRequest(BaseModel):

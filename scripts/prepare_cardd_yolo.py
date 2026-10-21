@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from vision.dataset import DEFAULT_MANIFEST_PATH, DEFAULT_PREPARED_DIR, DatasetValidationError, discover_cardd_dataset, prepare_cardd_yolo
-from vision.cardd_hf_preparation import DEFAULT_HF_MANIFEST_PATH, DEFAULT_HF_PREPARED_DIR, prepare_cardd_hf_yolo
+from vision.dataset.cardd_hf_preparation import DEFAULT_HF_MANIFEST_PATH, DEFAULT_HF_PREPARED_DIR, prepare_cardd_hf_yolo
 from inspect_cardd_dataset import add_hf_arguments, load_hf_arguments
 
 

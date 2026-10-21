@@ -3,7 +3,7 @@
 from pydantic import ValidationError
 
 from evaluation.assertions.recording import Check
-from knowledge.models import GroundedAnswer
+from retrieval.knowledge.models import GroundedAnswer
 
 CITED_FIELDS = ("chunk_id", "source_id", "source_version", "title", "section")
 

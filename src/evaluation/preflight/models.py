@@ -69,8 +69,8 @@ class ModelProbes:
     def detector(self, kind):
         """Validate loadability, segmentation task and complete domain taxonomy."""
         from vision.config import VisionSettings
-        from vision.detector import UltralyticsDamageDetector
-        from vision.parts_detector import UltralyticsVehiclePartDetector, VehiclePartSettings
+        from vision.damage.detector import UltralyticsDamageDetector
+        from vision.parts.detector import UltralyticsVehiclePartDetector, VehiclePartSettings
 
         if kind == "damage":
             adapter = UltralyticsDamageDetector(

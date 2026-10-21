@@ -5,7 +5,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from ml.anomaly_evaluation import evaluate_anomaly_detector
+from ml.anomaly.evaluation import evaluate_anomaly_detector
 from ml.anomaly_training import train_anomaly_detector
 
 

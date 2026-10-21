@@ -7,7 +7,7 @@ from agent.models import (
 )
 from tests.agent.graph._constants import CLAIM_ID
 from tests.agent.graph._support import service
-from tests.support.agent_fakes import FakeAgentTools
+from tests.infrastructure.support.agent_fakes import FakeAgentTools
 
 
 def test_unavailable_tool_is_preserved_as_uncertainty():

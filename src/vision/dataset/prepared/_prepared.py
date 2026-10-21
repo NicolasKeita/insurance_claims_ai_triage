@@ -47,13 +47,13 @@ def _prepared_header(dataset_yaml):
     if not manifest_path.is_file():
         raise DatasetValidationError(f"Prepared dataset manifest missing: {manifest_path}")
     manifest = _read_json(manifest_path)
-    from vision.cardd_hf_preparation import HF_PREPARATION_VERSION
+    from vision.dataset.cardd_hf_preparation import HF_PREPARATION_VERSION
 
     is_hf_mirror = manifest.get("preparation_version") == HF_PREPARATION_VERSION
     if manifest.get("preparation_version") != PREPARATION_VERSION and not is_hf_mirror:
         raise DatasetValidationError("Unsupported prepared dataset manifest version")
     if is_hf_mirror:
-        from vision.cardd_hf_preparation import validate_hf_prepared_manifest
+        from vision.dataset.cardd_hf_preparation import validate_hf_prepared_manifest
 
         validate_hf_prepared_manifest(manifest)
     return document, dataset_root, manifest, is_hf_mirror
@@ -74,7 +74,7 @@ def _prepared_provenance(document, manifest, is_hf_mirror):
     ):
         raise DatasetValidationError("Prepared manifest must contain SHA-256 annotation hashes for all splits")
     if is_hf_mirror:
-        from vision.cardd_hf_preparation import hf_prepared_fingerprint
+        from vision.dataset.cardd_hf_preparation import hf_prepared_fingerprint
 
         fingerprint = hf_prepared_fingerprint(manifest, valid_mapping)
     else:

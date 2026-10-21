@@ -3,14 +3,14 @@
 import pytest
 
 from persistence.database import DatabaseConfigurationError, require_test_database
-from tests.infrastructure.isolation._constants import pytestmark as pytestmark
-from tests.infrastructure.isolation._support import (
-    isolated_configuration as isolated_configuration,
-)
-from tests.integration_support import (
+from tests.infrastructure.integration_support import (
     DEFAULT_TEST_DATABASE_URL,
     get_test_database_config,
     get_test_qdrant_url,
+)
+from tests.infrastructure.isolation._constants import pytestmark as pytestmark
+from tests.infrastructure.isolation._support import (
+    isolated_configuration as isolated_configuration,
 )
 
 

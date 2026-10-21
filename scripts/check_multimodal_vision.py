@@ -11,14 +11,14 @@ from claims.document_ingestion import extract_pdf_text
 from claims.enums import DocumentType
 from claims.loader import load_claim_case
 from claims.validation import ClaimFileValidationError
-from investigation.policy import INVESTIGATION_POLICY_V3
-from investigation.signals import signals_from_multimodal
+from claims.investigation.policy import INVESTIGATION_POLICY_V3
+from claims.investigation.signals import signals_from_multimodal
 from vision.config import ROOT, VisionSettings
-from vision.detector import DamageDetectorError, UltralyticsDamageDetector
+from vision.damage.detector import DamageDetectorError, UltralyticsDamageDetector
 from vision.fusion_config import DEFAULT_FUSION_POLICY, VisionFusionPolicy
 from vision.images import ImageValidationError, load_validated_image
 from vision.multimodal_service import ClaimMultimodalVisionService
-from vision.parts_detector import UltralyticsVehiclePartDetector, VehiclePartSettings
+from vision.parts.detector import UltralyticsVehiclePartDetector, VehiclePartSettings
 from vision.visualization import save_multimodal_annotated_image
 
 
