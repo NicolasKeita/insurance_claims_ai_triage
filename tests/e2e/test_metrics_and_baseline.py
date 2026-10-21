@@ -3,28 +3,11 @@
 import json
 
 import pytest
+from pipeline_support import baseline_report, result
 
 from evaluation.metrics import aggregate_metrics
-from evaluation.models import (
-    ComponentResult,
-    EndToEndEvaluationReport,
-    EvaluationAssertion,
-    PipelineObservation,
-    ScenarioEvaluationResult,
-)
-from evaluation.reporting import baseline_snapshot, compare_baseline, create_baseline, write_report
-
-
-def result(scenario_id, status, *, checks=None, components=None):
-    return ScenarioEvaluationResult(
-        scenario_id=scenario_id,
-        status=status,
-        assertions=checks or [],
-        component_results=components or {},
-        observation=PipelineObservation(
-            model_versions={"anomaly": "model-v1"}, policy_versions={"investigation": "policy-v3"}
-        ),
-    )
+from evaluation.models import ComponentResult, EndToEndEvaluationReport, EvaluationAssertion
+from evaluation.reporting import compare_baseline, create_baseline, write_report
 
 
 def test_skips_never_inflate_pass_rate_and_no_executions_have_no_rate():
@@ -57,63 +40,6 @@ def test_agent_completion_counts_a_failure_without_a_result_payload():
     rows[0].observation.agent = {"status": "COMPLETED"}
     assert aggregate_metrics(rows)["agent_completion_rate"] == 0.5
     assert aggregate_metrics([rows[-1]])["agent_completion_rate"] is None
-
-
-def baseline_report():
-    checks = [
-        EvaluationAssertion(name=name, component=component, status="PASS", expected=True, actual=True)
-        for name, component in [
-            ("required_signal:ADDITIONAL_QUOTE_DAMAGE", "investigation"),
-            ("forbidden_signal:VISUAL_ADDITIONAL_DAMAGE", "investigation"),
-            ("rag:expected_sources", "retrieval"),
-            ("rag:citation_validity", "retrieval"),
-            ("agent:evidence_citations", "agent"),
-        ]
-    ]
-    return EndToEndEvaluationReport(
-        mode="real", full_stack_status="COMPLETE", results=[result("golden", "PASS", checks=checks)]
-    )
-
-
-@pytest.mark.parametrize(
-    "check_name",
-    [
-        "required_signal:ADDITIONAL_QUOTE_DAMAGE",
-        "forbidden_signal:VISUAL_ADDITIONAL_DAMAGE",
-        "rag:expected_sources",
-        "rag:citation_validity",
-        "agent:evidence_citations",
-    ],
-)
-def test_regression_comparison_detects_stable_behavior_regressions(check_name):
-    report = baseline_report()
-    baseline = baseline_snapshot(report)
-    current = report.model_copy(deep=True)
-    check = next(check for check in current.results[0].assertions if check.name == check_name)
-    check.status = "FAIL"
-    current.results[0].status = "FAIL"
-    regressions = compare_baseline(current, baseline)
-    assert {item["kind"] for item in regressions} >= {"scenario_regression", check_name}
-
-
-def test_changing_expectations_under_the_same_version_is_a_regression():
-    report = baseline_report()
-    report.results[0].assertions.append(
-        EvaluationAssertion(
-            name="fact:history.claims_last_30_days", component="history", status="PASS", expected=3, actual=3
-        )
-    )
-    baseline = baseline_snapshot(report)
-    changed = report.model_copy(deep=True)
-    check = changed.results[0].assertions[-1]
-    check.expected = check.actual = 2
-    regressions = compare_baseline(changed, baseline)
-    mismatch = next(item for item in regressions if item["kind"] == "benchmark_expectation_changed")
-    assert (mismatch["expectation"], mismatch["expected"], mismatch["actual"]) == (
-        "fact:history.claims_last_30_days",
-        3,
-        2,
-    )
 
 
 def test_partial_real_or_deterministic_runs_cannot_create_real_baseline(tmp_path):
