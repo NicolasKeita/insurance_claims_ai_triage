@@ -7,6 +7,8 @@ from typing import Any
 
 from vision.training import DamageTrainingConfig
 
+EVALUATION_DIR_NAME = "evaluation"
+
 
 @dataclass
 class EvaluationParams:
