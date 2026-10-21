@@ -38,7 +38,7 @@ def evaluation_fixture(tmp_path, monkeypatch):
         "dataset": manifest,
     }
     monkeypatch.setattr(
-        "vision.evaluation.selected_checkpoint",
+        "vision.evaluation._runtime._request.selected_checkpoint",
         lambda *_: (tmp_path / "fixture.pt", summary),
     )
     return config, manifest

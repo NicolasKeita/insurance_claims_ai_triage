@@ -107,7 +107,7 @@ def test_split_independent_of_input_order_and_cache_root(tmp_path):
 
 
 def test_frozen_manifest_is_reused_without_rewrite(tmp_path, monkeypatch):
-    import vision.cardd_hf_split as module
+    import vision.cardd_hf_split._manifest as module
 
     dataset = fixture(tmp_path)
     path = tmp_path / "split.json"
@@ -119,7 +119,7 @@ def test_frozen_manifest_is_reused_without_rewrite(tmp_path, monkeypatch):
 
 
 def test_existing_v1_manifest_stays_valid_and_immutable_after_v2_upgrade(tmp_path, monkeypatch):
-    import vision.cardd_hf_split as module
+    import vision.cardd_hf_split._manifest as module
 
     dataset = fixture(tmp_path)
     path = tmp_path / "cardd_hf_split_v1.json"
@@ -149,26 +149,7 @@ def test_common_cooccurring_class_stays_balanced_after_rare_label_assignment(tmp
     Many common-only images and rare class combinations can cause a naive rare-first greedy allocation to
     reserve most common images for train.
     """
-    patterns = [
-        (("scratch",), 70),
-        (("glass_shatter",), 40),
-        (("dent", "scratch"), 36),
-        (("dent",), 36),
-        (("tire_flat",), 17),
-        (("dent", "lamp_broken", "scratch"), 10),
-        (("dent", "lamp_broken"), 9),
-        (("crack", "dent", "scratch"), 8),
-        (("crack", "scratch"), 7),
-        (("crack", "dent", "lamp_broken", "scratch"), 7),
-        (("lamp_broken",), 7),
-        (("crack",), 6),
-        (("lamp_broken", "scratch"), 6),
-        (("dent", "glass_shatter"), 5),
-        (("crack", "dent"), 4),
-        (("crack", "dent", "lamp_broken"), 4),
-        (("crack", "lamp_broken", "scratch"), 2),
-        (("crack", "lamp_broken"), 2),
-    ]
+    patterns = cooccurrence_patterns()
     labels = [pattern for pattern, count in patterns for _ in range(count)]
     dataset = fixture(tmp_path, count=len(labels))
     classes = tuple(sorted({label for pattern in labels for label in pattern}))
@@ -387,3 +368,27 @@ def test_corrupt_existing_manifest_is_never_silently_regenerated(tmp_path):
 def test_invalid_split_parameters_rejected(tmp_path, kwargs):
     with pytest.raises(DatasetValidationError):
         create_or_load_cardd_hf_split(fixture(tmp_path), tmp_path / "split.json", **kwargs)
+
+
+def cooccurrence_patterns():
+    patterns = [
+        (("scratch",), 70),
+        (("glass_shatter",), 40),
+        (("dent", "scratch"), 36),
+        (("dent",), 36),
+        (("tire_flat",), 17),
+        (("dent", "lamp_broken", "scratch"), 10),
+        (("dent", "lamp_broken"), 9),
+        (("crack", "dent", "scratch"), 8),
+        (("crack", "scratch"), 7),
+        (("crack", "dent", "lamp_broken", "scratch"), 7),
+        (("lamp_broken",), 7),
+        (("crack",), 6),
+        (("lamp_broken", "scratch"), 6),
+        (("dent", "glass_shatter"), 5),
+        (("crack", "dent"), 4),
+        (("crack", "dent", "lamp_broken"), 4),
+        (("crack", "lamp_broken", "scratch"), 2),
+        (("crack", "lamp_broken"), 2),
+    ]
+    return patterns

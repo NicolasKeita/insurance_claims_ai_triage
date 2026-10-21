@@ -363,7 +363,7 @@ def test_source_path_traversal_is_rejected(tmp_path):
 
 
 def test_official_converter_is_lazy_and_auto_fallback_is_explicit(tmp_path, monkeypatch):
-    import vision.dataset as dataset_module
+    import vision.dataset.preparation._converter as dataset_module
 
     root = synthetic_cardd(tmp_path)
 
