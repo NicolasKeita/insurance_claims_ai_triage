@@ -3,7 +3,11 @@
 import os
 
 from agent.config import AGENT_LLM_CONTEXT_WINDOW
-from agent.planner import AGENT_SYSTEM_PROMPT, StructuredAgentFinalizer, StructuredAgentPlanner
+from agent.planner import (
+    AGENT_SYSTEM_PROMPT,
+    StructuredAgentFinalizer,
+    StructuredAgentPlanner,
+)
 from agent.service import AgentServiceConfig, ClaimsAgentService
 from agent.tools import ReadOnlyAgentTools
 from claims.llm import LlmError, OllamaStructuredLlm
@@ -29,6 +33,31 @@ def create_claims_agent_service(
     if not model:
         raise LlmError("CLAIMS_LLM_MODEL is required for agent generation")
 
+    similar_service_loader, knowledge_retriever_loader = _retrieval_loaders(
+        factory,
+        similar_service,
+        knowledge_retriever,
+        similar_service_loader,
+        knowledge_retriever_loader,
+    )
+    llm = _llm(model)
+    tools = ReadOnlyAgentTools(
+        factory,
+        similar_service=similar_service,
+        knowledge_retriever=knowledge_retriever,
+        similar_service_loader=similar_service_loader,
+        knowledge_retriever_loader=knowledge_retriever_loader,
+    )
+    return _service(factory, llm, tools, model)
+
+
+def _retrieval_loaders(
+    factory,
+    similar_service,
+    knowledge_retriever,
+    similar_service_loader,
+    knowledge_retriever_loader,
+):
     if similar_service is None and similar_service_loader is None:
         from retrieval.similar_claims import create_similar_claims_service
 
@@ -39,19 +68,19 @@ def create_claims_agent_service(
         from knowledge.factory import create_knowledge_retriever
 
         knowledge_retriever_loader = create_knowledge_retriever
-    llm = OllamaStructuredLlm(
+    return similar_service_loader, knowledge_retriever_loader
+
+
+def _llm(model):
+    return OllamaStructuredLlm(
         model=model,
         host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
         system_prompt=AGENT_SYSTEM_PROMPT,
         context_window=AGENT_LLM_CONTEXT_WINDOW,
     )
-    tools = ReadOnlyAgentTools(
-        factory,
-        similar_service=similar_service,
-        knowledge_retriever=knowledge_retriever,
-        similar_service_loader=similar_service_loader,
-        knowledge_retriever_loader=knowledge_retriever_loader,
-    )
+
+
+def _service(factory, llm, tools, model):
     return ClaimsAgentService(
         AgentServiceConfig(
             tools,

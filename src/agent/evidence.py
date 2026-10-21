@@ -2,7 +2,12 @@
 
 from collections.abc import Mapping
 
-from agent.models import AgentRecommendation, EvidenceItem, EvidenceSourceType, RecommendedNextAction
+from agent.models import (
+    AgentRecommendation,
+    EvidenceItem,
+    EvidenceSourceType,
+    RecommendedNextAction,
+)
 from knowledge.models import KnowledgeCitation
 
 
