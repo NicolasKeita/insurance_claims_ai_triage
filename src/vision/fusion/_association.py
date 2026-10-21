@@ -32,34 +32,6 @@ def validate_same_image(damage: ImageDamageAssessment, parts: ImagePartAssessmen
             raise FusionGeometryError("Damage and part assessments have different image asset references")
 
 
-def _association(
-    damage: VisualDamageDetection,
-    damage_index: int,
-    part_index: int,
-    part: VehiclePartDetection,
-    overlap,
-    policy: VisionFusionPolicy,
-) -> DamagePartAssociation:
-    return DamagePartAssociation(
-        damage_detection_index=damage_index,
-        part_detection_index=part_index,
-        candidate_part=part,
-        damage_confidence=damage.confidence,
-        part_confidence=part.confidence,
-        intersection_area=overlap.intersection_area,
-        damage_area=overlap.damage_area,
-        part_area=overlap.part_area,
-        damage_containment_ratio=overlap.damage_containment_ratio,
-        iou=overlap.iou,
-        association_method=overlap.association_method,
-        eligible=(
-            damage.confidence >= policy.min_damage_confidence
-            and part.confidence >= policy.min_part_confidence
-            and overlap.damage_containment_ratio >= policy.min_damage_containment
-        ),
-    )
-
-
 def damage_part_candidates(
     damage: VisualDamageDetection,
     damage_index: int,
@@ -76,7 +48,26 @@ def damage_part_candidates(
         overlap = calculate_overlap(damage, part)
         if overlap.intersection_area == 0:
             continue
-        candidates.append(_association(damage, damage_index, part_index, part, overlap, policy))
+        candidates.append(
+            DamagePartAssociation(
+                damage_detection_index=damage_index,
+                part_detection_index=part_index,
+                candidate_part=part,
+                damage_confidence=damage.confidence,
+                part_confidence=part.confidence,
+                intersection_area=overlap.intersection_area,
+                damage_area=overlap.damage_area,
+                part_area=overlap.part_area,
+                damage_containment_ratio=overlap.damage_containment_ratio,
+                iou=overlap.iou,
+                association_method=overlap.association_method,
+                eligible=(
+                    damage.confidence >= policy.min_damage_confidence
+                    and part.confidence >= policy.min_part_confidence
+                    and overlap.damage_containment_ratio >= policy.min_damage_containment
+                ),
+            )
+        )
     return sorted(candidates, key=lambda item: (-item.damage_containment_ratio, item.part_detection_index))
 
 
@@ -90,12 +81,10 @@ def select_primary_association(
     )
     if not eligible:
         return AssociationStatus.UNASSIGNED, None
-    if (
-        len(eligible) > 1
-        and round(eligible[0].damage_containment_ratio - eligible[1].damage_containment_ratio, 15)
-        <= policy.ambiguity_margin
-    ):
-        return AssociationStatus.AMBIGUOUS, None
+    if len(eligible) > 1:
+        margin = round(eligible[0].damage_containment_ratio - eligible[1].damage_containment_ratio, 15)
+        if margin <= policy.ambiguity_margin:
+            return AssociationStatus.AMBIGUOUS, None
     return AssociationStatus.ASSIGNED, eligible[0]
 
 
