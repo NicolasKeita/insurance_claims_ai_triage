@@ -8,6 +8,41 @@ from evaluation.real import RealClaimsEvaluationPipeline
 from evaluation.runner import evaluate_scenarios
 from evaluation.scenarios import load_scenarios
 
+DEPENDENCIES = (
+    "postgresql",
+    "qdrant",
+    "knowledge_collections",
+    "similar_claims_collection",
+    "embeddings",
+    "ollama",
+    "triage",
+    "anomaly",
+    "damage_vision",
+    "part_vision",
+)
+
+
+def _forbid_fakes(monkeypatch):
+    def forbid_fake(*args, **kwargs):
+        raise AssertionError("A real evaluation called a deterministic predictor")
+
+    monkeypatch.setattr(fakes.FakeTriagePredictor, "predict", forbid_fake)
+    monkeypatch.setattr(fakes.FakeAnomalyPredictor, "assess", forbid_fake)
+
+
+def _unavailable_preflight(status):
+    return PreflightReport(
+        rows=[
+            {
+                "component": component,
+                "status": status,
+                "reason": "Controlled unavailable dependency",
+                "version": None,
+            }
+            for component in DEPENDENCIES
+        ]
+    )
+
 
 @pytest.mark.parametrize("unavailable_policy, expected_status", [("SKIP", "SKIP"), ("FAIL", "FAIL")])
 def test_unavailable_real_dependencies_never_become_fake_predictions(
@@ -16,33 +51,8 @@ def test_unavailable_real_dependencies_never_become_fake_predictions(
     unavailable_policy,
     expected_status,
 ):
-    def forbid_fake(*args, **kwargs):
-        raise AssertionError("A real evaluation called a deterministic predictor")
-
-    monkeypatch.setattr(fakes.FakeTriagePredictor, "predict", forbid_fake)
-    monkeypatch.setattr(fakes.FakeAnomalyPredictor, "assess", forbid_fake)
-    preflight = PreflightReport(
-        rows=[
-            {
-                "component": component,
-                "status": unavailable_policy,
-                "reason": "Controlled unavailable dependency",
-                "version": None,
-            }
-            for component in [
-                "postgresql",
-                "qdrant",
-                "knowledge_collections",
-                "similar_claims_collection",
-                "embeddings",
-                "ollama",
-                "triage",
-                "anomaly",
-                "damage_vision",
-                "part_vision",
-            ]
-        ]
-    )
+    _forbid_fakes(monkeypatch)
+    preflight = _unavailable_preflight(unavailable_policy)
     config = RealEvaluationConfig(fixture_dir=tmp_path / "fixtures", dependency_unavailable=unavailable_policy)
     pipeline = RealClaimsEvaluationPipeline(config, preflight)
     report = evaluate_scenarios(
