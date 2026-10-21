@@ -1,8 +1,9 @@
-from agent import tools as adapters
 from agent.models import (
     EvidenceItem,
     EvidenceSourceType,
 )
+from persistence.history import HistoricalClaimRepository
+from persistence.repositories import AssessmentRepository
 
 from ._data import MAX_SIGNALS, _bounded, _claim_data
 
@@ -26,7 +27,7 @@ def _read_claim(self, claim_id, tool):
 
 def _read_history(self, claim_id, tool):
     with self.factory() as session:
-        profile = adapters.HistoricalClaimRepository(session).get_profile(claim_id)
+        profile = HistoricalClaimRepository(session).get_profile(claim_id)
     data = profile.model_dump(mode="json")
     evidence = EvidenceItem(
         evidence_id=f"history:{claim_id}",
@@ -44,7 +45,7 @@ def _read_history(self, claim_id, tool):
 
 def _read_assessment(self, claim_id, tool, kind, source_type):
     with self.factory() as session:
-        record = getattr(adapters.AssessmentRepository(session), f"get_latest_{kind}")(claim_id)
+        record = getattr(AssessmentRepository(session), f"get_latest_{kind}")(claim_id)
     if record is None:
         return self._missing(tool, f"No stored {kind} assessment is available", unavailable=True)
     result = record.result.model_dump(mode="json")

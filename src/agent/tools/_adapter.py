@@ -6,7 +6,6 @@ close before embedding/retrieval calls; unavailable assessments stay unavailable
 
 from collections.abc import Callable
 
-from agent import tools as adapters
 from agent.models import (
     AgentPlanStep,
     AgentToolName,
@@ -20,6 +19,7 @@ from agent.models import (
 from claims.models import Claim
 from persistence.repositories import (
     ClaimNotFoundError,
+    ClaimRepository,
 )
 
 from ._knowledge import _knowledge
@@ -55,11 +55,11 @@ class ReadOnlyAgentTools:
 
     def require_claim(self, claim_id: str) -> None:
         with self.factory() as session:
-            adapters.ClaimRepository(session).require_pk(claim_id)
+            ClaimRepository(session).require_pk(claim_id)
 
     def _claim(self, claim_id: str) -> Claim:
         with self.factory() as session:
-            claim = adapters.ClaimRepository(session).get_by_claim_id(claim_id)
+            claim = ClaimRepository(session).get_by_claim_id(claim_id)
             if claim is None:
                 raise ClaimNotFoundError(f"Claim {claim_id} does not exist")
             return claim

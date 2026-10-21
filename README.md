@@ -29,7 +29,7 @@ containers, PostgreSQL, Qdrant, MLflow or Ollama, and never installs dependencie
 Missing Docker, a stopped engine/container, an unhealthy container or a refused
 connection produces an explicit diagnostic with the appropriate manual command.
 
-Defaults are centralized in `tests/integration_support.py`. CI may override
+Defaults are centralized in `tests/integration_support/_constants.py`. CI may override
 `TEST_DATABASE_URL`, `TEST_QDRANT_URL` and `TEST_QDRANT_API_KEY`; application
 `QDRANT_URL` does not select the test server. PostgreSQL URLs must identify an
 authorized `*_test` database and pass the safety checks before any DDL. Every
@@ -39,6 +39,12 @@ collections and cleans only those collections. An explicitly selected missing
 service, invalid connection, missing model or checkpoint fails the suite.
 
 Markers are `unit`, `integration`, `postgres`, `qdrant`, `rag` and `vision`.
+Suites live under their domains (`tests/agent`, `tests/claims`, `tests/vision`,
+etc.). Shared doubles live in `tests/support`; domain fixtures stay beside the
+suites that use them. PostgreSQL setup/migrations and prerequisite probes live
+in `tests/integration_support` and `tests/integration_prerequisites`.
+The deterministic CI command remains `python -m pytest tests/e2e -m unit`.
+
 `pytest -m postgres` and `pytest -m qdrant` include the PostgreSQL/Qdrant/API
 integration and therefore need both test services. For PostgreSQL alone use `pytest -m 'postgres and not qdrant'`;
 for Qdrant alone use `pytest -m 'qdrant and not postgres'`;

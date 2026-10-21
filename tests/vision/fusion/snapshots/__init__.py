@@ -1,0 +1,1 @@
+"""vision: fusion: snapshots tests."""

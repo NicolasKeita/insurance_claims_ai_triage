@@ -1,10 +1,11 @@
 """Classify tests and check only the prerequisites of the selected integrations."""
 
 import pytest
-from test_agent_tools import configured
-from test_persistence import reference_claim
-from test_persistence_postgres import factory, postgres_engine
-from test_retrieval_qdrant import remote_store
+
+from tests.agent.tools._repositories import configured
+from tests.persistence.mapping._support import reference_claim
+from tests.persistence.postgres._support import factory, postgres_engine
+from tests.support.qdrant_fixtures import remote_store
 
 __all__ = ["configured", "factory", "postgres_engine", "reference_claim", "remote_store"]
 
@@ -31,7 +32,10 @@ def pytest_collection_modifyitems(items):
 def pytest_collection_finish(session):
     if session.config.option.collectonly or session.testsfailed:
         return
-    from integration_prerequisites import PrerequisiteError, check_selected_prerequisites
+    from tests.integration_prerequisites import (
+        PrerequisiteError,
+        check_selected_prerequisites,
+    )
 
     markers = {
         name for item in session.items for name in INTEGRATION_MARKERS if item.get_closest_marker(name) is not None

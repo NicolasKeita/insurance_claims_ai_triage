@@ -21,28 +21,7 @@ def test_unavailable_real_dependencies_never_become_fake_predictions(
 
     monkeypatch.setattr(fakes.FakeTriagePredictor, "predict", forbid_fake)
     monkeypatch.setattr(fakes.FakeAnomalyPredictor, "assess", forbid_fake)
-    preflight = PreflightReport(
-        rows=[
-            {
-                "component": component,
-                "status": unavailable_policy,
-                "reason": "Controlled unavailable dependency",
-                "version": None,
-            }
-            for component in [
-                "postgresql",
-                "qdrant",
-                "knowledge_collections",
-                "similar_claims_collection",
-                "embeddings",
-                "ollama",
-                "triage",
-                "anomaly",
-                "damage_vision",
-                "part_vision",
-            ]
-        ]
-    )
+    preflight = unavailable_preflight(unavailable_policy)
     config = RealEvaluationConfig(fixture_dir=tmp_path / "fixtures", dependency_unavailable=unavailable_policy)
     pipeline = RealClaimsEvaluationPipeline(config, preflight)
     report = evaluate_scenarios(
@@ -74,3 +53,28 @@ def test_fake_visual_golden_labels_are_not_reused_as_real_image_ground_truth(tmp
     assert "no matching real image ground truth" in observed.components["vision"].reason
     assert observed.vision is None
     assert "VISUAL_ADDITIONAL_DAMAGE" not in observed.signals
+
+
+def unavailable_preflight(unavailable_policy):
+    return PreflightReport(
+        rows=[
+            {
+                "component": component,
+                "status": unavailable_policy,
+                "reason": "Controlled unavailable dependency",
+                "version": None,
+            }
+            for component in [
+                "postgresql",
+                "qdrant",
+                "knowledge_collections",
+                "similar_claims_collection",
+                "embeddings",
+                "ollama",
+                "triage",
+                "anomaly",
+                "damage_vision",
+                "part_vision",
+            ]
+        ]
+    )

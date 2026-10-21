@@ -1,15 +1,15 @@
-from agent import tools as adapters
 from agent.models import (
     EvidenceItem,
     EvidenceSourceType,
 )
+from persistence.vision_assessments import VisionAssessmentRepository
 
 from ._data import MAX_SIGNALS, _bounded
 
 
 def _read_visual(self, claim_id, tool):
     with self.factory() as session:
-        record = adapters.VisionAssessmentRepository(session).latest_for_claim(claim_id)
+        record = VisionAssessmentRepository(session).latest_for_claim(claim_id)
     if record is None:
         return self._missing(tool, "No stored visual assessment is available", unavailable=True)
     visual = record.result
