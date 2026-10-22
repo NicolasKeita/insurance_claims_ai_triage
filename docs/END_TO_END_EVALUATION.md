@@ -45,6 +45,11 @@ with `[OK]`; raw exception details and all individual checks remain in
 `preflight.json` and the scenario artifacts. A blocked scenario is not announced
 as running. If the lightweight checks block all scenarios, the terminal explicitly
 states that no model was loaded and no scenario executed.
+When a database blocks the run and `compose.yaml` exists, the terminal also shows
+the command to start both local test databases, their ports and the explicit
+isolated setup option. This is guidance only; the runner never starts Docker.
+On Windows, the hint explicitly asks the user to open Docker Desktop and wait
+for its engine to be ready before running the Compose command.
 
 ## Frozen golden cases
 

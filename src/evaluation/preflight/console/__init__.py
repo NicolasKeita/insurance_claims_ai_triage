@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from evaluation.preflight.config import ROOT
 from evaluation.preflight.console.messages import PARENTS, PURPOSES, explanation, label
 
 MODELS = {"triage", "anomaly", "embeddings", "damage_vision", "part_vision"}
@@ -65,7 +66,27 @@ def print_preflight_summary(report, scenarios, output_dir):
             print_blocked_scenario(report, scenario.scenario_id)
         else:
             print(f"\n[READY] {scenario.scenario_id}: prerequisites available.", flush=True)
+    print_compose_hint(report, scenarios)
     all_blocked = all(item.scenario_id in report.blocked_scenarios for item in scenarios)
     if all_blocked and not any(row["component"] in MODELS for row in report.rows):
         print("\nNo models loaded; no scenarios executed.", flush=True)
     print(f"Technical details: {(Path(output_dir) / 'preflight.json').resolve()}", flush=True)
+
+
+def print_compose_hint(report, scenarios):
+    """Point to the repository's existing test services when a database blocks a run."""
+    blocked = set().union(
+        *(
+            blocking_groups(report, item.scenario_id)
+            for item in scenarios
+            if item.scenario_id in report.blocked_scenarios
+        )
+    )
+    if not (ROOT / "compose.yaml").is_file() or not blocked.intersection({"postgresql", "qdrant"}):
+        return
+    print("\nTip: This repository's compose.yaml can start both test databases (PostgreSQL and Qdrant).", flush=True)
+    print("  1. On Windows, open Docker Desktop and wait for its engine to be ready.", flush=True)
+    print("  2. From the repository root, run:", flush=True)
+    print("  docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test", flush=True)
+    print("  Set --database-url to PostgreSQL on port 5434 and --qdrant-url to http://127.0.0.1:6335.", flush=True)
+    print("  Use --isolated-demo-stack to prepare temporary test data.", flush=True)

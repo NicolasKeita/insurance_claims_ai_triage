@@ -77,3 +77,25 @@ def test_available_model_is_readable_without_a_hash_dump(capsys):
     assert "[OK] PostgreSQL (Relation DB)" in output and "[OK] Qdrant (Vector DB)" in output
     assert "Required for: Accessing claim history" in output
     assert "Required for: Retrieving relevant policy passages" in output
+
+
+@pytest.mark.parametrize("compose_exists,db_blocked", [(True, True), (False, True), (True, False)])
+def test_compose_hint_requires_an_existing_file_and_a_blocked_database(
+    capsys, tmp_path, monkeypatch, compose_exists, db_blocked
+):
+    import evaluation.preflight.console as console
+
+    monkeypatch.setattr(console, "ROOT", tmp_path)
+    if compose_exists:
+        (tmp_path / "compose.yaml").write_text("services: {}", encoding="utf-8")
+    report = missing_services() if db_blocked else PreflightReport()
+    print_preflight_summary(report, [SimpleNamespace(scenario_id="controlled")], tmp_path)
+    output = capsys.readouterr().out
+    command = "docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test"
+    assert output.count(command) == int(compose_exists and db_blocked)
+    if compose_exists and db_blocked:
+        assert "1. On Windows, open Docker Desktop and wait for its engine to be ready." in output
+        assert "2. From the repository root, run:" in output
+        assert output.index("open Docker Desktop") < output.index(command)
+        assert "--database-url" in output and "http://127.0.0.1:6335" in output
+        assert "--isolated-demo-stack" in output
