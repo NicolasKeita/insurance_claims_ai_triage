@@ -7,12 +7,14 @@ This project extracts claim documents, compares the available evidence, builds s
 From an activated `.venv`, `pytest` runs **all unit and integration tests**.
 Pytest is the test interface; no shell runner or custom `--all` option is needed.
 Each normal run prints a short table of available suites once.
+Agents must exclude `tests/e2e` unless the user explicitly requests end-to-end
+tests, as required by `AGENTS.md`. The `unit` marker alone does not exclude them.
 
 ```powershell
 # When needed, start the test containers yourself before running integrations:
 docker compose --profile test up -d --no-deps --wait postgres-test qdrant-test
-pytest
-pytest -m unit
+pytest --ignore=tests/e2e
+pytest -m unit --ignore=tests/e2e
 pytest -m postgres
 pytest -m qdrant
 pytest -m rag
@@ -59,8 +61,10 @@ Prerequisites are checked after selection: `unit` requires no Docker, and `visio
 requires neither PostgreSQL nor Qdrant. External CI connection overrides are
 checked directly without requiring a local Docker installation.
 
-Use one **`.venv`** with `.[dev,vision]` for the application, RAG, agents, pytest
-and YOLO. The real vision case executes directly in this interpreter, with no
+Use **Python 3.12** and one **`.venv`** with `.[dev,vision,cardd-hf]` for the
+application, RAG, agents, pytest, YOLO and FiftyOne data preparation.
+The default interpreter version is recorded in `.python-version`.
+The real vision case executes directly in this interpreter, with no
 delegation, child pytest or `VISION_PYTHON` setting. On this NVIDIA workstation
 `.venv` uses torch **2.14.1+cu132**, torchvision **0.29.1+cu132** and Ultralytics
 **8.4.176**. CPU-only Windows/Linux and macOS remain supported; CUDA is optional.
@@ -106,26 +110,22 @@ AGPL-3.0 or an Enterprise licence depending on use; see its
 Dataset loading uses the official
 [FiftyOne Hugging Face integration](https://docs.voxel51.com/integrations/huggingface.html),
 `fiftyone.utils.huggingface.load_from_hub()`, rather than relying on
-`datasets.load_dataset()` to recover labels. FiftyOne 1.22 supports Python
-3.10–3.13; use a separate compatible environment when the application's Python
-is 3.14. This project's Python minimum is 3.11, so use 3.11–3.13 for that
-environment. The optional `cardd-hf` extra keeps this stack separate from base
-installation and from the `vision` extra. No torch build is pinned or replaced.
-The local `.venv-cardd` used for this task has Python 3.12 and FiftyOne; it only
-loads/prepares data. Training remains in the application/vision environment.
+`datasets.load_dataset()` to recover labels. Use the same Python 3.12 `.venv`
+for data preparation and the application. The optional `cardd-hf` extra installs
+FiftyOne and its Hugging Face integration alongside `dev` and `vision`;
+a separate `.venv-cardd` is unnecessary. Select the CUDA or CPU torch build
+explicitly as described in the installation instructions.
 
-PowerShell from the repository root, after creating `.venv-cardd` with a
-supported Python interpreter:
+PowerShell from the repository root, after installing the Python 3.12 environment:
 
 ```powershell
-.\.venv-cardd\Scripts\python.exe -m pip install -e ".[cardd-hf]" --no-deps
-.\.venv-cardd\Scripts\python.exe -m pip install "fiftyone>=1.22.1,<1.23" "huggingface-hub>=1.33,<3" "pydantic>=2"
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,vision,cardd-hf]"
 $env:CARDD_HF_DATASET = "harpreetsahota/CarDD"
 $env:CARDD_HF_REVISION = "56900bde8dddfe00eb7c03114a1d46e9105e3cdb"
 $env:CARDD_HF_CACHE_DIR = "C:\datasets\cardd_hf_v1"
 $env:CARDD_HF_PREPARED_DIR = "C:\datasets\cardd_hf_v1\prepared_yolo_v2"
-.\.venv-cardd\Scripts\python.exe .\scripts\inspect_cardd_dataset.py --download
-.\.venv-cardd\Scripts\python.exe .\scripts\prepare_cardd_yolo.py --download --converter native
+.\.venv\Scripts\python.exe .\scripts\inspect_cardd_dataset.py --download
+.\.venv\Scripts\python.exe .\scripts\prepare_cardd_yolo.py --download --converter native
 ```
 
 `--download` explicitly enables loading/downloading through FiftyOne. Subsequent
