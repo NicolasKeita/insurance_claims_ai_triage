@@ -62,12 +62,19 @@ and elapsed time. Long operations emit a heartbeat every five seconds with step
 and total elapsed time. Local NVIDIA telemetry is read through `nvidia-smi` when
 available: device utilization, VRAM, temperature and power. These are whole-device
 measurements, not proof that this test caused a hardware fault. Missing GPU tools
-or a telemetry timeout do not stop evaluation. A matching previous recorded run
-provides a duration reference; no percentage or guaranteed ETA is invented.
+or a telemetry timeout do not stop evaluation. A completed real run for the same
+scenario and Ollama model in the same output directory supplies an indicative
+remaining-time estimate (`ETA ~...s remaining`). Completed or skipped stages are
+removed from the estimate, and the active stage's elapsed time is subtracted on
+each update. If a stage exceeds its recorded duration, or has no matching timing,
+the ETA explicitly becomes unknown until that stage finishes. A first run reports
+that no matching history exists. This estimate covers scenario execution, after
+preflight and isolated setup; it is not a guaranteed completion time.
 
 Each attempt keeps a separate `progress/<scenario_id>/<run_id>/` directory:
 
-- `events.jsonl`: timestamped starts, results, heartbeats and handled interruptions;
+- `events.jsonl`: timestamped starts, results, heartbeats, remaining-time estimates
+  and handled interruptions;
 - `last_state.json`: the latest event, replaced atomically;
 - `checkpoint.json`: the latest saved component observations, replaced atomically.
 

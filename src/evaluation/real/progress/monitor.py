@@ -3,15 +3,10 @@
 from threading import Event, Lock, Thread
 from time import perf_counter
 
-from evaluation.real.progress.gpu import gpu_text, read_gpu
+from evaluation.real.progress.console import print_heartbeat, print_stage, print_started
+from evaluation.real.progress.estimate import HistoricalEstimate
+from evaluation.real.progress.gpu import read_gpu
 from evaluation.real.progress.journal import ProgressJournal
-
-LABELS = {
-    "document": "Extract documents",
-    "rag_generation": "Generate grounded answer with Ollama",
-    "agent": "Review claim with the Ollama agent",
-    "similar_indexing": "Index similar claims",
-}
 
 
 class ScenarioProgress:
@@ -20,6 +15,7 @@ class ScenarioProgress:
     def __init__(self, output_dir, scenario_id, reference=None, *, interval=5):
         self.journal = ProgressJournal(output_dir, scenario_id)
         self.reference = reference or {}
+        self.estimate = HistoricalEstimate(self.reference)
         self.interval = interval
         self.started = perf_counter()
         self.current = None
@@ -28,12 +24,9 @@ class ScenarioProgress:
         self.closed = False
 
     def __enter__(self):
-        self.journal.record({"event": "scenario_started", "status": "RUNNING"})
-        print(f"  Progress files: {self.journal.directory}", flush=True)
-        if "total" in self.reference:
-            print(f"  Previous recorded run: {self.reference['total']:.1f}s (reference only; ETA unknown).", flush=True)
-        else:
-            print(f"  ETA unknown; active steps and elapsed time will update every {self.interval:g}s.", flush=True)
+        estimate = self._estimate(perf_counter())
+        self.journal.record({"event": "scenario_started", "status": "RUNNING", **estimate})
+        print_started(self.journal.directory, self.reference, estimate, self.interval)
         self.thread.start()
         return self
 
@@ -42,23 +35,25 @@ class ScenarioProgress:
             now = perf_counter()
             if status == "RUNNING":
                 self.current = (component, now)
+            else:
+                self.current = None
+                self.estimate.completed.add(component)
+            estimate = self._estimate(now)
             event = {
                 "event": "stage_started" if status == "RUNNING" else "stage_finished",
                 "component": component,
                 "status": status,
                 "elapsed_seconds": now - self.started,
                 **details,
+                **estimate,
             }
             self.journal.record(event)
             self.journal.checkpoint(observation)
-            if status != "RUNNING":
-                self.current = None
-            label = LABELS.get(component, component.replace("_", " ").capitalize())
-            duration = f" | {details['duration_seconds']:.1f}s" if "duration_seconds" in details else ""
-            print(f"  [{status}] {component}: {label}{duration} | total {now - self.started:.1f}s", flush=True)
-            reason = observation.trace[-1].outputs.get("error") if observation.trace else None
-            if component == "agent" and status == "FAIL" and reason == details.get("reason") and reason:
-                print(f"    Reason: {reason}", flush=True)
+            print_stage(event, observation)
+
+    def _estimate(self, now):
+        component, started = self.current if self.current is not None else (None, now)
+        return self.estimate.snapshot(now - self.started, component, now - started)
 
     def _heartbeat(self):
         while not self.stop.wait(self.interval):
@@ -71,6 +66,7 @@ class ScenarioProgress:
                 if self.closed or self.stop.is_set() or active != self.current:
                     continue
                 now = perf_counter()
+                estimate = self._estimate(now)
                 self.journal.record(
                     {
                         "event": "heartbeat",
@@ -79,13 +75,10 @@ class ScenarioProgress:
                         "stage_elapsed_seconds": now - active[1],
                         "elapsed_seconds": now - self.started,
                         "gpu": sample,
+                        **estimate,
                     }
                 )
-                print(
-                    f"  [RUNNING] {active[0]} | step {now - active[1]:.1f}s | total {now - self.started:.1f}s | "
-                    + gpu_text(sample),
-                    flush=True,
-                )
+                print_heartbeat(active[0], now - active[1], now - self.started, sample, estimate)
 
     def complete(self, observation):
         with self.lock:
@@ -97,6 +90,9 @@ class ScenarioProgress:
                     "status": "FINISHED",
                     "elapsed_seconds": perf_counter() - self.started,
                     "component_statuses": {key: item.status for key, item in observation.components.items()},
+                    "estimated_remaining_seconds": 0,
+                    "eta_reason": None,
+                    "reference_total_seconds": self.reference.get("total"),
                 }
             )
 

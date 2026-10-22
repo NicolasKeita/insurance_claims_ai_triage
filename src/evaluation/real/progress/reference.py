@@ -1,8 +1,21 @@
-"""Previous recorded timings are context, never a promised remaining duration."""
+"""Load usable timings from a completed, successful real observation."""
 
 import json
 import math
 from pathlib import Path
+
+
+def _duration(item):
+    if item.get("status") != "PASS":
+        return None
+    value = item.get("duration_seconds")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        duration = float(value)
+    except OverflowError:
+        return None
+    return duration if math.isfinite(duration) and duration > 0 else None
 
 
 def previous_timings(output_dir, scenario_id, model=None):
@@ -14,12 +27,11 @@ def previous_timings(output_dir, scenario_id, model=None):
         previous_model = observation.get("model_versions", {}).get("agent_llm")
         if model and previous_model != model:
             return {}
-        return {
-            name: float(item["duration_seconds"])
-            for name, item in observation.get("components", {}).items()
-            if isinstance(item.get("duration_seconds"), (int, float))
-            and math.isfinite(item["duration_seconds"])
-            and item["duration_seconds"] > 0
-        }
+        components = observation.get("components", {})
+        if any(item.get("status") in {"FAIL", "RUNNING"} for item in components.values()):
+            return {}
+        if _duration(components.get("total", {})) is None:
+            return {}
+        return {name: duration for name, item in components.items() if (duration := _duration(item)) is not None}
     except (OSError, ValueError, TypeError, AttributeError):
         return {}
