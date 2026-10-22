@@ -57,6 +57,28 @@ preserve RAG query/document encoding and symmetric claim encoding. Different
 configured model names still use separate weights. The eligibility check after
 model loading reads the recorded results; it does not repeat service probes.
 
+While a real scenario runs, the terminal prints each operation's start, result
+and elapsed time. Long operations emit a heartbeat every five seconds with step
+and total elapsed time. Local NVIDIA telemetry is read through `nvidia-smi` when
+available: device utilization, VRAM, temperature and power. These are whole-device
+measurements, not proof that this test caused a hardware fault. Missing GPU tools
+or a telemetry timeout do not stop evaluation. A matching previous recorded run
+provides a duration reference; no percentage or guaranteed ETA is invented.
+
+Each attempt keeps a separate `progress/<scenario_id>/<run_id>/` directory:
+
+- `events.jsonl`: timestamped starts, results, heartbeats and handled interruptions;
+- `last_state.json`: the latest event, replaced atomically;
+- `checkpoint.json`: the latest saved component observations, replaced atomically.
+
+Events and snapshots are flushed and synchronized to disk before starting the
+next operation. After a sudden termination, a stage start without a matching
+finish identifies the last known active operation; it does not establish the
+underlying cause. Hardware or storage failure can still lose recent writes.
+Retries preserve earlier attempt directories. Monitoring begins at scenario
+execution, after preflight and isolated setup. It does not run for blocked
+scenarios or `--preflight-only`.
+
 ## Frozen golden cases
 
 `E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.

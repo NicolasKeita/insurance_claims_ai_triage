@@ -34,7 +34,11 @@ class _ProgressPipeline:
         missing = preflight.blocked_scenarios.get(scenario.scenario_id) if preflight is not None else None
         if not missing:
             print(f"Running {scenario.scenario_id} ...", flush=True)
-        result = self.pipeline.run(scenario)
+        if not missing and hasattr(self.pipeline, "progress"):
+            from evaluation.real.progress import run_with_progress
+            result = run_with_progress(self.pipeline, scenario, self.output_dir)
+        else:
+            result = self.pipeline.run(scenario)
         # Keep the actual observation even if the process is interrupted before
         # the complete report can be assembled (for example during later LLM calls).
         if self.output_dir is not None:

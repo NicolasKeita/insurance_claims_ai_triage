@@ -1,8 +1,4 @@
-"""Real application adapters behind the opt-in evaluation pipeline.
-
-Unavailable components remain explicit. Independent document parsing, model
-inference and local multimodal diagnostics do not require a running database.
-"""
+"""Real application adapters; unavailable components remain explicit."""
 
 from evaluation.models import EvaluationScenario, PipelineObservation
 from evaluation.preflight import PreflightReport, RealEvaluationConfig, run_preflight
@@ -30,10 +26,11 @@ class RealClaimsEvaluationPipeline(
 ):
     """Evaluate golden scenarios against the real application services."""
 
-    def __init__(self, config: RealEvaluationConfig, preflight: PreflightReport | None = None):
+    def __init__(self, config: RealEvaluationConfig, preflight: PreflightReport | None = None, *, progress=None):
         self.config = config
         self.preflight = preflight if preflight is not None else run_preflight(config)
         self.resources = self.preflight.resources
+        self.progress = progress
 
     def close(self):
         self.preflight.close()

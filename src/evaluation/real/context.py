@@ -36,7 +36,12 @@ class RealRun:
 class ComponentRecorder:
     """Record pass/fail components, explicit skips and observed versions."""
 
+    def _notify(self, observation, component, status, **details):
+        if getattr(self, "progress", None) is not None:
+            self.progress(component, status, observation, **details)
+
     def _record(self, observation, component, operation, *, inputs=None, sources=None):
+        self._notify(observation, component, "RUNNING")
         started = perf_counter()
         try:
             result = operation()
@@ -59,6 +64,7 @@ class ComponentRecorder:
                 source_references=sources or [],
             )
         )
+        self._notify(observation, component, status, duration_seconds=duration, reason=reason)
         return result
 
     def _skip(self, observation, component, reason, *, dependency=False):
@@ -67,6 +73,7 @@ class ComponentRecorder:
         observation.trace.append(TraceEvent(component=component, status=status, outputs={"reason": reason}))
         if status == "FAIL":
             observation.errors.append(f"{component}: {reason}")
+        self._notify(observation, component, status, reason=reason)
 
     def _available(self, observation, component, dependencies):
         missing = [name for name in dependencies if not self.preflight.available(name)]
