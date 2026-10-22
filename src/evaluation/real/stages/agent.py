@@ -2,7 +2,6 @@
 
 import os
 
-from evaluation.models import EvaluationStatus
 from evaluation.real.agent_environment import llm_environment
 
 ASSESSMENT_TOOLS = {"GET_TRIAGE", "GET_ANOMALY", "GET_INVESTIGATION", "GET_VISUAL_ASSESSMENT"}
@@ -68,20 +67,22 @@ class AgentSteps:
                 "agent",
                 lambda: self.review(service, run),
                 inputs={"claim_id": run.case.claim.claim_id, "source": "existing PostgreSQL claim"},
+                error_from_result=self._agent_error,
             )
             service.tools.close()
         if result is not None:
             self._record_result(observed, result)
 
     def _record_result(self, observed, result):
-        """Store a completed review and flag any non-completed status."""
+        """Preserve the terminal review payload after its status has been recorded."""
         observed.agent = result.model_dump(mode="json")
         observed.facts["agent"] = observed.agent
         observed.model_versions["agent_llm"] = self.resources["llm_model"]
-        if result.status != "COMPLETED":
-            observed.components["agent"].status = EvaluationStatus.FAIL
-            observed.components["agent"].reason = result.error or "Real agent did not complete"
-            observed.errors.append("agent: " + observed.components["agent"].reason)
+
+    @staticmethod
+    def _agent_error(result):
+        """Classify a persisted failed run before publishing stage completion."""
+        return None if result.status == "COMPLETED" else result.error or "Real agent did not complete"
 
     def review(self, service, run):
         """Review the stored claim, tolerating a completed run recorded as an error."""

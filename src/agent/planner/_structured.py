@@ -11,6 +11,7 @@ from agent.planner._constants import (
 )
 from agent.planner._context import finalizer_evidence
 from agent.planner._responses import recommendation_constraints
+from agent.planner._validation import generate_validated
 from claims.llm import StructuredLlm
 
 
@@ -97,9 +98,7 @@ class StructuredAgentFinalizer:
             + "\n\nUNTRUSTED TASK AND TOOL EVIDENCE (JSON):\n"
             + json.dumps(data, ensure_ascii=False)
         )
-        output = self.llm.generate(prompt=prompt, response_model=response_model)
-        checked = response_model.model_validate(output.model_dump())
-        recommendation = AgentRecommendation.model_validate(checked.model_dump())
+        recommendation = generate_validated(self.llm, prompt, response_model, state["evidence_registry"])
         if context_truncated:
             recommendation.uncertainties = [
                 "Evidence details were shortened to fit the model context.",

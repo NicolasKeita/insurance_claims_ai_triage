@@ -1,7 +1,11 @@
 from typing import Literal
 
-from agent.config import CLAIMS_AGENT_PROMPT_VERSION, CLAIMS_AGENT_VERSION
-from agent.evidence import EvidenceValidationError, rationale_evidence_ids, validate_recommendation
+from agent.evidence import (
+    EvidenceValidationError,
+    rationale_evidence_ids,
+    validate_recommendation,
+    validate_recommendation_versions,
+)
 from agent.graph._failure import failure
 from agent.models import (
     AgentRecommendation,
@@ -28,6 +32,8 @@ def finalize(state, finalizer):
         else:
             recommendation = AgentRecommendation.model_validate(finalizer.finalize(state).model_dump())
         return {"recommendation": recommendation.model_dump(mode="json")}
+    except EvidenceValidationError as error:
+        return failure("GROUNDING", code=error.code)
     except Exception:
         return failure("GENERATION")
 
@@ -43,11 +49,7 @@ def validate(state):
     """
     try:
         recommendation = AgentRecommendation.model_validate(state["recommendation"])
-        if (
-            recommendation.agent_version != CLAIMS_AGENT_VERSION
-            or recommendation.prompt_version != CLAIMS_AGENT_PROMPT_VERSION
-        ):
-            raise EvidenceValidationError("Recommendation versions do not match this agent")
+        validate_recommendation_versions(recommendation)
         registry = {k: EvidenceItem.model_validate(v) for k, v in state["evidence_registry"].items()}
         citations = validate_recommendation(recommendation, registry)
         recommendation.citations = citations
@@ -65,7 +67,7 @@ def validate(state):
             "recommendation": recommendation.model_dump(mode="json"),
             "status": RunStatus.COMPLETED.value,
         }
-    except EvidenceValidationError:
-        return failure("GROUNDING")
+    except EvidenceValidationError as error:
+        return failure("GROUNDING", code=error.code)
     except Exception:
         return failure("GENERATION")

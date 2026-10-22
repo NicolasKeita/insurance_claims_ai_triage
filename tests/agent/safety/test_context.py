@@ -16,7 +16,7 @@ from tests.infrastructure.support.agent_fakes import (
 
 
 def test_large_finalizer_evidence_is_bounded_without_losing_ids():
-    llm = FakeStructuredLlm([make_recommendation()])
+    llm = FakeStructuredLlm([make_recommendation(["claim:context-0"])])
     registry = {}
     for index in range(40):
         item = make_evidence(f"claim:context-{index}", summary='\\"' * 1900)

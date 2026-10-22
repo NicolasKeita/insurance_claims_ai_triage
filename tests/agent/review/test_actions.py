@@ -86,6 +86,6 @@ def test_standard_review_remains_available_without_a_collected_repair_signal(rev
     recommendation.recommended_next_action = RecommendedNextAction.CONTINUE_STANDARD_REVIEW
     llm = FakeStructuredLlm([recommendation])
     output = StructuredAgentFinalizer(llm).finalize(finalizer_state(review_evidence))
-    assert llm.calls[0][1] is AgentRecommendation
+    assert issubclass(llm.calls[0][1], AgentRecommendation)
     assert output.recommended_next_action == RecommendedNextAction.CONTINUE_STANDARD_REVIEW
     assert validate_recommendation(output, {review_evidence.evidence_id: review_evidence}) == []

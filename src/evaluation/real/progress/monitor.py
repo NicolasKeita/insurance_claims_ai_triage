@@ -56,6 +56,9 @@ class ScenarioProgress:
             label = LABELS.get(component, component.replace("_", " ").capitalize())
             duration = f" | {details['duration_seconds']:.1f}s" if "duration_seconds" in details else ""
             print(f"  [{status}] {component}: {label}{duration} | total {now - self.started:.1f}s", flush=True)
+            reason = observation.trace[-1].outputs.get("error") if observation.trace else None
+            if component == "agent" and status == "FAIL" and reason == details.get("reason") and reason:
+                print(f"    Reason: {reason}", flush=True)
 
     def _heartbeat(self):
         while not self.stop.wait(self.interval):

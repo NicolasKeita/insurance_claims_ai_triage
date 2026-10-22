@@ -69,6 +69,8 @@ the recorded repair discrepancy is sufficient grounds to request clarification o
 even when other details are missing. Do not conclude routine review or abstain from that follow-up.
 Otherwise, if essential evidence is missing, choose NO_RECOMMENDATION rather than inventing an answer.
 human_review_required must be true.
+If application validation feedback is provided, correct that contract using the same collected evidence.
+Copy exact source IDs and required versions; never invent facts to satisfy a validation check.
 Visual observations are geometric model evidence, not causal conclusions. Positive visual
 corroboration does not increase risk. Non-detection cannot contradict declared damage.
 Set agent_version="{CLAIMS_AGENT_VERSION}" and prompt_version="{CLAIMS_AGENT_PROMPT_VERSION}".

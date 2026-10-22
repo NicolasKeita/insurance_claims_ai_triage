@@ -75,6 +75,8 @@ Events and snapshots are flushed and synchronized to disk before starting the
 next operation. After a sudden termination, a stage start without a matching
 finish identifies the last known active operation; it does not establish the
 underlying cause. Hardware or storage failure can still lose recent writes.
+An agent run returned with a failed status is recorded as `[FAIL]` immediately,
+with its application-owned error reason in the terminal and progress artifacts.
 Retries preserve earlier attempt directories. Monitoring begins at scenario
 execution, after preflight and isolated setup. It does not run for blocked
 scenarios or `--preflight-only`.
@@ -193,7 +195,7 @@ limit and require no LLM generation. An unavailable stored investigation remains
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v4` instructions distinguish queue priority from unresolved
+`claims_agent_prompt_v5` instructions distinguish queue priority from unresolved
 document discrepancies and ask for clarification or repair-expert review when
 quote items are unexplained. The benchmark's acceptable actions remain unchanged.
 For collected `ADDITIONAL_QUOTE_DAMAGE` or `UNMAPPED_QUOTE_ITEM` signals, the
@@ -203,6 +205,17 @@ An ordinary queue priority does not remove this follow-up requirement. The same
 checks run before accepting the recommendation, including with a custom LLM
 adapter; incompatible output is rejected rather than rewritten. Without a
 collected repair discrepancy, the original action choices remain available.
+
+The generation schema also restricts source IDs to collected evidence and fixes
+agent/prompt versions to their current values. Grounding failures retain a
+specific application-owned code, such as `UNKNOWN_EVIDENCE_ID` or
+`REPAIR_ASSESSMENT_NOT_CITED`, in the saved run and evaluation output. Raw rejected
+drafts and provider exception details are not included in these messages.
+For a correctable grounding failure, the finalizer requests one new response
+using the same evidence and safe validation feedback. This adds at most one LLM
+generation; a valid first response adds none. Transport errors on the initial
+call and invalid source metadata are not retried. A second invalid response
+still fails all normal checks; no decision or source is rewritten to pass.
 
 When a restricted Windows sandbox cannot create pytest's default temporary
 directory, use a writable workspace `--basetemp` directory after creating its

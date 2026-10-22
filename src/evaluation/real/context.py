@@ -40,17 +40,19 @@ class ComponentRecorder:
         if getattr(self, "progress", None) is not None:
             self.progress(component, status, observation, **details)
 
-    def _record(self, observation, component, operation, *, inputs=None, sources=None):
+    def _record(self, observation, component, operation, *, error_from_result=None, **trace_details):
         self._notify(observation, component, "RUNNING")
         started = perf_counter()
         try:
             result = operation()
             value = payload(result)
             outputs = value if isinstance(value, dict) else {"result": value}
-            status, reason = "PASS", None
+            reason = error_from_result(result) if error_from_result is not None else None
+            status = "FAIL" if reason is not None else "PASS"
         except Exception as error:
             result, outputs = None, {}
             status, reason = "FAIL", f"{type(error).__name__}: {error}"
+        if status == "FAIL":
             observation.errors.append(f"{component}: {reason}")
         duration = perf_counter() - started
         observation.components[component] = ComponentResult(status=status, duration_seconds=duration, reason=reason)
@@ -58,10 +60,10 @@ class ComponentRecorder:
             TraceEvent(
                 component=component,
                 status=status,
-                inputs=inputs or {},
+                inputs=trace_details.get("inputs") or {},
                 outputs=outputs,
                 duration_seconds=duration,
-                source_references=sources or [],
+                source_references=trace_details.get("sources") or [],
             )
         )
         self._notify(observation, component, status, duration_seconds=duration, reason=reason)
