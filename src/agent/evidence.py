@@ -15,35 +15,39 @@ class EvidenceValidationError(ValueError):
     """The finalizer cited evidence outside the collected run context."""
 
 
+def rationale_evidence_ids(recommendation: AgentRecommendation) -> list[str]:
+    """Derive the source union in first-citation order, independently of LLM bookkeeping."""
+    return list(dict.fromkeys(eid for rationale in recommendation.rationale for eid in rationale.evidence_ids))
+
+
 def validate_recommendation(
     recommendation: AgentRecommendation,
     registry: Mapping[str, EvidenceItem],
 ) -> list[KnowledgeCitation]:
-    """Validate every citation and resolve document metadata without trusting LLMs.
+    """Validate all supplied IDs; resolve metadata for sources supporting rationale.
 
     A rationale must cite collected evidence when evidence is available. With an
     empty registry, only a recommendation about missing information is possible;
     its rationale can describe that absence without inventing a source.
+    Generated top-level IDs are checked even when normalization will discard them.
     """
     if any(key != item.evidence_id for key, item in registry.items()):
         raise EvidenceValidationError("Evidence registry keys do not match evidence IDs")
-    cited = list(recommendation.evidence_ids)
+    supporting_ids = rationale_evidence_ids(recommendation)
     for rationale in recommendation.rationale:
         if registry and not rationale.evidence_ids:
             raise EvidenceValidationError("A rationale must cite collected evidence")
-        cited.extend(rationale.evidence_ids)
-    cited = list(dict.fromkeys(cited))
-    if set(cited) - registry.keys():
+    if set([*recommendation.evidence_ids, *supporting_ids]) - registry.keys():
         raise EvidenceValidationError("Recommendation cited IDs absent from collected evidence")
     if recommendation.recommended_next_action != RecommendedNextAction.NO_RECOMMENDATION:
         if not registry:
             raise EvidenceValidationError("A recommendation without collected evidence must abstain")
-        if not recommendation.rationale or not cited:
+        if not recommendation.rationale or not supporting_ids:
             raise EvidenceValidationError("A supported recommendation must include at least one cited rationale")
 
     citations = []
     knowledge_types = {EvidenceSourceType.POLICY_CHUNK, EvidenceSourceType.PROCEDURE_CHUNK}
-    for evidence_id in cited:
+    for evidence_id in supporting_ids:
         item = registry[evidence_id]
         if item.source_type not in knowledge_types:
             continue

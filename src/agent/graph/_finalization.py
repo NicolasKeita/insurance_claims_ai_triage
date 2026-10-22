@@ -1,7 +1,7 @@
 from typing import Literal
 
 from agent.config import CLAIMS_AGENT_PROMPT_VERSION, CLAIMS_AGENT_VERSION
-from agent.evidence import EvidenceValidationError, validate_recommendation
+from agent.evidence import EvidenceValidationError, rationale_evidence_ids, validate_recommendation
 from agent.graph._failure import failure
 from agent.models import (
     AgentRecommendation,
@@ -51,14 +51,7 @@ def validate(state):
         registry = {k: EvidenceItem.model_validate(v) for k, v in state["evidence_registry"].items()}
         citations = validate_recommendation(recommendation, registry)
         recommendation.citations = citations
-        recommendation.evidence_ids = list(
-            dict.fromkeys(
-                [
-                    *recommendation.evidence_ids,
-                    *(e for rationale in recommendation.rationale for e in rationale.evidence_ids),
-                ]
-            )
-        )
+        recommendation.evidence_ids = rationale_evidence_ids(recommendation)
         limitations = [
             f"{o['tool_name']}: {o.get('message') or o['status']}"
             for o in state["observations"]
