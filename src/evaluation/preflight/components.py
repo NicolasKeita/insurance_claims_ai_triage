@@ -46,7 +46,10 @@ class ComponentProbes:
 
             url = self.config.qdrant_url or RetrievalConfig.from_env().qdrant_url
             client = QdrantClient(
-                url=url, api_key=os.environ.get("QDRANT_API_KEY"), timeout=self.config.timeout_seconds
+                url=url,
+                api_key=os.environ.get("QDRANT_API_KEY"),
+                timeout=self.config.timeout_seconds,
+                check_compatibility=False,
             )
             try:
                 available = [item.name for item in client.get_collections().collections]

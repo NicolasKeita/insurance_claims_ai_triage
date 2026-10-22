@@ -37,6 +37,15 @@ explicit safe test endpoints, but does not require pre-existing claims or vector
 collections: it creates them after the prerequisite checks pass. Checks confirm
 presence and availability; successful loading and inference are validated later.
 
+Terminal output summarizes each blocked scenario with the missing upstream
+components and corrective actions. Dependent checks are grouped beneath their
+cause: an unreachable Qdrant server is one blocker, rather than three repeated
+errors for Qdrant and both collection checks. Available prerequisites are shown
+with `[OK]`; raw exception details and all individual checks remain in
+`preflight.json` and the scenario artifacts. A blocked scenario is not announced
+as running. If the lightweight checks block all scenarios, the terminal explicitly
+states that no model was loaded and no scenario executed.
+
 ## Frozen golden cases
 
 `E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.

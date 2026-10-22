@@ -32,9 +32,7 @@ class _ProgressPipeline:
     def run(self, scenario):
         preflight = getattr(self.pipeline, "preflight", None)
         missing = preflight.blocked_scenarios.get(scenario.scenario_id) if preflight is not None else None
-        if missing:
-            print(f"Skipping {scenario.scenario_id}: " + "; ".join(missing), flush=True)
-        else:
+        if not missing:
             print(f"Running {scenario.scenario_id} ...", flush=True)
         result = self.pipeline.run(scenario)
         # Keep the actual observation even if the process is interrupted before
@@ -43,7 +41,8 @@ class _ProgressPipeline:
             _write_json(self.output_dir / "observations" / f"{scenario.scenario_id}.json",
                         result.model_dump(mode="json"))
         statuses = ", ".join(f"{key}={item.status}" for key, item in result.components.items() if key != "total")
-        print(f"  {statuses}", flush=True)
+        if not missing:
+            print(f"  {statuses}", flush=True)
         return result
 
 
@@ -94,16 +93,18 @@ def main(argv=None) -> int:
             fail_fast = bool(args.fail_fast)
         else:
             from evaluation.preflight import prepare_preflight, print_preflight_row
+            from evaluation.preflight.console import print_preflight_summary
             from evaluation.real import RealClaimsEvaluationPipeline
             names = ("include_vision", "include_agent", "include_rag", "include_similar", "fail_fast",
                      "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack")
-            print("Real-stack prerequisites (no model loading): component / status / version / reason", flush=True)
+            print("Vérification des prérequis avant le chargement des modèles...", flush=True)
             config, preflight = prepare_preflight(
                 args.config, scenarios,
                 overrides={**{name: getattr(args, name) for name in names}, "fixture_dir": args.output_dir / "fixtures"},
                 progress=print_preflight_row, load_models=not args.preflight_only,
             )
             _write_json(args.output_dir / "preflight.json", preflight.rows)
+            print_preflight_summary(preflight, scenarios, args.output_dir)
             if args.preflight_only:
                 print(f"Preflight saved: {(args.output_dir / 'preflight.json').resolve()}")
                 return int(any(row["status"] == "FAIL" for row in preflight.rows))

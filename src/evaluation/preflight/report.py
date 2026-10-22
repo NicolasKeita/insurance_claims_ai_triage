@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from evaluation.preflight.console import print_preflight_row as print_preflight_row
+
 MODEL_FILES = {name: name + "_files" for name in ("triage", "anomaly", "damage_vision", "part_vision")}
 FILE_CHECKS = {"embeddings": "embedding_files", **MODEL_FILES}
 ISOLATED_COLLECTIONS = {"knowledge_collections", "similar_claims_collection"}
@@ -37,13 +39,6 @@ def checkpoint_version(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return "sha256:" + digest.hexdigest()
-
-
-def print_preflight_row(row: dict) -> None:
-    print(
-        f"{row['component']:<27} {row['status']:<5} {row.get('version') or '-'} {row.get('reason') or ''}",
-        flush=True,
-    )
 
 
 def requirements(config, scenario):
@@ -85,6 +80,7 @@ def record_eligibility(session, scenario, names, *, models_loaded=False):
         "version": None,
         "reason": "; ".join(missing) if missing else None,
         "requirements": sorted(names),
+        "missing_components": [name for name in sorted(checks) if not session.report.available(name)],
     }
     existing = next((item for item in session.report.rows if item["component"] == row["component"]), None)
     if existing is not None:
