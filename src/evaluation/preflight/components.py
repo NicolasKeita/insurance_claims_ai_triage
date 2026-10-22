@@ -69,7 +69,8 @@ class ComponentProbes:
             host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
             response = httpx.get(host + "/api/tags", timeout=self.config.timeout_seconds)
             response.raise_for_status()
-            names = [item["name"] for item in response.json().get("models", [])]
+            models = response.json().get("models", [])
+            names = [item["name"] for item in models]
             model = self.config.llm_model or os.environ.get("CLAIMS_LLM_MODEL")
             self.report.resources["ollama_models"] = names
             if not model:
@@ -79,7 +80,14 @@ class ComponentProbes:
             if model not in names and model + ":latest" not in names:
                 raise RuntimeError(f"Requested Ollama model {model!r} is not installed; no pull attempted")
             self.report.resources["llm_model"] = model
-            return {"version": model, "endpoint": host, "installed_models": names, "temperature": 0, "seed": 42}
+            selected = next(item for item in models if item["name"] == model) if model in names else next(
+                item for item in models if item["name"] == model + ":latest"
+            )
+            details = selected.get("details") or {}
+            return {
+                "version": model, "endpoint": host, "installed_models": names, "temperature": 0, "seed": 42,
+                "model_family": details.get("family"), "parameter_size": details.get("parameter_size"),
+            }
 
         self.probe("ollama", ollama, enabled=self.config.include_agent or self.config.include_rag)
 

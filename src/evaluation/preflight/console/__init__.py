@@ -16,6 +16,9 @@ def print_preflight_row(row):
     if name in {"retrieval_configuration", "isolated_configuration", "mlflow"}:
         return
     version = f" ({row['version']})" if name == "ollama" and row.get("version") else ""
+    if version and row.get("model_family"):
+        identity = " ".join(str(row[key]) for key in ("model_family", "parameter_size") if row.get(key))
+        version = f" ({row['version']}; {identity})"
     print(f"  [OK] {label(name)}{version}", flush=True)
     if name in PURPOSES:
         print(f"    Required for: {PURPOSES[name]}", flush=True)
