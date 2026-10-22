@@ -97,7 +97,7 @@ def main(argv=None) -> int:
             from evaluation.real import RealClaimsEvaluationPipeline
             names = ("include_vision", "include_agent", "include_rag", "include_similar", "fail_fast",
                      "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack")
-            print("Vérification des prérequis avant le chargement des modèles...", flush=True)
+            print("Checking prerequisites before loading models...", flush=True)
             config, preflight = prepare_preflight(
                 args.config, scenarios,
                 overrides={**{name: getattr(args, name) for name in names}, "fixture_dir": args.output_dir / "fixtures"},

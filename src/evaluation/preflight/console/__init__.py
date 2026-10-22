@@ -44,15 +44,15 @@ def print_blocked_scenario(report, scenario_id):
     status = row.get(
         "status", next((item["status"] for item in report.rows if item["component"] == "configuration"), "SKIP")
     )
-    print(f"\n[{status}] {scenario_id} : test non exécuté.", flush=True)
-    print(f"  Composants bloquants : {len(groups)}", flush=True)
+    print(f"\n[{status}] {scenario_id}: test not run.", flush=True)
+    print(f"  Blocking components: {len(groups)}", flush=True)
     for name, dependents in groups.items():
-        reason = next((item.get("reason", "") for item in report.rows if item["component"] == name), "Non vérifié")
+        reason = next((item.get("reason", "") for item in report.rows if item["component"] == name), "Not checked")
         cause, action = explanation(name, reason)
-        print(f"  - {label(name)} : {cause}.", flush=True)
-        print(f"    À faire : {action}", flush=True)
+        print(f"  - {label(name)}: {cause}.", flush=True)
+        print(f"    Action: {action}", flush=True)
         if dependents:
-            print("    Non vérifiés : " + ", ".join(label(item) for item in dependents) + ".", flush=True)
+            print("    Not checked: " + ", ".join(label(item) for item in dependents) + ".", flush=True)
 
 
 def print_preflight_summary(report, scenarios, output_dir):
@@ -60,8 +60,8 @@ def print_preflight_summary(report, scenarios, output_dir):
         if scenario.scenario_id in report.blocked_scenarios:
             print_blocked_scenario(report, scenario.scenario_id)
         else:
-            print(f"\n[PRÊT] {scenario.scenario_id} : prérequis disponibles.", flush=True)
+            print(f"\n[READY] {scenario.scenario_id}: prerequisites available.", flush=True)
     all_blocked = all(item.scenario_id in report.blocked_scenarios for item in scenarios)
     if all_blocked and not any(row["component"] in MODELS for row in report.rows):
-        print("\nAucun modèle chargé ; aucun scénario exécuté.", flush=True)
-    print(f"Détails techniques : {(Path(output_dir) / 'preflight.json').resolve()}", flush=True)
+        print("\nNo models loaded; no scenarios executed.", flush=True)
+    print(f"Technical details: {(Path(output_dir) / 'preflight.json').resolve()}", flush=True)
