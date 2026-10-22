@@ -18,6 +18,25 @@ LLM fake for an unavailable real component. A component disabled or unavailable
 has an explicit `SKIP` reason. A report with unavailable mandatory expectations
 remains `PARTIAL`, even when every component that actually ran succeeded.
 
+The real CLI first performs lightweight prerequisite checks for each selected
+scenario, before loading embeddings, ML checkpoints or vision weights. These
+checks combine the manifest's `infrastructure_requirements` with the enabled
+agent, RAG and similar-claims stages. They inspect configuration, service
+connectivity, the installed Ollama model, source files, local model/cache files,
+and existing stored claims and collections. No inference or model download is
+performed during these checks. MLflow remains optional when local ML checkpoints
+exist; a registered candidate is an alternative when a local checkpoint is absent.
+
+A missing prerequisite immediately excludes that scenario from execution, with
+an explicit `SKIP` reason in the terminal, preflight JSON and scenario report.
+`--dependency-unavailable FAIL` retains its explicit failure policy. If all selected
+scenarios are blocked by these lightweight checks, no model is loaded and
+supplemental diagnostics are skipped.
+In a mixed selection, eligible scenarios can still run. Isolated setup requires
+explicit safe test endpoints, but does not require pre-existing claims or vector
+collections: it creates them after the prerequisite checks pass. Checks confirm
+presence and availability; successful loading and inference are validated later.
+
 ## Frozen golden cases
 
 `E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.
@@ -79,7 +98,7 @@ From the repository root in PowerShell:
 # Persist a deterministic benchmark run.
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/evaluation/e2e_v1/deterministic
 
-# Real-stack availability and model-loading checks before running scenarios.
+# Lightweight prerequisite checks only; no model loading or scenario execution.
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
 
 # Request the available real components; unavailable components remain explicit.
@@ -113,7 +132,7 @@ explicit rather than inferred from the production application database.
 
 Without isolated setup, the runner requires matching already prepared claims
 in its configured database for history, similar claims and agent tools.
-Unseeded controlled cases remain explicitly incomplete. The installed
+Unseeded controlled cases are skipped before any model loading. The installed
 `gemma3:4b` model and IPv4 Ollama host above reproduce the local execution;
 other environments can select another already installed model explicitly.
 

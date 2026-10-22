@@ -17,6 +17,21 @@ __all__ = ["FORBIDDEN_ACTIONS", "evaluate_assertions", "fact_at", "forbidden_dec
 
 def evaluate_assertions(scenario, observation, *, mode="deterministic"):
     """Evaluate every structured expectation for one scenario observation."""
+    prerequisite = observation.components.get("prerequisites")
+    if prerequisite is not None and prerequisite.status != "PASS":
+        from evaluation.models import EvaluationAssertion
+
+        return [
+            EvaluationAssertion(
+                name="prerequisites:available",
+                component="prerequisites",
+                status=prerequisite.status,
+                expected="all required prerequisites available",
+                actual=prerequisite.reason,
+                message=prerequisite.reason,
+                source=f"traces/{scenario.scenario_id}.json#prerequisites",
+            )
+        ]
     recorder = AssertionRecorder(scenario, observation, mode)
     check_expected_facts(recorder)
     check_expected_signals(recorder)

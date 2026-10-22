@@ -38,6 +38,12 @@ class RealClaimsEvaluationPipeline(
     def close(self):
         self.preflight.close()
 
+    def _skip_prerequisites(self, run):
+        missing = self.preflight.blocked_scenarios.get(run.scenario.scenario_id)
+        if missing:
+            self._skip(run.observed, "prerequisites", "; ".join(missing), dependency=True)
+        return bool(missing)
+
     def run(self, scenario: EvaluationScenario) -> PipelineObservation:
         """
         The shared helper uses real PDF ingestion and production extraction functions.
@@ -45,16 +51,14 @@ class RealClaimsEvaluationPipeline(
         Evaluation fixtures are never silently imported into the application DB. History for
         controlled claims requires an explicit prepared/seeded source.
 
-        The observed subset remains inspectable, but cannot validate a scenario whose required signal
-        depends on unavailable history.
-
         Real stored absence represents the unavailable-tool case; the read-only application tools see
         genuine missing assessment rows.
         """
         run = RealRun(scenario=scenario)
         observed = run.observed
-        observed.provenance["mode"] = "real"
-        observed.provenance["scenario_source"] = scenario.claim_source
+        observed.provenance.update(mode="real", scenario_source=scenario.claim_source)
+        if self._skip_prerequisites(run):
+            return observed
         if scenario.inputs.get("external_vision_diagnostic"):
             self.diagnostic_vision(run)
             self._finish(observed, run.started)

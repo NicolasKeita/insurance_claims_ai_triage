@@ -30,7 +30,12 @@ class _ProgressPipeline:
         self.output_dir = Path(output_dir) if output_dir is not None else None
 
     def run(self, scenario):
-        print(f"Running {scenario.scenario_id} ...", flush=True)
+        preflight = getattr(self.pipeline, "preflight", None)
+        missing = preflight.blocked_scenarios.get(scenario.scenario_id) if preflight is not None else None
+        if missing:
+            print(f"Skipping {scenario.scenario_id}: " + "; ".join(missing), flush=True)
+        else:
+            print(f"Running {scenario.scenario_id} ...", flush=True)
         result = self.pipeline.run(scenario)
         # Keep the actual observation even if the process is interrupted before
         # the complete report can be assembled (for example during later LLM calls).
@@ -88,19 +93,22 @@ def main(argv=None) -> int:
             pipeline = ClaimsEvaluationPipeline()
             fail_fast = bool(args.fail_fast)
         else:
-            from evaluation.preflight import RealEvaluationConfig, print_preflight_row, run_preflight
+            from evaluation.preflight import prepare_preflight, print_preflight_row
             from evaluation.real import RealClaimsEvaluationPipeline
             names = ("include_vision", "include_agent", "include_rag", "include_similar", "fail_fast",
                      "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack")
-            config = RealEvaluationConfig.from_toml(args.config, **{name: getattr(args, name) for name in names})
-            config = replace(config, fixture_dir=args.output_dir / "fixtures")
-            print("Real-stack preflight: component / status / version / reason", flush=True)
-            preflight = run_preflight(config, progress=print_preflight_row)
+            print("Real-stack prerequisites (no model loading): component / status / version / reason", flush=True)
+            config, preflight = prepare_preflight(
+                args.config, scenarios,
+                overrides={**{name: getattr(args, name) for name in names}, "fixture_dir": args.output_dir / "fixtures"},
+                progress=print_preflight_row, load_models=not args.preflight_only,
+            )
             _write_json(args.output_dir / "preflight.json", preflight.rows)
             if args.preflight_only:
                 print(f"Preflight saved: {(args.output_dir / 'preflight.json').resolve()}")
                 return int(any(row["status"] == "FAIL" for row in preflight.rows))
-            if config.isolated_demo_stack:
+            runnable = any(item.scenario_id not in preflight.blocked_scenarios for item in scenarios)
+            if config.isolated_demo_stack and runnable:
                 from evaluation.real import isolated_demo_stack
                 _write_json(args.output_dir / "preflight_before_isolated_setup.json", preflight.rows)
                 missing = [name for name in ("postgresql", "qdrant", "embeddings") if not preflight.available(name)]
@@ -126,7 +134,7 @@ def main(argv=None) -> int:
         print(f"Artifacts: {args.output_dir.resolve()}")
         failed = counts["FAIL"] > 0
 
-        if args.mode == "real" and args.include_diagnostics:
+        if args.mode == "real" and args.include_diagnostics and runnable:
             from evaluation.real import real_diagnostic_scenarios
             diagnostics = evaluate_scenarios(real_diagnostic_scenarios(), _ProgressPipeline(pipeline, args.output_dir / "diagnostics"), mode="real",
                 preflight=preflight.rows, fail_fast=False)
@@ -134,6 +142,9 @@ def main(argv=None) -> int:
             write_report(diagnostics, args.output_dir / "diagnostics")
             print(f"Separate diagnostic artifacts: {(args.output_dir / 'diagnostics').resolve()}")
             failed |= any(result.status == "FAIL" for result in diagnostics.results)
+
+        if args.mode == "real" and args.include_diagnostics and not runnable:
+            print("Diagnostics skipped: no selected golden scenario passed prerequisites", flush=True)
 
         if args.save_baseline:
             path = args.output_dir / "baseline_summary.json"
