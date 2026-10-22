@@ -54,8 +54,10 @@ class IsolatedDemoSetup:
             )
         if self.config.include_similar:
             config = self.preflight.resources["retrieval_config"]
-            embeddings = SentenceTransformerEmbeddingProvider(config.embedding_model, local_files_only=True)
-            self.preflight.resources["similar_embeddings"] = embeddings
+            embeddings = self.preflight.resources.get("similar_embeddings")
+            if embeddings is None:
+                embeddings = SentenceTransformerEmbeddingProvider(config.embedding_model, local_files_only=True)
+                self.preflight.resources["similar_embeddings"] = embeddings
             QdrantClaimStore(self.client, self.names[2], embeddings).ensure_collection()
 
     def update_rows(self):

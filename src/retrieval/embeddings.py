@@ -40,6 +40,14 @@ class SentenceTransformerEmbeddingProvider:
                 self._model = SentenceTransformer(self.model_name, **options)
             return self._model
 
+    def with_encoding_mode(self, *, asymmetric: bool):
+        """Share loaded weights while keeping each provider's encoding mode independent."""
+        provider = SentenceTransformerEmbeddingProvider(
+            self.model_name, asymmetric=asymmetric, local_files_only=self.local_files_only
+        )
+        provider._model = self._load()
+        return provider
+
     @property
     def dimension(self) -> int:
         dimension = self._load().get_embedding_dimension()

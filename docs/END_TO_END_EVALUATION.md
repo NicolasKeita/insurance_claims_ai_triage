@@ -51,6 +51,12 @@ isolated setup option. This is guidance only; the runner never starts Docker.
 On Windows, the hint explicitly asks the user to open Docker Desktop and wait
 for its engine to be ready before running the Compose command.
 
+When RAG and similar-claims retrieval use the same embedding model, preflight
+loads its weights once and isolated indexing reuses them. Separate provider views
+preserve RAG query/document encoding and symmetric claim encoding. Different
+configured model names still use separate weights. The eligibility check after
+model loading reads the recorded results; it does not repeat service probes.
+
 ## Frozen golden cases
 
 `E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.

@@ -84,7 +84,7 @@ class PrerequisiteChecks:
             if kind in names:
                 session.probe(f"{kind}_files", lambda key=setting: self.vision_file(key))
         if "embeddings" in names and session.report.available("retrieval_configuration"):
-            models = {session.knowledge_config.embedding_model}
+            models = {session.knowledge_config.embedding_model} if self.config.include_rag else set()
             if self.config.include_similar:
                 models.add(session.retrieval_config.embedding_model)
             session.probe(

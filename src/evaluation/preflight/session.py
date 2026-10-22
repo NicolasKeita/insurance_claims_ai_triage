@@ -95,12 +95,19 @@ class PreflightSession(ComponentProbes, ModelProbes):
             from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 
             provider = SentenceTransformerEmbeddingProvider(
-                self.knowledge_config.embedding_model, asymmetric=True, local_files_only=True
+                self.knowledge_config.embedding_model
+                if self.config.include_rag
+                else self.retrieval_config.embedding_model,
+                asymmetric=self.config.include_rag,
+                local_files_only=True,
             )
             self.report.resources["embeddings"] = provider
+            dimension = provider.dimension
+            if self.config.include_similar and provider.model_name == self.retrieval_config.embedding_model:
+                self.report.resources["similar_embeddings"] = provider.with_encoding_mode(asymmetric=False)
             return {
                 "version": provider.model_name,
-                "dimension": provider.dimension,
+                "dimension": dimension,
                 "local_files_only": True,
             }
 
