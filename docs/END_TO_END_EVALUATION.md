@@ -187,6 +187,16 @@ defaults and local checkpoint/source paths are in
 PostgreSQL, Qdrant, embedding and Ollama services. MLflow is optional; the report
 records actual local model/checkpoint versions and loading sources.
 
+The production agent first reads `GET_CLAIM` and `GET_INVESTIGATION`, then lets
+the LLM plan further tool calls. Both reads count toward the existing eight-step
+limit and require no LLM generation. An unavailable stored investigation remains
+explicit uncertainty; the agent does not compute one or retry the initial read.
+Investigation evidence includes bounded signal codes and concrete facts (such as
+the extra quoted vehicle part), preserved in the finalizer context. The
+`claims_agent_prompt_v3` instructions distinguish queue priority from unresolved
+document discrepancies and ask for clarification or repair-expert review when
+quote items are unexplained. The benchmark's acceptable actions remain unchanged.
+
 When a restricted Windows sandbox cannot create pytest's default temporary
 directory, use a writable workspace `--basetemp` directory after creating its
 parent. This is an execution-environment workaround, not a reason to skip tests.

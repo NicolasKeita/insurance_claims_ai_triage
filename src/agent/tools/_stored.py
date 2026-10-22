@@ -1,3 +1,5 @@
+import json
+
 from agent.models import (
     EvidenceItem,
     EvidenceSourceType,
@@ -5,7 +7,7 @@ from agent.models import (
 from persistence.history import HistoricalClaimRepository
 from persistence.repositories import AssessmentRepository
 
-from ._data import MAX_SIGNALS, _bounded, _claim_data
+from ._data import MAX_SIGNALS, MAX_VALUE_CHARS, _bounded, _claim_data
 
 
 def _read_claim(self, claim_id, tool):
@@ -69,9 +71,11 @@ def _assessment_summary(self, kind, record, data):
     if kind == "investigation":
         data["signal_count"] = len(record.result.signals)
         data["omitted_signal_count"] = max(0, len(record.result.signals) - MAX_SIGNALS)
+        data["signal_details"] = _signal_details(record.result.signals)
+        signals = "; ".join(f"{item['code']}: {item['facts'][:160]}" for item in data["signal_details"]) or "none"
         summary = (
             f"Stored deterministic review prioritization: priority {record.result.review_priority.value}, "
-            f"score {record.result.review_score}; {len(record.result.signals)} signals. "
+            f"score {record.result.review_score}; {len(record.result.signals)} signals: {signals}. "
             "This is a human review recommendation, not a fraud determination."
         )
     elif kind == "anomaly":
@@ -86,3 +90,21 @@ def _assessment_summary(self, kind, record, data):
             f"confidence {record.result.confidence}. This is workflow guidance for human review."
         )
     return summary
+
+
+def _signal_details(signals):
+    """Keep concrete signal facts readable through nested context depth limits."""
+    details = []
+    for signal in signals[:MAX_SIGNALS]:
+        facts = json.dumps(_bounded(signal.evidence), ensure_ascii=False)
+        details.append(
+            {
+                "code": signal.code.value,
+                "category": signal.category.value,
+                "severity": signal.severity.value,
+                "explanation": signal.explanation[:MAX_VALUE_CHARS],
+                "facts": facts[:MAX_VALUE_CHARS],
+                "facts_truncated": len(facts) > MAX_VALUE_CHARS,
+            }
+        )
+    return details

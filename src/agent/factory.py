@@ -84,7 +84,7 @@ def _service(factory, llm, tools, model):
     return ClaimsAgentService(
         AgentServiceConfig(
             tools,
-            StructuredAgentPlanner(llm),
+            StructuredAgentPlanner(llm, require_investigation=True),
             StructuredAgentFinalizer(llm),
             run_store=AgentRunStore(factory),
             llm_model=model,

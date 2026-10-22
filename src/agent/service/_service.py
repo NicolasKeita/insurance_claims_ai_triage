@@ -15,6 +15,8 @@ class ClaimsAgentService:
     def __init__(self, config: AgentServiceConfig):
         if type(config.max_iterations) is not int or not 1 <= config.max_iterations <= MAX_ITERATIONS:
             raise ValueError(f"max_iterations must be between 1 and {MAX_ITERATIONS}")
+        if config.max_iterations < getattr(config.planner, "minimum_tool_steps", 1):
+            raise ValueError("max_iterations must allow all required initial reads")
         self.tools, self.run_store = config.tools, config.run_store
         self.max_iterations, self.llm_model = config.max_iterations, config.llm_model
         self.graph = build_agent_graph(config.tools, config.planner, config.finalizer)

@@ -14,10 +14,28 @@ from claims.llm import StructuredLlm
 
 
 class StructuredAgentPlanner:
-    def __init__(self, llm: StructuredLlm):
+    def __init__(self, llm: StructuredLlm, *, require_investigation: bool = False):
         self.llm = llm
+        self.require_investigation = require_investigation
+        self.minimum_tool_steps = 2 if require_investigation else 1
+
+    def _required_step(self, state):
+        """The application collects core stored evidence before discretionary LLM planning."""
+        if self.require_investigation:
+            attempted = {item["tool_name"] for item in state["observations"]}
+            for action in ("GET_CLAIM", "GET_INVESTIGATION"):
+                if action not in attempted:
+                    return AgentPlanStep(
+                        action=action,
+                        arguments={},
+                        reason="Required initial read of stored claim facts and investigation signals.",
+                    )
+        return None
 
     def plan(self, state) -> AgentPlanStep:
+        required = self._required_step(state)
+        if required is not None:
+            return required
         observations = [
             {
                 "tool": o["tool_name"],

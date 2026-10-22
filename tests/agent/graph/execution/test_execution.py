@@ -2,7 +2,7 @@
 
 import json
 
-from agent.config import DEFAULT_MAX_ITERATIONS
+from agent.config import CLAIMS_AGENT_PROMPT_VERSION, DEFAULT_MAX_ITERATIONS
 from agent.models import (
     AgentToolName,
     ObservationStatus,
@@ -32,7 +32,7 @@ def test_explicit_graph_single_tool_finish_and_valid_output():
     assert len(planner.calls) == 2 and len(finalizer.calls) == 1
     assert result.run_id == store.results[0].run_id
     assert result.agent_version == "claims_agent_v2"
-    assert result.prompt_version == "claims_agent_prompt_v2"
+    assert result.prompt_version == CLAIMS_AGENT_PROMPT_VERSION
     assert result.elapsed_seconds >= 0
     json.dumps(result.model_dump(mode="json"), allow_nan=False)
     assert set(agent.graph.get_graph().nodes) == {"__start__", "plan", "tool", "finalize", "validate", "__end__"}
