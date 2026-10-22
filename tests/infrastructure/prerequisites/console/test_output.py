@@ -15,7 +15,9 @@ def test_missing_services_are_two_causes_instead_of_five_errors(capsys, tmp_path
     output = capsys.readouterr().out
     assert "[SKIP] controlled: test not run" in output
     assert "Blocking components: 2" in output
-    assert output.count("- PostgreSQL:") == output.count("- Qdrant:") == 1
+    assert output.count("- PostgreSQL (Relation DB):") == output.count("- Qdrant (Vector DB):") == 1
+    assert "Required for: Accessing claim history and assessments used by the agent." in output
+    assert "Required for: Retrieving relevant policy passages and similar claims." in output
     assert "--database-url" in output and "--qdrant-url" in output
     assert "Not checked: knowledge collections, similar claims collection" in output
     assert "No models loaded; no scenarios executed" in output
@@ -34,7 +36,7 @@ def test_present_service_does_not_hide_its_missing_data(capsys, tmp_path):
     output = capsys.readouterr().out
     assert "required schema or test data unavailable" in output
     assert "--isolated-demo-stack" in output
-    assert "PostgreSQL: connection not configured" not in output
+    assert "PostgreSQL (Relation DB): connection not configured" not in output
 
 
 def test_configuration_failure_and_explicit_fail_policy(capsys, tmp_path):
@@ -67,6 +69,11 @@ def test_failed_progress_rows_are_not_repeated_as_raw_errors(capsys, name):
 def test_available_model_is_readable_without_a_hash_dump(capsys):
     print_preflight_row({"component": "ollama", "status": "PASS", "version": "claims-e2e-partiel"})
     print_preflight_row({"component": "triage_files", "status": "PASS", "version": "sha256:unhelpful"})
+    print_preflight_row({"component": "postgresql", "status": "PASS"})
+    print_preflight_row({"component": "qdrant", "status": "PASS"})
     output = capsys.readouterr().out
     assert "[OK] Ollama (claims-e2e-partiel)" in output
     assert "Triage model file" in output and "sha256:" not in output
+    assert "[OK] PostgreSQL (Relation DB)" in output and "[OK] Qdrant (Vector DB)" in output
+    assert "Required for: Accessing claim history" in output
+    assert "Required for: Retrieving relevant policy passages" in output

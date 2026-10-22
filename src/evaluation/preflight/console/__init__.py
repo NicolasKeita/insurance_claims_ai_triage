@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from evaluation.preflight.console.messages import PARENTS, explanation, label
+from evaluation.preflight.console.messages import PARENTS, PURPOSES, explanation, label
 
 MODELS = {"triage", "anomaly", "embeddings", "damage_vision", "part_vision"}
 
@@ -16,6 +16,8 @@ def print_preflight_row(row):
         return
     version = f" ({row['version']})" if name == "ollama" and row.get("version") else ""
     print(f"  [OK] {label(name)}{version}", flush=True)
+    if name in PURPOSES:
+        print(f"    Required for: {PURPOSES[name]}", flush=True)
 
 
 def blocking_groups(report, scenario_id):
@@ -50,6 +52,8 @@ def print_blocked_scenario(report, scenario_id):
         reason = next((item.get("reason", "") for item in report.rows if item["component"] == name), "Not checked")
         cause, action = explanation(name, reason)
         print(f"  - {label(name)}: {cause}.", flush=True)
+        if name in PURPOSES:
+            print(f"    Required for: {PURPOSES[name]}", flush=True)
         print(f"    Action: {action}", flush=True)
         if dependents:
             print("    Not checked: " + ", ".join(label(item) for item in dependents) + ".", flush=True)

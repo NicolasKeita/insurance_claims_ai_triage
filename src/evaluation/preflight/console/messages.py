@@ -4,8 +4,8 @@ LABELS = {
     "configuration": "Test configuration",
     "retrieval_configuration": "Retrieval configuration",
     "isolated_configuration": "Isolated setup configuration",
-    "postgresql": "PostgreSQL",
-    "qdrant": "Qdrant",
+    "postgresql": "PostgreSQL (Relation DB)",
+    "qdrant": "Qdrant (Vector DB)",
     "ollama": "Ollama",
     "knowledge_collections": "knowledge collections",
     "similar_claims_collection": "similar claims collection",
@@ -21,6 +21,10 @@ LABELS = {
     "embeddings": "Embedding model loaded",
     "damage_vision": "Damage model loaded",
     "part_vision": "Vehicle parts model loaded",
+}
+PURPOSES = {
+    "postgresql": "Accessing claim history and assessments used by the agent.",
+    "qdrant": "Retrieving relevant policy passages and similar claims.",
 }
 PARENTS = {
     "knowledge_collections": ("qdrant", "retrieval_configuration"),
