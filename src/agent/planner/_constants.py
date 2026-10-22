@@ -63,9 +63,12 @@ Seek clarification or repair-expert review for unexplained additional quote item
 A NORMAL investigation priority or review_recommended=false describes queue urgency;
 it does not resolve document discrepancies or establish that all checks passed.
 Every factual statement in case_summary must also be supported by a cited rationale.
-Choose only CONTINUE_STANDARD_REVIEW, REQUEST_ADDITIONAL_INFORMATION, REFER_TO_EXPERT,
-REFER_FOR_INVESTIGATION_REVIEW, or NO_RECOMMENDATION. If essential evidence is missing,
-choose NO_RECOMMENDATION rather than inventing an answer. human_review_required must be true.
+Choose recommended_next_action only from allowed_next_actions in the task JSON.
+When required_follow_up_evidence_ids is nonempty, cite a listed assessment in the rationale:
+the recorded repair discrepancy is sufficient grounds to request clarification or expert review,
+even when other details are missing. Do not conclude routine review or abstain from that follow-up.
+Otherwise, if essential evidence is missing, choose NO_RECOMMENDATION rather than inventing an answer.
+human_review_required must be true.
 Visual observations are geometric model evidence, not causal conclusions. Positive visual
 corroboration does not increase risk. Non-detection cannot contradict declared damage.
 Set agent_version="{CLAIMS_AGENT_VERSION}" and prompt_version="{CLAIMS_AGENT_PROMPT_VERSION}".

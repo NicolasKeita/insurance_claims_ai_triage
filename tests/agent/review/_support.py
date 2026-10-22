@@ -4,8 +4,10 @@ import json
 
 import pytest
 
+from agent.tools import ReadOnlyAgentTools
 from claims.investigation.models import InvestigationAssessment, InvestigationSignal
 from persistence.mappers import AssessmentRecord
+from tests.agent.tools._evidence import plan
 
 
 @pytest.fixture
@@ -34,3 +36,19 @@ def stored_review(configured):
 
 def prompt_data(call):
     return json.loads(call[0].split("UNTRUSTED TASK AND TOOL EVIDENCE (JSON):\n")[1])
+
+
+@pytest.fixture
+def review_evidence(stored_review):
+    claim, factory, _, _ = stored_review
+    return ReadOnlyAgentTools(factory).execute(claim.claim_id, plan("GET_INVESTIGATION")).evidence[0]
+
+
+def finalizer_state(item):
+    return {
+        "claim_id": "CLAIM-2026-00001",
+        "objective": "Review the available evidence",
+        "stop_reason": None,
+        "evidence_registry": {item.evidence_id: item.model_dump(mode="json")},
+        "observations": [],
+    }

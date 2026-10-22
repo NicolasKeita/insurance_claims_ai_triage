@@ -8,16 +8,27 @@ from agent.models import (
     EvidenceSourceType,
     RecommendedNextAction,
 )
+from agent.review_policy import REPAIR_FOLLOW_UP_ACTIONS, repair_discrepancy_sources
 from retrieval.knowledge.models import KnowledgeCitation
 
 
 class EvidenceValidationError(ValueError):
-    """The finalizer cited evidence outside the collected run context."""
+    """The finalizer violated evidence provenance or a required follow-up."""
 
 
 def rationale_evidence_ids(recommendation: AgentRecommendation) -> list[str]:
     """Derive the source union in first-citation order, independently of LLM bookkeeping."""
     return list(dict.fromkeys(eid for rationale in recommendation.rationale for eid in rationale.evidence_ids))
+
+
+def _validate_follow_up(recommendation, registry, supporting_ids):
+    sources = repair_discrepancy_sources(registry)
+    if not sources:
+        return
+    if recommendation.recommended_next_action not in REPAIR_FOLLOW_UP_ACTIONS:
+        raise EvidenceValidationError("Unexplained repair quote items require a follow-up action")
+    if not set(sources).intersection(supporting_ids):
+        raise EvidenceValidationError("Follow-up rationale must cite the collected repair assessment")
 
 
 def validate_recommendation(
@@ -44,6 +55,7 @@ def validate_recommendation(
             raise EvidenceValidationError("A recommendation without collected evidence must abstain")
         if not recommendation.rationale or not supporting_ids:
             raise EvidenceValidationError("A supported recommendation must include at least one cited rationale")
+    _validate_follow_up(recommendation, registry, supporting_ids)
 
     citations = []
     knowledge_types = {EvidenceSourceType.POLICY_CHUNK, EvidenceSourceType.PROCEDURE_CHUNK}

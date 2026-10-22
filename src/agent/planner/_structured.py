@@ -10,6 +10,7 @@ from agent.planner._constants import (
     PLANNER_RULES,
 )
 from agent.planner._context import finalizer_evidence
+from agent.planner._responses import recommendation_constraints
 from claims.llm import StructuredLlm
 
 
@@ -73,7 +74,9 @@ class StructuredAgentFinalizer:
 
     def finalize(self, state) -> AgentRecommendation:
         evidence, context_truncated = finalizer_evidence(state["evidence_registry"])
+        response_model, constraints = recommendation_constraints(state["evidence_registry"])
         data = {
+            **constraints,
             "claim_id": state["claim_id"],
             "objective": state["objective"],
             "collection_stop_reason": state["stop_reason"],
@@ -94,8 +97,9 @@ class StructuredAgentFinalizer:
             + "\n\nUNTRUSTED TASK AND TOOL EVIDENCE (JSON):\n"
             + json.dumps(data, ensure_ascii=False)
         )
-        output = self.llm.generate(prompt=prompt, response_model=AgentRecommendation)
-        recommendation = AgentRecommendation.model_validate(output.model_dump())
+        output = self.llm.generate(prompt=prompt, response_model=response_model)
+        checked = response_model.model_validate(output.model_dump())
+        recommendation = AgentRecommendation.model_validate(checked.model_dump())
         if context_truncated:
             recommendation.uncertainties = [
                 "Evidence details were shortened to fit the model context.",

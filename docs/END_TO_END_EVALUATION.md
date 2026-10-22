@@ -193,9 +193,16 @@ limit and require no LLM generation. An unavailable stored investigation remains
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v3` instructions distinguish queue priority from unresolved
+`claims_agent_prompt_v4` instructions distinguish queue priority from unresolved
 document discrepancies and ask for clarification or repair-expert review when
 quote items are unexplained. The benchmark's acceptable actions remain unchanged.
+For collected `ADDITIONAL_QUOTE_DAMAGE` or `UNMAPPED_QUOTE_ITEM` signals, the
+application restricts the Ollama response schema to clarification, expert review,
+or investigation review. The final rationale must cite the relevant assessment.
+An ordinary queue priority does not remove this follow-up requirement. The same
+checks run before accepting the recommendation, including with a custom LLM
+adapter; incompatible output is rejected rather than rewritten. Without a
+collected repair discrepancy, the original action choices remain available.
 
 When a restricted Windows sandbox cannot create pytest's default temporary
 directory, use a writable workspace `--basetemp` directory after creating its
