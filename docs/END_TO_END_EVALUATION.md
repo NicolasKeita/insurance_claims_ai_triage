@@ -2,6 +2,12 @@
 
 The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.
 
+For a French explanation of each test's business purpose, the risk or problem
+it addresses and the expected AI response, start with the
+[business scenarios](../tests/e2e/SCENARIOS.md). The
+[test guide](../tests/e2e/README.md) explains the supporting checks. This guide
+covers execution, configuration and report interpretation.
+
 ## Two execution levels
 
 `tests/e2e/` is the fast, offline deterministic suite. It exercises existing

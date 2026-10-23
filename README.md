@@ -984,6 +984,11 @@ produce a saved `NOT EXECUTED` status instead of invented observations.
 
 ## End-to-End Evaluation
 
+For a French explanation of **why each test exists and how the AI should react**,
+start with the [business scenarios](tests/e2e/SCENARIOS.md), including repeated
+claims as a potential fraud risk requiring investigation. The
+[test guide](tests/e2e/README.md) also explains the supporting checks.
+
 The versioned `e2e_claims_v1` benchmark covers ten controlled golden scenarios
 from document ingestion and structured extraction through investigation, RAG,
 multimodal evidence and advisory agent recommendations. Fast deterministic tests
