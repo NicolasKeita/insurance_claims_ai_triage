@@ -256,7 +256,7 @@ the existing eight-step limit and require no LLM generation. An unavailable stor
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v8` instructions distinguish queue priority from required
+`claims_agent_prompt_v9` instructions distinguish queue priority from required
 follow-up. Collected `EXPERT_REVIEW` or `INVESTIGATION` triage recommendations,
 an anomaly assessment with `is_anomalous=true`, and the follow-up investigation
 signals listed above constrain the Ollama response schema to clarification,
@@ -270,10 +270,22 @@ threshold; scoring and thresholds are unchanged. Historical counts alone,
 or signal names appearing in retrieved text, do not activate this contract.
 The same checks run before accepting the recommendation, including with a
 custom LLM adapter; incompatible output is rejected rather than rewritten.
-Without a collected assessment requiring follow-up, the original action choices
-remain available. The v2 real benchmark checks this same conditional contract
-against the observed pipeline assessments while keeping deterministic expectations
-unchanged.
+When no collected assessment requires follow-up, an actual `NOT_AVAILABLE` or
+`NOT_FOUND` observation from `GET_CLAIM` or `GET_HISTORY` limits the final action
+to `NO_RECOMMENDATION` or `REQUEST_ADDITIONAL_INFORMATION`. A request for further
+information still needs supporting collected evidence under the normal citation
+rules. An observed positive follow-up assessment takes priority over this
+restriction and must be cited, even when essential data is unavailable; the
+missing data remains explicit uncertainty. An unattempted tool is not treated
+as unavailable. Missing optional assessments, retrieval results or similar
+claims do not activate this essential-data restriction by themselves.
+
+This production rule uses collected evidence and actual tool observations.
+Scenario IDs, expected actions and evaluation fixtures are not inputs to the
+action restriction. Without a follow-up trigger or an observed essential-data
+failure, the original action choices remain available. The v2 real benchmark
+checks this same conditional contract against the observed pipeline assessments
+while keeping deterministic expectations unchanged.
 
 The generation schema also restricts source IDs to collected evidence and fixes
 agent/prompt versions to their current values. Grounding failures retain a
@@ -286,6 +298,10 @@ using the same evidence and safe validation feedback. This adds at most one LLM
 generation; a valid first response adds none. Transport errors on the initial
 call and invalid source metadata are not retried. A second invalid response
 still fails all normal checks; no decision or source is rewritten to pass.
+The essential-data action restriction participates in the same bounded
+correction and final application validation, including with custom LLM adapters.
+The application does not replace an incompatible generated action with an
+allowed one.
 
 When a restricted Windows sandbox cannot create pytest's default temporary
 directory, use a writable workspace `--basetemp` directory after creating its

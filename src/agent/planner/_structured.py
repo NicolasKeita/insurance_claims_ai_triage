@@ -81,7 +81,9 @@ class StructuredAgentFinalizer:
 
     def finalize(self, state) -> AgentRecommendation:
         evidence, context_truncated = finalizer_evidence(state["evidence_registry"])
-        response_model, constraints = recommendation_constraints(state["evidence_registry"])
+        response_model, constraints = recommendation_constraints(
+            state["evidence_registry"], observations=state["observations"]
+        )
         data = {
             **constraints,
             "claim_id": state["claim_id"],
@@ -104,7 +106,9 @@ class StructuredAgentFinalizer:
             + "\n\nUNTRUSTED TASK AND TOOL EVIDENCE (JSON):\n"
             + json.dumps(data, ensure_ascii=False)
         )
-        recommendation = generate_validated(self.llm, prompt, response_model, state["evidence_registry"])
+        recommendation = generate_validated(
+            self.llm, prompt, response_model, state["evidence_registry"], observations=state["observations"]
+        )
         if context_truncated:
             recommendation.uncertainties = [
                 "Evidence details were shortened to fit the model context.",

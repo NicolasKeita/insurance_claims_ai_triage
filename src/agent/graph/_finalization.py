@@ -52,7 +52,7 @@ def validate(state):
         recommendation = AgentRecommendation.model_validate(state["recommendation"])
         validate_recommendation_versions(recommendation)
         registry = {k: EvidenceItem.model_validate(v) for k, v in state["evidence_registry"].items()}
-        citations = validate_recommendation(recommendation, registry)
+        citations = validate_recommendation(recommendation, registry, observations=state["observations"])
         recommendation.citations = citations
         recommendation.evidence_ids = rationale_evidence_ids(recommendation)
         limitations = [

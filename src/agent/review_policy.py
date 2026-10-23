@@ -2,7 +2,14 @@
 
 from typing import Literal, get_args
 
-from agent.models import EvidenceItem, EvidenceSourceType, RecommendedNextAction
+from agent.models import (
+    AgentToolName,
+    EvidenceItem,
+    EvidenceSourceType,
+    ObservationStatus,
+    RecommendedNextAction,
+    ToolObservation,
+)
 from claims.enums import DamageType, TriageWorkflow
 from claims.investigation.models import SignalCode
 
@@ -12,6 +19,13 @@ FollowUpAction = Literal[
     RecommendedNextAction.REFER_FOR_INVESTIGATION_REVIEW,
 ]
 FOLLOW_UP_ACTIONS = get_args(FollowUpAction)
+MissingDataAction = Literal[
+    RecommendedNextAction.NO_RECOMMENDATION,
+    RecommendedNextAction.REQUEST_ADDITIONAL_INFORMATION,
+]
+MISSING_DATA_ACTIONS = get_args(MissingDataAction)
+ESSENTIAL_FACT_TOOLS = {AgentToolName.GET_CLAIM, AgentToolName.GET_HISTORY}
+UNAVAILABLE_STATUSES = {ObservationStatus.NOT_AVAILABLE, ObservationStatus.NOT_FOUND}
 FOLLOW_UP_SIGNAL_CODES = {
     SignalCode.ADDITIONAL_QUOTE_DAMAGE,
     SignalCode.UNMAPPED_QUOTE_ITEM,
@@ -73,6 +87,22 @@ def follow_up_sources(registry):
         if _requires_follow_up(item):
             sources.append(item.evidence_id)
     return sources
+
+
+def unavailable_essential_tools(observations):
+    """Use actual failed factual reads, independently of objectives or benchmark inputs.
+
+    Claim facts and history supply factual context. Advisory model assessments,
+    optional perception and empty retrieval results do not replace those facts
+    and do not by themselves require abstention. An unattempted read is not an outage.
+    """
+    tools = []
+    for value in observations:
+        item = ToolObservation.model_validate(value)
+        if item.tool_name in ESSENTIAL_FACT_TOOLS and item.status in UNAVAILABLE_STATUSES:
+            if item.tool_name.value not in tools:
+                tools.append(item.tool_name.value)
+    return tools
 
 
 def visual_uncertainties(registry):

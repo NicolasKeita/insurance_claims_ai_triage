@@ -10,7 +10,12 @@ from agent.models import (
     EvidenceSourceType,
     RecommendedNextAction,
 )
-from agent.review_policy import FOLLOW_UP_ACTIONS, follow_up_sources
+from agent.review_policy import (
+    FOLLOW_UP_ACTIONS,
+    MISSING_DATA_ACTIONS,
+    follow_up_sources,
+    unavailable_essential_tools,
+)
 from retrieval.knowledge.models import KnowledgeCitation
 
 
@@ -35,9 +40,17 @@ def validate_recommendation_versions(recommendation):
         raise EvidenceValidationError("Recommendation versions do not match this agent", code="VERSION_MISMATCH")
 
 
-def _validate_follow_up(recommendation, registry, supporting_ids):
+def _validate_action(recommendation, registry, supporting_ids, observations):
     sources = follow_up_sources(registry)
     if not sources:
+        if (
+            unavailable_essential_tools(observations)
+            and recommendation.recommended_next_action not in MISSING_DATA_ACTIONS
+        ):
+            raise EvidenceValidationError(
+                "Unavailable essential facts require additional information or abstention",
+                code="INCOMPATIBLE_MISSING_DATA",
+            )
         return
     if recommendation.recommended_next_action not in FOLLOW_UP_ACTIONS:
         raise EvidenceValidationError("Collected assessments require a follow-up action", code="INCOMPATIBLE_FOLLOW_UP")
@@ -51,6 +64,8 @@ def _validate_follow_up(recommendation, registry, supporting_ids):
 def validate_recommendation(
     recommendation: AgentRecommendation,
     registry: Mapping[str, EvidenceItem],
+    *,
+    observations=(),
 ) -> list[KnowledgeCitation]:
     """Validate all supplied IDs; resolve metadata for sources supporting rationale.
 
@@ -78,7 +93,7 @@ def validate_recommendation(
             raise EvidenceValidationError(
                 "A supported recommendation must include at least one cited rationale", code="NO_SUPPORTING_RATIONALE"
             )
-    _validate_follow_up(recommendation, registry, supporting_ids)
+    _validate_action(recommendation, registry, supporting_ids, observations)
     return _knowledge_citations(registry, supporting_ids)
 
 

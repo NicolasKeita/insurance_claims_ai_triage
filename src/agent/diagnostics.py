@@ -8,6 +8,10 @@ MESSAGES = {
     "NO_EVIDENCE": "Without collected evidence, the recommendation must abstain.",
     "NO_SUPPORTING_RATIONALE": "A supported action needs at least one factual, cited rationale.",
     "INCOMPATIBLE_FOLLOW_UP": "Required assessment follow-up must use one of the allowed actions.",
+    "INCOMPATIBLE_MISSING_DATA": (
+        "Essential claim or history facts are unavailable. Request additional information or abstain; "
+        "do not continue standard review without those facts."
+    ),
     "FOLLOW_UP_ASSESSMENT_NOT_CITED": "A follow-up rationale must cite an ID from required_follow_up_evidence_ids.",
     "REPAIR_ASSESSMENT_NOT_CITED": "A follow-up rationale must cite an ID from required_follow_up_evidence_ids.",
     "INVALID_KNOWLEDGE_METADATA": "A knowledge source is missing authoritative citation metadata.",

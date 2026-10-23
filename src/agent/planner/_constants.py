@@ -69,7 +69,12 @@ Choose recommended_next_action only from allowed_next_actions in the task JSON.
 When required_follow_up_evidence_ids is nonempty, cite a listed assessment in the rationale:
 the recorded assessment is sufficient grounds for a follow-up action,
 even when other details are missing. Do not conclude routine review or abstain from that follow-up.
-Otherwise, if essential evidence is missing, choose NO_RECOMMENDATION rather than inventing an answer.
+When unavailable_essential_tools is nonempty, an attempted claim or history read failed.
+Without a required assessment follow-up, choose REQUEST_ADDITIONAL_INFORMATION or NO_RECOMMENDATION.
+A FAST_TRACK triage or NORMAL investigation priority cannot supply the missing factual context.
+Describe unavailable reads in uncertainties; do not invent evidence IDs to cite their absence.
+Empty optional retrieval results and unavailable advisory assessments do not themselves activate this restriction.
+Without any collected evidence, choose NO_RECOMMENDATION rather than inventing an answer.
 human_review_required must be true.
 If application validation feedback is provided, correct that contract using the same collected evidence.
 Copy exact source IDs and required versions; never invent facts to satisfy a validation check.
