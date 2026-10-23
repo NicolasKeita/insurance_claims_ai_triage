@@ -12,11 +12,12 @@ from tests.infrastructure.support.agent_fakes import FakeStructuredLlm, make_evi
 
 
 @pytest.mark.parametrize("transport", ["custom_adapter", "ollama"])
-def test_incompatible_follow_up_can_be_corrected_without_rewriting(monkeypatch, transport):
+@pytest.mark.parametrize("code", ["ADDITIONAL_QUOTE_DAMAGE", "RECENT_CLAIM_FREQUENCY"])
+def test_incompatible_follow_up_can_be_corrected_without_rewriting(monkeypatch, transport, code):
     investigation = make_evidence("investigation:stored").model_copy(
         update={
             "source_type": EvidenceSourceType.INVESTIGATION_ASSESSMENT,
-            "structured_data": {"signals": [{"code": "ADDITIONAL_QUOTE_DAMAGE"}]},
+            "structured_data": {"signals": [{"code": code}]},
         }
     )
     first = make_recommendation([investigation.evidence_id])

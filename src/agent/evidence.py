@@ -10,7 +10,7 @@ from agent.models import (
     EvidenceSourceType,
     RecommendedNextAction,
 )
-from agent.review_policy import REPAIR_FOLLOW_UP_ACTIONS, repair_discrepancy_sources
+from agent.review_policy import FOLLOW_UP_ACTIONS, follow_up_sources
 from retrieval.knowledge.models import KnowledgeCitation
 
 
@@ -36,16 +36,17 @@ def validate_recommendation_versions(recommendation):
 
 
 def _validate_follow_up(recommendation, registry, supporting_ids):
-    sources = repair_discrepancy_sources(registry)
+    sources = follow_up_sources(registry)
     if not sources:
         return
-    if recommendation.recommended_next_action not in REPAIR_FOLLOW_UP_ACTIONS:
+    if recommendation.recommended_next_action not in FOLLOW_UP_ACTIONS:
         raise EvidenceValidationError(
-            "Unexplained repair quote items require a follow-up action", code="INCOMPATIBLE_FOLLOW_UP"
+            "Recorded investigation signals require a follow-up action", code="INCOMPATIBLE_FOLLOW_UP"
         )
     if not set(sources).intersection(supporting_ids):
         raise EvidenceValidationError(
-            "Follow-up rationale must cite the collected repair assessment", code="REPAIR_ASSESSMENT_NOT_CITED"
+            "Follow-up rationale must cite the collected investigation assessment",
+            code="FOLLOW_UP_ASSESSMENT_NOT_CITED",
         )
 
 

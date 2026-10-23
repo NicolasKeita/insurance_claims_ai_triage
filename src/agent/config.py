@@ -1,7 +1,7 @@
 """Versioned and bounded agent configuration; never supplied by the planner."""
 
 CLAIMS_AGENT_VERSION = "claims_agent_v2"
-CLAIMS_AGENT_PROMPT_VERSION = "claims_agent_prompt_v5"
+CLAIMS_AGENT_PROMPT_VERSION = "claims_agent_prompt_v6"
 DEFAULT_MAX_ITERATIONS = 8
 MAX_ITERATIONS = 8
 MAX_RETRIEVAL_LIMIT = 5

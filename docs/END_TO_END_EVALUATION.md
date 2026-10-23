@@ -202,22 +202,30 @@ limit and require no LLM generation. An unavailable stored investigation remains
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v5` instructions distinguish queue priority from unresolved
-document discrepancies and ask for clarification or repair-expert review when
-quote items are unexplained. The benchmark's acceptable actions remain unchanged.
-For collected `ADDITIONAL_QUOTE_DAMAGE` or `UNMAPPED_QUOTE_ITEM` signals, the
-application restricts the Ollama response schema to clarification, expert review,
+`claims_agent_prompt_v6` instructions distinguish queue priority from required
+follow-up on document discrepancies or recent claim frequency. They ask for
+clarification or repair-expert review when quote items are unexplained, and
+clarification or further human review when the frequency signal is present.
+The benchmark's acceptable actions remain unchanged.
+For collected `ADDITIONAL_QUOTE_DAMAGE`, `UNMAPPED_QUOTE_ITEM`, or
+`RECENT_CLAIM_FREQUENCY` signals, the application restricts the Ollama response
+schema to clarification, expert review,
 or investigation review. The final rationale must cite the relevant assessment.
-An ordinary queue priority does not remove this follow-up requirement. The same
-checks run before accepting the recommendation, including with a custom LLM
+An ordinary queue priority or `review_recommended=false` does not remove this
+follow-up requirement. In particular, the frequency signal's 15 points remain
+below the 20-point review-priority threshold; scoring and thresholds are unchanged.
+Historical counts alone, or signal names appearing in retrieved text, do not
+activate this contract. The same checks run before accepting the recommendation,
+including with a custom LLM
 adapter; incompatible output is rejected rather than rewritten. Without a
-collected repair discrepancy, the original action choices remain available.
+collected signal requiring follow-up, the original action choices remain available.
 
 The generation schema also restricts source IDs to collected evidence and fixes
 agent/prompt versions to their current values. Grounding failures retain a
 specific application-owned code, such as `UNKNOWN_EVIDENCE_ID` or
-`REPAIR_ASSESSMENT_NOT_CITED`, in the saved run and evaluation output. Raw rejected
-drafts and provider exception details are not included in these messages.
+`FOLLOW_UP_ASSESSMENT_NOT_CITED`, in the saved run and evaluation output. The legacy
+`REPAIR_ASSESSMENT_NOT_CITED` diagnostic remains recognized for historical runs.
+Raw rejected drafts and provider exception details are not included in these messages.
 For a correctable grounding failure, the finalizer requests one new response
 using the same evidence and safe validation feedback. This adds at most one LLM
 generation; a valid first response adds none. Transport errors on the initial

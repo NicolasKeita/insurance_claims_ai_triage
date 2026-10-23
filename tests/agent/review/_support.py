@@ -44,6 +44,26 @@ def review_evidence(stored_review):
     return ReadOnlyAgentTools(factory).execute(claim.claim_id, plan("GET_INVESTIGATION")).evidence[0]
 
 
+@pytest.fixture(params=["ADDITIONAL_QUOTE_DAMAGE", "UNMAPPED_QUOTE_ITEM", "RECENT_CLAIM_FREQUENCY"])
+def follow_up_evidence(stored_review, request):
+    claim, factory, _, records = stored_review
+    previous = records["investigation"]
+    assessment = previous.result.model_dump()
+    assessment["signals"][0]["code"] = request.param
+    if request.param == "RECENT_CLAIM_FREQUENCY":
+        assessment.update(review_score=15, review_priority="NORMAL", review_recommended=False)
+        assessment["signals"][0].update(
+            category="HISTORICAL_CONTEXT",
+            title="Recent claim frequency",
+            explanation="Three previous claims occurred in the last 30 days and five in the last 365 days.",
+            evidence={"previous_claim_count": 6, "claims_last_30_days": 3, "claims_last_365_days": 5},
+        )
+    records["investigation"] = AssessmentRecord(
+        previous.id, previous.created_at, InvestigationAssessment.model_validate(assessment)
+    )
+    return ReadOnlyAgentTools(factory).execute(claim.claim_id, plan("GET_INVESTIGATION")).evidence[0]
+
+
 def finalizer_state(item):
     return {
         "claim_id": "CLAIM-2026-00001",

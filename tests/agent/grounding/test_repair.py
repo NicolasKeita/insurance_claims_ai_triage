@@ -57,14 +57,15 @@ def test_wrapped_ollama_schema_error_gets_one_correction(monkeypatch, failure):
     assert "provider-secret" not in feedback_prompt
 
 
-def test_missing_investigation_citation_is_corrected_by_model_not_rewritten():
+@pytest.mark.parametrize("code", ["ADDITIONAL_QUOTE_DAMAGE", "RECENT_CLAIM_FREQUENCY"])
+def test_missing_investigation_citation_is_corrected_by_model_not_rewritten(code):
     claim = make_evidence()
     investigation = EvidenceItem(
         evidence_id="investigation:stored",
         source_type="INVESTIGATION_ASSESSMENT",
         source_reference="stored",
-        summary="The quote contains additional HOOD damage.",
-        structured_data={"signals": [{"code": "ADDITIONAL_QUOTE_DAMAGE"}]},
+        summary="The collected assessment contains a signal requiring follow-up.",
+        structured_data={"signals": [{"code": code}]},
     )
     first = make_recommendation([claim.evidence_id])
     corrected = make_recommendation([investigation.evidence_id])
@@ -72,7 +73,7 @@ def test_missing_investigation_citation_is_corrected_by_model_not_rewritten():
     result = StructuredAgentFinalizer(llm).finalize(finalizer_state(claim, investigation))
     assert result == corrected and len(llm.calls) == 2
     assert first.rationale[0].evidence_ids == [claim.evidence_id]
-    assert "REPAIR_ASSESSMENT_NOT_CITED" in llm.calls[1][0]
+    assert "FOLLOW_UP_ASSESSMENT_NOT_CITED" in llm.calls[1][0]
 
 
 def test_repeated_invalid_output_is_rejected_without_a_third_call():

@@ -60,12 +60,14 @@ Document availability records do not establish the contents or consistency of do
 Do not infer damage contradictions or unexplained quote items without a supporting assessment.
 Address observed document discrepancies explicitly, citing the supporting assessment.
 Seek clarification or repair-expert review for unexplained additional quote items.
+An observed RECENT_CLAIM_FREQUENCY signal also requires clarification or further human review,
+even below the elevated-priority threshold. This follow-up trigger is not a fraud conclusion.
 A NORMAL investigation priority or review_recommended=false describes queue urgency;
-it does not resolve document discrepancies or establish that all checks passed.
+it does not resolve document discrepancies, remove required historical follow-up, or establish that all checks passed.
 Every factual statement in case_summary must also be supported by a cited rationale.
 Choose recommended_next_action only from allowed_next_actions in the task JSON.
 When required_follow_up_evidence_ids is nonempty, cite a listed assessment in the rationale:
-the recorded repair discrepancy is sufficient grounds to request clarification or expert review,
+the recorded repair discrepancy or recent claim frequency is sufficient grounds for a follow-up action,
 even when other details are missing. Do not conclude routine review or abstain from that follow-up.
 Otherwise, if essential evidence is missing, choose NO_RECOMMENDATION rather than inventing an answer.
 human_review_required must be true.

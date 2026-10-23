@@ -820,6 +820,12 @@ context through the existing structured LLM adapter to avoid the default local
 The recommendation always has `human_review_required=true`. Its allowed next
 actions are `CONTINUE_STANDARD_REVIEW`, `REQUEST_ADDITIONAL_INFORMATION`,
 `REFER_TO_EXPERT`, `REFER_FOR_INVESTIGATION_REVIEW`, and `NO_RECOMMENDATION`.
+When a collected investigation assessment records `ADDITIONAL_QUOTE_DAMAGE`,
+`UNMAPPED_QUOTE_ITEM`, or `RECENT_CLAIM_FREQUENCY`, the generation schema and
+validator require a follow-up action (additional information, expert review, or
+investigation review) with a rationale citing the assessment. This requirement
+also applies at `NORMAL` priority with `review_recommended=false`; frequency
+scoring remains 15 points and does not establish fraud.
 A human retains the final claim decision. The demo policies and procedures
 remain **synthetic** and do not establish real coverage or handling requirements.
 
