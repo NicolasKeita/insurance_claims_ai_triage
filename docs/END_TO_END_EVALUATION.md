@@ -134,7 +134,11 @@ Each golden case declares a typed `real_agent_action_policy` with
 follow-up investigation signal requires `REQUEST_ADDITIONAL_INFORMATION`,
 `REFER_TO_EXPERT`, or `REFER_FOR_INVESTIGATION_REVIEW`. Follow-up signals are
 `ADDITIONAL_QUOTE_DAMAGE`, `UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`,
-`ANOMALOUS_PATTERN`, and `EXTREME_ANOMALY_PERCENTILE`.
+`ANOMALOUS_PATTERN`, `EXTREME_ANOMALY_PERCENTILE`, and `VISUAL_ADDITIONAL_DAMAGE`.
+A collected visual assessment with nonempty `consistency.additional_visual_damage`
+also requires follow-up when the investigation assessment is unavailable. Visual
+corroboration and declared damage not visually confirmed do not require that follow-up;
+the latter is retained explicitly in the agent's uncertainties without adding risk points.
 Without a trigger, the scenario's explicit alternative actions apply. Missing
 assessment data or required investigation inputs block this negative conclusion;
 optional vision may be omitted. One observed positive trigger still requires
@@ -231,7 +235,7 @@ the existing eight-step limit and require no LLM generation. An unavailable stor
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v7` instructions distinguish queue priority from required
+`claims_agent_prompt_v8` instructions distinguish queue priority from required
 follow-up. Collected `EXPERT_REVIEW` or `INVESTIGATION` triage recommendations,
 an anomaly assessment with `is_anomalous=true`, and the follow-up investigation
 signals listed above constrain the Ollama response schema to clarification,

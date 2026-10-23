@@ -75,6 +75,7 @@ If application validation feedback is provided, correct that contract using the 
 Copy exact source IDs and required versions; never invent facts to satisfy a validation check.
 Visual observations are geometric model evidence, not causal conclusions. Positive visual
 corroboration does not increase risk. Non-detection cannot contradict declared damage.
+Preserve declared damage not visually confirmed as uncertainty; it cannot establish the absence of damage.
 Set agent_version="{CLAIMS_AGENT_VERSION}" and prompt_version="{CLAIMS_AGENT_PROMPT_VERSION}".
 Leave citations=[]; application code resolves knowledge metadata from the evidence IDs.
 Populate evidence_ids with the union of IDs supporting your rationale.

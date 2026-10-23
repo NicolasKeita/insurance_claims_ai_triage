@@ -427,9 +427,12 @@ d'historique déjà effectués en amont. Sans vision ; RAG selon le socle commun
 **Résultats vérifiés.** La recommandation conserve la revue humaine. La liste
 `uncertainties` de l'agent est non vide et sa trace contient au moins une
 observation `NOT_AVAILABLE` ou `NOT_FOUND`. Le manifeste indique `history`
-comme cause attendue ; le contrôle actuel vérifie l'existence de l'incertitude
-et d'une observation d'indisponibilité, sans imposer le texte littéral
-`history` dans la réponse.
+comme cause attendue ; le contrôle vérifie l'existence de l'incertitude
+et d'une observation d'indisponibilité de `GET_HISTORY`, sans imposer le texte
+littéral `history` dans la réponse. Une panne d'un autre outil ne suffit pas.
+Les erreurs opérationnelles de connexion ou de délai de la consultation
+d'historique sont également converties en indisponibilité explicite ; les
+erreurs de programmation restent des échecs.
 
 **Actions acceptables.** `NO_RECOMMENDATION` ou
 `REQUEST_ADDITIONAL_INFORMATION`.
@@ -486,7 +489,9 @@ d'investigation reçoit cette observation. RAG selon le socle commun.
 la politique d'investigation est `investigation_policy_v3` et le signal
 `VISUAL_ADDITIONAL_DAMAGE` est obligatoire. Les contrôles communs de vision
 vérifient le schéma, la provenance des images et les métadonnées des deux
-modèles.
+modèles. Un tel signal ou une évaluation visuelle collectée indiquant un
+dommage supplémentaire impose une action de suivi, même sous le seuil de
+priorité élevée et même si une autre évaluation est indisponible.
 
 **Actions acceptables.** `REQUEST_ADDITIONAL_INFORMATION`, `REFER_TO_EXPERT`
 ou `REFER_FOR_INVESTIGATION_REVIEW`.
@@ -537,8 +542,10 @@ politique multimodale traitent ce résultat vide. RAG selon le socle commun.
 `["LEFT_HEADLIGHT"]`. La politique d'investigation est
 `investigation_policy_v3`, `investigation.review_score` vaut `0` et
 `investigation.signals` vaut exactement `[]` en déterministe. L'agent conserve
-la revue humaine. La fixture LLM ajoute une incertitude sur la non-détection,
-mais le manifeste ne contient pas d'assertion spécifique sur sa formulation.
+la revue humaine. L'application conserve explicitement une incertitude sur
+la non-détection à partir de l'évaluation visuelle collectée, même si le LLM
+l'omet ; le test déterministe exige aussi une liste d'incertitudes non vide.
+Le manifeste ne contient pas d'assertion spécifique sur sa formulation.
 
 **Actions acceptables.** `CONTINUE_STANDARD_REVIEW`,
 `REQUEST_ADDITIONAL_INFORMATION` ou `NO_RECOMMENDATION`.
@@ -808,8 +815,9 @@ Les listes d'actions propres à chaque scénario restent les attentes du mode
 déterministe. En réel, chaque golden v2 déclare une `real_agent_action_policy`
 typée : un triage observé `EXPERT_REVIEW` ou `INVESTIGATION`, une anomalie
 `is_anomalous=true`, ou un signal structuré `ADDITIONAL_QUOTE_DAMAGE`,
-`UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`, `ANOMALOUS_PATTERN` ou
-`EXTREME_ANOMALY_PERCENTILE` impose l'une des trois actions de suivi
+`UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`, `ANOMALOUS_PATTERN`,
+`EXTREME_ANOMALY_PERCENTILE` ou `VISUAL_ADDITIONAL_DAMAGE` impose l'une des
+trois actions de suivi
 (`REQUEST_ADDITIONAL_INFORMATION`, `REFER_TO_EXPERT`,
 `REFER_FOR_INVESTIGATION_REVIEW`). Sinon, la liste explicite
 `otherwise_acceptable_actions` s'applique. Une évaluation indisponible bloque le

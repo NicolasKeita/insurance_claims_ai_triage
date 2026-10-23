@@ -2,6 +2,7 @@
 
 import pytest
 
+from evaluation.models import ComponentResult
 from tests.infrastructure.evaluation._support import FOLLOW_UP_ACTIONS, STANDARD, action_check, recorder
 
 TRIGGERS = [
@@ -16,6 +17,7 @@ TRIGGERS = [
             "ADDITIONAL_QUOTE_DAMAGE",
             "UNMAPPED_QUOTE_ITEM",
             "RECENT_CLAIM_FREQUENCY",
+            "VISUAL_ADDITIONAL_DAMAGE",
         )
     ],
 ]
@@ -111,3 +113,40 @@ def test_partial_investigation_without_recorded_missing_inputs_remains_unavailab
     value = recorder()
     value.observation.components["investigation"].metadata = {"partial": True}
     assert action_check(value).status == "SKIP"
+
+
+@pytest.mark.parametrize("action", [STANDARD, "NO_RECOMMENDATION", *FOLLOW_UP_ACTIONS])
+def test_direct_visual_additional_damage_requires_follow_up_even_without_investigation(action):
+    value = recorder(action=action)
+    value.observation.components["investigation"].status = "SKIP"
+    value.observation.components["vision"] = ComponentResult(status="PASS")
+    value.observation.vision = {"consistency": {"additional_visual_damage": ["HOOD"]}}
+    check = action_check(value)
+    assert check.status == ("PASS" if action in FOLLOW_UP_ACTIONS else "FAIL")
+    assert set(check.expected) == set(FOLLOW_UP_ACTIONS)
+
+
+@pytest.mark.parametrize("status", ["SKIP", "FAIL"])
+def test_unavailable_vision_does_not_supply_a_stale_follow_up_trigger(status):
+    value = recorder()
+    value.observation.components["vision"] = ComponentResult(status=status)
+    value.observation.vision = {"consistency": {"additional_visual_damage": ["HOOD"]}}
+    assert action_check(value).status == "PASS"
+
+
+@pytest.mark.parametrize(
+    "consistency",
+    [
+        {"declared_damage_not_visually_confirmed": ["LEFT_HEADLIGHT"]},
+        {"visually_supported_declared_damage": ["FRONT_BUMPER"]},
+        {"visually_supported_quote_damage": ["FRONT_BUMPER"]},
+        {"visual_damage_unmapped": [{"visual_damage_type": "SCRATCH"}]},
+        {"additional_visual_damage": ["invented part"]},
+        {"additional_visual_damage": "HOOD"},
+    ],
+)
+def test_visual_information_alone_keeps_standard_review_available(consistency):
+    value = recorder()
+    value.observation.components["vision"] = ComponentResult(status="PASS")
+    value.observation.vision = {"consistency": consistency}
+    assert action_check(value).status == "PASS"

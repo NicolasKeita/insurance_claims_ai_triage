@@ -38,6 +38,7 @@ def test_visual_non_detection_adds_no_review_points_and_preserves_uncertainty(go
     assert facts["vision"]["consistency"]["declared_damage_not_visually_confirmed"] == ["LEFT_HEADLIGHT"]
     assert facts["investigation"]["review_score"] == 0
     assert result.observation.signals == []
+    assert result.observation.agent["recommendation"]["uncertainties"]
 
 
 def test_pipeline_trace_records_component_outputs_and_sources(golden_run):

@@ -1,5 +1,7 @@
 import json
 
+from sqlalchemy.exc import InterfaceError, OperationalError, TimeoutError
+
 from agent.models import (
     EvidenceItem,
     EvidenceSourceType,
@@ -28,8 +30,11 @@ def _read_claim(self, claim_id, tool):
 
 
 def _read_history(self, claim_id, tool):
-    with self.factory() as session:
-        profile = HistoricalClaimRepository(session).get_profile(claim_id)
+    try:
+        with self.factory() as session:
+            profile = HistoricalClaimRepository(session).get_profile(claim_id)
+    except (InterfaceError, OperationalError, TimeoutError):
+        return self._missing(tool, "Historical claim data is temporarily unavailable", unavailable=True)
     data = profile.model_dump(mode="json")
     evidence = EvidenceItem(
         evidence_id=f"history:{claim_id}",

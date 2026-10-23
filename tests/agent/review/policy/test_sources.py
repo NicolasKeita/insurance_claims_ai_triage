@@ -44,6 +44,14 @@ def test_positive_anomaly_supports_registered_and_flat_assessment_formats(wrappe
         (EvidenceSourceType.ANOMALY_ASSESSMENT, {"recommended_workflow": "EXPERT_REVIEW"}),
         (EvidenceSourceType.INVESTIGATION_ASSESSMENT, {"recommended_workflow": "EXPERT_REVIEW"}),
         (EvidenceSourceType.INVESTIGATION_ASSESSMENT, {"is_anomalous": True}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"visually_supported_declared_damage": ["HOOD"]}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"visually_supported_quote_damage": ["HOOD"]}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"declared_damage_not_visually_confirmed": ["HOOD"]}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"visual_damage_unmapped": [{"type": "SCRATCH"}]}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"additional_visual_damage": []}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"additional_visual_damage": ["invented part"]}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": {"additional_visual_damage": "HOOD"}}),
+        (EvidenceSourceType.VISUAL_ASSESSMENT, {"consistency": None}),
     ],
 )
 def test_nontriggering_assessments_keep_routine_review_available(source_type, data, wrapped):
@@ -79,6 +87,14 @@ def test_follow_up_looking_data_in_other_source_types_cannot_trigger(source_type
             "signals": [{"code": "ANOMALOUS_PATTERN"}],
         },
     )
+    assert follow_up_sources({item.evidence_id: item}) == []
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("source_type", [EvidenceSourceType.CLAIM_DATA, EvidenceSourceType.HISTORY])
+def test_visual_looking_fields_in_other_sources_cannot_trigger_follow_up(source_type, wrapped):
+    data = {"consistency": {"additional_visual_damage": ["HOOD"]}}
+    item = assessment_evidence(source_type, {"result": data} if wrapped else data)
     assert follow_up_sources({item.evidence_id: item}) == []
 
 

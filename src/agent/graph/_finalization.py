@@ -14,6 +14,7 @@ from agent.models import (
     RecommendedNextAction,
     RunStatus,
 )
+from agent.review_policy import visual_uncertainties
 
 
 def finalize(state, finalizer):
@@ -61,6 +62,7 @@ def validate(state):
         ]
         if state["stop_reason"] == "Maximum tool steps reached.":
             limitations.append(state["stop_reason"])
+        limitations.extend(visual_uncertainties(registry))
         recommendation.uncertainties = list(dict.fromkeys([*limitations, *recommendation.uncertainties]))[:20]
         recommendation = AgentRecommendation.model_validate(recommendation.model_dump())
         return {

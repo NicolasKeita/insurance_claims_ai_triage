@@ -1,6 +1,6 @@
 """Evaluate action expectations from observed outputs, independently of agent enforcement."""
 
-from claims.enums import TriageWorkflow
+from claims.enums import DamageType, TriageWorkflow
 from claims.investigation.models import SignalCode
 
 FOLLOW_UP_ACTIONS = ["REQUEST_ADDITIONAL_INFORMATION", "REFER_TO_EXPERT", "REFER_FOR_INVESTIGATION_REVIEW"]
@@ -11,6 +11,7 @@ FOLLOW_UP_SIGNALS = {
     SignalCode.RECENT_CLAIM_FREQUENCY,
     SignalCode.ANOMALOUS_PATTERN,
     SignalCode.EXTREME_ANOMALY_PERCENTILE,
+    SignalCode.VISUAL_ADDITIONAL_DAMAGE,
 }
 
 
@@ -39,6 +40,8 @@ def _observed_follow_up(observation, vision_required):
     triage = _payload(observation.facts.get("triage"))
     anomaly = _payload(observation.facts.get("anomaly"))
     investigation = _payload(observation.investigation)
+    visual = _payload(_payload(observation.vision).get("consistency"))
+    additional_damage = visual.get("additional_visual_damage")
     workflow = triage.get("recommended_workflow")
     flagged = anomaly.get("is_anomalous")
     signals = investigation.get("signals")
@@ -54,6 +57,9 @@ def _observed_follow_up(observation, vision_required):
         available[0] and workflow in FOLLOW_UP_WORKFLOWS,
         available[1] and flagged is True,
         available[2] and any(item.get("code") in FOLLOW_UP_SIGNALS for item in signals),
+        _available(observation, "vision")
+        and isinstance(additional_damage, list)
+        and any(damage in tuple(DamageType) for damage in additional_damage),
     )
     return any(positive), all(available) and _investigation_complete(observation, vision_required)
 

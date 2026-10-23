@@ -3,7 +3,7 @@
 from typing import Literal, get_args
 
 from agent.models import EvidenceItem, EvidenceSourceType, RecommendedNextAction
-from claims.enums import TriageWorkflow
+from claims.enums import DamageType, TriageWorkflow
 from claims.investigation.models import SignalCode
 
 FollowUpAction = Literal[
@@ -18,6 +18,7 @@ FOLLOW_UP_SIGNAL_CODES = {
     SignalCode.RECENT_CLAIM_FREQUENCY,
     SignalCode.ANOMALOUS_PATTERN,
     SignalCode.EXTREME_ANOMALY_PERCENTILE,
+    SignalCode.VISUAL_ADDITIONAL_DAMAGE,
 }
 FOLLOW_UP_TRIAGE_WORKFLOWS = {TriageWorkflow.EXPERT_REVIEW, TriageWorkflow.INVESTIGATION}
 FOLLOW_UP_RULES = (
@@ -26,15 +27,27 @@ FOLLOW_UP_RULES = (
     + " or ".join(sorted(FOLLOW_UP_TRIAGE_WORKFLOWS))
     + ", an ANOMALY_ASSESSMENT records is_anomalous=true, or an INVESTIGATION_ASSESSMENT records "
     + ", ".join(sorted(FOLLOW_UP_SIGNAL_CODES))
-    + ". These follow-up triggers do not establish fraud and apply even below the elevated-priority threshold."
+    + ", or a VISUAL_ASSESSMENT records additional_visual_damage in its consistency assessment. "
+    "These follow-up triggers do not establish fraud and apply even below the elevated-priority threshold."
 )
 
 
-def _requires_follow_up(item):
+def _assessment_result(item):
     data = item.structured_data or {}
     result = data.get("result", data) or {}
-    if not isinstance(result, dict):
-        return False
+    return result if isinstance(result, dict) else {}
+
+
+def _visual_damage_types(result, field):
+    consistency = result.get("consistency")
+    if not isinstance(consistency, dict) or not isinstance(consistency.get(field), list):
+        return ()
+    values = consistency[field]
+    return tuple(damage for damage in DamageType if damage in values)
+
+
+def _requires_follow_up(item):
+    result = _assessment_result(item)
     if item.source_type == EvidenceSourceType.TRIAGE_ASSESSMENT:
         return result.get("recommended_workflow") in FOLLOW_UP_TRIAGE_WORKFLOWS
     if item.source_type == EvidenceSourceType.ANOMALY_ASSESSMENT:
@@ -42,6 +55,8 @@ def _requires_follow_up(item):
         return isinstance(assessment, dict) and assessment.get("is_anomalous") is True
     if item.source_type == EvidenceSourceType.INVESTIGATION_ASSESSMENT:
         return any(signal.get("code") in FOLLOW_UP_SIGNAL_CODES for signal in result.get("signals", []))
+    if item.source_type == EvidenceSourceType.VISUAL_ASSESSMENT:
+        return bool(_visual_damage_types(result, "additional_visual_damage"))
     return False
 
 
@@ -58,3 +73,16 @@ def follow_up_sources(registry):
         if _requires_follow_up(item):
             sources.append(item.evidence_id)
     return sources
+
+
+def visual_uncertainties(registry):
+    """Preserve typed non-detections independently of the generated answer and context budget."""
+    unconfirmed = set()
+    for value in registry.values():
+        item = EvidenceItem.model_validate(value)
+        if item.source_type == EvidenceSourceType.VISUAL_ASSESSMENT:
+            unconfirmed.update(_visual_damage_types(_assessment_result(item), "declared_damage_not_visually_confirmed"))
+    if not unconfirmed:
+        return []
+    parts = ", ".join(damage.value for damage in DamageType if damage in unconfirmed)
+    return [f"Declared damage was not visually confirmed ({parts}); non-detection is not evidence of absence."]

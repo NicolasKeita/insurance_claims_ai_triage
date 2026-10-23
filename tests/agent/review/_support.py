@@ -4,10 +4,12 @@ import json
 
 import pytest
 
+from agent.models import EvidenceSourceType
 from agent.tools import ReadOnlyAgentTools
 from claims.investigation.models import InvestigationAssessment, InvestigationSignal
 from persistence.mappers import AssessmentRecord
 from tests.agent.tools._evidence import plan
+from tests.infrastructure.support.agent_fakes import make_evidence
 
 
 @pytest.fixture
@@ -51,6 +53,8 @@ def review_evidence(stored_review):
         ("investigation", "RECENT_CLAIM_FREQUENCY"),
         ("investigation", "ANOMALOUS_PATTERN"),
         ("investigation", "EXTREME_ANOMALY_PERCENTILE"),
+        ("investigation", "VISUAL_ADDITIONAL_DAMAGE"),
+        ("visual", "HOOD"),
         ("triage", "EXPERT_REVIEW"),
         ("triage", "INVESTIGATION"),
         ("anomaly", True),
@@ -60,6 +64,13 @@ def review_evidence(stored_review):
 def follow_up_evidence(stored_review, request):
     claim, factory, _, records = stored_review
     kind, trigger = request.param
+    if kind == "visual":
+        return make_evidence("vision:stored").model_copy(
+            update={
+                "source_type": EvidenceSourceType.VISUAL_ASSESSMENT,
+                "structured_data": {"result": {"consistency": {"additional_visual_damage": [trigger]}}},
+            }
+        )
     if kind != "investigation":
         item = ReadOnlyAgentTools(factory).execute(claim.claim_id, plan(f"GET_{kind.upper()}")).evidence[0]
         if kind == "triage":
@@ -75,6 +86,19 @@ def follow_up_evidence(stored_review, request):
             title="Recent claim frequency",
             explanation="Three previous claims occurred in the last 30 days and five in the last 365 days.",
             evidence={"previous_claim_count": 6, "claims_last_30_days": 3, "claims_last_365_days": 5},
+        )
+    elif trigger == "VISUAL_ADDITIONAL_DAMAGE":
+        assessment.update(
+            review_score=12,
+            review_priority="NORMAL",
+            review_recommended=False,
+            policy_version="investigation_policy_v3",
+        )
+        assessment["signals"][0].update(
+            category="MULTIMODAL_CONSISTENCY",
+            title="Additional visually observed damage",
+            explanation="A geometric model observation associates an undeclared scratch with the hood.",
+            evidence={"mapped_damage_type": "HOOD"},
         )
     records["investigation"] = AssessmentRecord(
         previous.id, previous.created_at, InvestigationAssessment.model_validate(assessment)
