@@ -2,15 +2,16 @@
 
 import json
 
+from evaluation import E2E_BENCHMARK_VERSION
 from evaluation.models import EvaluationScenario
 from evaluation.preflight import ROOT
 
 
 def real_diagnostic_scenarios() -> list[EvaluationScenario]:
     """Diagnostics supplement the frozen golden manifest without invented truth."""
-    path = ROOT / "data/evaluation/e2e_v1/diagnostics.json"
+    path = ROOT / "data/evaluation/e2e_v2/diagnostics.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    if manifest["benchmark_version"] != "e2e_claims_v1":
+    if manifest["benchmark_version"] != E2E_BENCHMARK_VERSION:
         raise ValueError("Unsupported diagnostic manifest version")
     return [EvaluationScenario.model_validate(item) for item in manifest["diagnostics"]]
 

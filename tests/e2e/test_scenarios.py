@@ -34,17 +34,19 @@ def write_manifest(tmp_path, update):
 def test_versioned_benchmark_has_all_golden_cases_and_existing_declared_files():
     scenarios = load_scenarios()
     assert {scenario.scenario_id for scenario in scenarios} == EXPECTED_IDS
-    assert E2E_BENCHMARK_VERSION == "e2e_claims_v1"
+    assert E2E_BENCHMARK_VERSION == "e2e_claims_v2"
     root = Path(__file__).resolve().parents[2]
     for scenario in scenarios:
         assert scenario.expected_facts, scenario.scenario_id
         assert scenario.acceptable_agent_actions, scenario.scenario_id
+        assert scenario.real_agent_action_policy is not None, scenario.scenario_id
+        assert scenario.real_agent_action_policy.otherwise_acceptable_actions, scenario.scenario_id
         assert scenario.files, scenario.scenario_id
         for file in scenario.files:
             assert (root / file).is_file(), (scenario.scenario_id, file)
 
 
-@pytest.mark.parametrize("version", ["", "e2e_claims_v0", "e2e_claims_v2"])
+@pytest.mark.parametrize("version", ["", "e2e_claims_v0", "e2e_claims_v1", "e2e_claims_v3"])
 def test_unknown_version_is_rejected_before_execution(tmp_path, version):
     path = write_manifest(tmp_path, lambda data: data.update(benchmark_version=version))
     with pytest.raises(ValidationError, match="Unsupported E2E benchmark version"):

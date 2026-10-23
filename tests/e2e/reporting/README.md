@@ -353,7 +353,7 @@ Aucun détecteur réel n'est évalué et aucune qualité de détection n'est mes
 </details>
 
 Ces deux tests utilisent le véritable adaptateur `RealClaimsEvaluationPipeline`
-et les scénarios du [manifeste versionné](../../../data/evaluation/e2e_v1/scenarios.json),
+et les scénarios du [manifeste versionné](../../../data/evaluation/e2e_v2/scenarios.json),
 en contrôlant artificiellement l'état des services. Ils vérifient comment le
 système représente les données manquantes, pas la disponibilité des services
 déployés.

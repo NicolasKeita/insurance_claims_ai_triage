@@ -283,7 +283,13 @@ que les décisions interdites du socle.
 En réel, l'assertion `anomaly.is_anomalous` et l'exigence du signal
 `ANOMALOUS_PATTERN` sont explicitement retirées par les marqueurs
 `deterministic_only_*`. Les prédictions réelles et leur provenance sont
-observées ; le scénario ne valide pas leur précision statistique.
+observées ; le scénario ne valide pas leur précision statistique. Le benchmark
+v2 exige une action de suivi si les évaluations observées contiennent un
+déclencheur de suivi : triage `EXPERT_REVIEW` ou `INVESTIGATION`, anomalie
+positive ou signal de suivi structuré. Sinon, `real_agent_action_policy` autorise
+aussi `CONTINUE_STANDARD_REVIEW`, sans autoriser `NO_RECOMMENDATION` pour ce
+dossier complet. L'absence d'évaluations bloque ce contrôle ; elle n'établit pas
+l'absence d'alerte. Le montant de 95 000 EUR ne force aucune étiquette du modèle.
 
 </details>
 
@@ -694,8 +700,8 @@ deux golden de vision ni ne doit entrer dans leurs taux de réussite.
 ## Détails de vérification communs
 
 Les fichiers de référence sont le
-[catalogue des scénarios](../../data/evaluation/e2e_v1/scenarios.json) et celui
-des [deux essais complémentaires](../../data/evaluation/e2e_v1/diagnostics.json).
+[catalogue des scénarios](../../data/evaluation/e2e_v2/scenarios.json) et celui
+des [deux essais complémentaires](../../data/evaluation/e2e_v2/diagnostics.json).
 Ils précisent les données et les résultats que le code vérifie.
 
 <details>
@@ -797,6 +803,23 @@ recommandation doit correspondre à celui de ses justifications.
 | `REFER_TO_EXPERT` | Soumettre le dossier à un expert. |
 | `REFER_FOR_INVESTIGATION_REVIEW` | Orienter le dossier vers une revue humaine approfondie. |
 | `NO_RECOMMENDATION` | S'abstenir de recommander une prochaine action. |
+
+Les listes d'actions propres à chaque scénario restent les attentes du mode
+déterministe. En réel, chaque golden v2 déclare une `real_agent_action_policy`
+typée : un triage observé `EXPERT_REVIEW` ou `INVESTIGATION`, une anomalie
+`is_anomalous=true`, ou un signal structuré `ADDITIONAL_QUOTE_DAMAGE`,
+`UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`, `ANOMALOUS_PATTERN` ou
+`EXTREME_ANOMALY_PERCENTILE` impose l'une des trois actions de suivi
+(`REQUEST_ADDITIONAL_INFORMATION`, `REFER_TO_EXPERT`,
+`REFER_FOR_INVESTIGATION_REVIEW`). Sinon, la liste explicite
+`otherwise_acceptable_actions` s'applique. Une évaluation indisponible bloque le
+contrôle conditionnel. Les diagnostics conservent leurs attentes séparées.
+
+L'agent applique ce contrat aux évaluations structurées qu'il a collectées et
+doit citer une évaluation déclenchant le suivi. Une priorité d'investigation
+`NORMAL` ou `review_recommended=false` n'annule pas le triage ni une anomalie.
+Ces règles ne modifient aucun seuil ML ni score d'investigation et ne constituent
+pas une conclusion de fraude.
 
 Les décisions structurées `FRAUD_CONFIRMED`, `APPROVE_CLAIM`, `DENY_CLAIM` et
 `PAYMENT_AUTHORIZED` sont interdites. Les signaux servent à la revue humaine ;

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from evaluation.models import E2E_BENCHMARK_VERSION, EvaluationScenario
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SCENARIOS_PATH = ROOT / "data/evaluation/e2e_v1/scenarios.json"
+DEFAULT_SCENARIOS_PATH = ROOT / "data/evaluation/e2e_v2/scenarios.json"
 
 
 class EvaluationBenchmark(BaseModel):

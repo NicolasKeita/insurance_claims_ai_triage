@@ -19,18 +19,18 @@ class StructuredAgentPlanner:
     def __init__(self, llm: StructuredLlm, *, require_investigation: bool = False):
         self.llm = llm
         self.require_investigation = require_investigation
-        self.minimum_tool_steps = 2 if require_investigation else 1
+        self.minimum_tool_steps = 3 if require_investigation else 1
 
     def _required_step(self, state):
         """The application collects core stored evidence before discretionary LLM planning."""
         if self.require_investigation:
             attempted = {item["tool_name"] for item in state["observations"]}
-            for action in ("GET_CLAIM", "GET_INVESTIGATION"):
+            for action in ("GET_CLAIM", "GET_INVESTIGATION", "GET_TRIAGE"):
                 if action not in attempted:
                     return AgentPlanStep(
                         action=action,
                         arguments={},
-                        reason="Required initial read of stored claim facts and investigation signals.",
+                        reason="Required initial read of claim facts, investigation signals and triage guidance.",
                     )
         return None
 

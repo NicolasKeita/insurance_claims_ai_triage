@@ -33,7 +33,7 @@ Les tests poursuivent trois objectifs complémentaires :
 
 Les fiches commencent par une explication en termes courants. Les noms de
 champs, codes et valeurs précises sont accessibles dans des détails repliables.
-Les inventaires couvrent **27 fonctions de test**, soit **49 cas en comptant
+Les inventaires couvrent **27 fonctions de test**, soit **50 cas en comptant
 leurs variantes**, dont les dix situations métier.
 
 <a id="controles-de-la-liste-des-tests"></a>
@@ -69,9 +69,10 @@ fichiers déclarés.
 chaque scénario et ses chemins de fichiers depuis la racine du dépôt.
 
 **Résultat attendu :** exactement les dix identifiants attendus, la version de
-benchmark `e2e_claims_v1`, des faits attendus, des actions agent acceptables et
-une liste non vide de fichiers pour chaque scénario. Chaque fichier déclaré
-doit exister. Ce contrôle ne vérifie pas à lui seul le contenu des PDF, les
+benchmark `e2e_claims_v2`, des faits attendus, des actions agent acceptables,
+une politique conditionnelle d'actions réelles avec une liste alternative non
+vide, et une liste non vide de fichiers pour chaque scénario. Chaque fichier
+déclaré doit exister. Ce contrôle ne vérifie pas à lui seul le contenu des PDF, les
 modèles ou la disponibilité des services externes.
 
 </details>
@@ -98,9 +99,9 @@ Source : [`test_scenarios.py`](test_scenarios.py).
 **Préparation et action :** copier le manifeste dans un fichier temporaire,
 remplacer `benchmark_version`, puis tenter son chargement.
 
-**Variantes :** chaîne vide, `e2e_claims_v0` et `e2e_claims_v2`.
+**Variantes :** chaîne vide, `e2e_claims_v0`, `e2e_claims_v1` et `e2e_claims_v3`.
 
-**Résultat attendu :** pour chacune des trois variantes, une `ValidationError`
+**Résultat attendu :** pour chacune des quatre variantes, une `ValidationError`
 contenant `Unsupported E2E benchmark version`. Aucun scénario n'est exécuté.
 
 </details>
@@ -237,7 +238,7 @@ Quand un test change, actualiser d'abord sa situation, sa raison métier et la
 réaction attendue, puis les détails de vérification. Le lecteur doit pouvoir
 comprendre pourquoi le test existe sans connaître les noms des champs du code.
 Les données et attentes précises restent dans le
-[fichier des scénarios](../../data/evaluation/e2e_v1/scenarios.json) ; le
+[fichier des scénarios](../../data/evaluation/e2e_v2/scenarios.json) ; le
 [guide](../../docs/END_TO_END_EVALUATION.md#frozen-golden-cases) explique leur
 versionnement. La version de ces scénarios est distincte de la version de
 l'application dans `pyproject.toml`.

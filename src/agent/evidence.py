@@ -40,12 +40,10 @@ def _validate_follow_up(recommendation, registry, supporting_ids):
     if not sources:
         return
     if recommendation.recommended_next_action not in FOLLOW_UP_ACTIONS:
-        raise EvidenceValidationError(
-            "Recorded investigation signals require a follow-up action", code="INCOMPATIBLE_FOLLOW_UP"
-        )
+        raise EvidenceValidationError("Collected assessments require a follow-up action", code="INCOMPATIBLE_FOLLOW_UP")
     if not set(sources).intersection(supporting_ids):
         raise EvidenceValidationError(
-            "Follow-up rationale must cite the collected investigation assessment",
+            "Follow-up rationale must cite a collected assessment requiring follow-up",
             code="FOLLOW_UP_ASSESSMENT_NOT_CITED",
         )
 

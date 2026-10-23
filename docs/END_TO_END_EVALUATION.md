@@ -96,10 +96,13 @@ scenarios or `--preflight-only`.
 
 ## Frozen golden cases
 
-`E2E_BENCHMARK_VERSION = "e2e_claims_v1"` is declared in `src/evaluation/`.
-The versioned manifest is `data/evaluation/e2e_v1/scenarios.json`. An important
+`E2E_BENCHMARK_VERSION = "e2e_claims_v2"` is declared in `src/evaluation/`.
+The versioned manifest is `data/evaluation/e2e_v2/scenarios.json`. An important
 change to scenarios or their expected behavior requires a new benchmark version.
 The loader rejects unknown versions, duplicate IDs and unknown scenario fields.
+The v1 manifests and configuration remain preserved in `data/evaluation/e2e_v1/`
+and `configs/evaluation/e2e_v1.toml`; the current runner uses v2. Baselines from
+different benchmark versions cannot be compared.
 
 | Scenario | Required behavior |
 | --- | --- |
@@ -107,7 +110,7 @@ The loader rejects unknown versions, duplicate IDs and unknown scenario fields.
 | `additional_quote_damage` | HOOD appears beyond declared FRONT_BUMPER, with quote evidence. |
 | `missing_documents` | One unavailable document, completeness 3/4, policy-driven factual follow-up. |
 | `recent_claim_history` | Inclusive 30/90/365 counts; same-day, future and other-customer claims excluded. |
-| `statistically_unusual_claim` | Explicit fake anomaly path; no fraud conclusion. Real predictions remain observations. |
+| `statistically_unusual_claim` | Explicit fake anomaly path; real follow-up depends on observed assessments, without imposing a model label or a fraud conclusion. |
 | `policy_answerable` | Expected demo policy and Deductible section retrieved; grounded valid citation. |
 | `policy_insufficient_evidence` | Unsupported volcanic-ash question produces insufficient evidence without invented clauses. |
 | `agent_missing_tool_data` | Unavailable history tool produces uncertainty and mandatory human review. |
@@ -124,6 +127,26 @@ ground truth. Entries can mark fake-only expectations through
 `deterministic_only_facts` and `deterministic_only_signals` in their inputs;
 the real runner records the model result without imposing those fake labels.
 
+Each golden case declares a typed `real_agent_action_policy` with
+`otherwise_acceptable_actions`. Deterministic runs keep the original
+`acceptable_agent_actions`. In real runs, an observed `EXPERT_REVIEW` or
+`INVESTIGATION` triage workflow, `anomaly.is_anomalous=true`, or a collected
+follow-up investigation signal requires `REQUEST_ADDITIONAL_INFORMATION`,
+`REFER_TO_EXPERT`, or `REFER_FOR_INVESTIGATION_REVIEW`. Follow-up signals are
+`ADDITIONAL_QUOTE_DAMAGE`, `UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`,
+`ANOMALOUS_PATTERN`, and `EXTREME_ANOMALY_PERCENTILE`.
+Without a trigger, the scenario's explicit alternative actions apply. Missing
+assessment data or required investigation inputs block this negative conclusion;
+optional vision may be omitted. One observed positive trigger still requires
+follow-up even if another input is unavailable. Diagnostics retain their separate
+action expectations.
+
+For `statistically_unusual_claim`, the real alternative also permits
+`CONTINUE_STANDARD_REVIEW` when available assessments contain no follow-up
+trigger. A high repair amount alone is not an anomaly label. This change does
+not alter any ML model, anomaly threshold, investigation score, or priority
+threshold; it checks the handling of the assessments actually observed.
+
 The controlled documents are generated from manifest inputs in an isolated
 temporary directory. Their provenance identifies the synthetic benchmark;
 the original reference claim is preserved. Geometric visual golden cases use
@@ -131,7 +154,7 @@ explicit synthetic observations rather than third-party photographs. Real vision
 cannot establish those particular golden labels without appropriate controlled
 image assets, even when model checkpoints are loadable.
 
-`data/evaluation/e2e_v1/diagnostics.json` separately versions two real execution
+`data/evaluation/e2e_v2/diagnostics.json` separately versions two real execution
 diagnostics: the original `CLAIM-2026-00001` documents and prior locally available
 CarDD photographs with documented source IDs. Diagnostics do not enter the ten
 golden cases' pass-rate denominator. The reference claim's two JPEGs are empty;
@@ -153,27 +176,27 @@ From the repository root in PowerShell:
 .\.venv\Scripts\python.exe -m pytest -rs
 
 # Persist a deterministic benchmark run.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/evaluation/e2e_v1/deterministic
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/evaluation/e2e_v2/deterministic
 
 # Lightweight prerequisite checks only; no model loading or scenario execution.
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
 
 # Request the available real components; unavailable components remain explicit.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v1/real
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v2/real
 
 # Run controlled claims against this project's local, isolated test services.
 # This uses the already installed model; it never pulls an Ollama model.
 $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
-.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --save-baseline --output-dir artifacts/evaluation/e2e_v1/isolated_real
+.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --save-baseline --output-dir artifacts/evaluation/e2e_v2/isolated_real
 
 # Select a case (repeat --scenario to select multiple).
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --scenario visual_non_detection --output-dir artifacts/evaluation/e2e_v1/non_detection
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --scenario visual_non_detection --output-dir artifacts/evaluation/e2e_v2/non_detection
 
 # A successful complete real-stack run may create the stable baseline.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --save-baseline --output-dir artifacts/evaluation/e2e_v1
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --save-baseline --output-dir artifacts/evaluation/e2e_v2
 
 # Compare a later real run against that baseline.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --baseline artifacts/evaluation/e2e_v1/baseline_summary.json --output-dir artifacts/evaluation/e2e_v1/current
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --baseline artifacts/evaluation/e2e_v2/baseline_summary.json --output-dir artifacts/evaluation/e2e_v2/current
 ```
 
 `--isolated-demo-stack` validates an explicitly selected test database, creates
@@ -198,33 +221,34 @@ other environments can select another already installed model explicitly.
 `--no-include-similar-claims` disable individual components explicitly.
 `--no-include-diagnostics` omits the supplemental real diagnostics. Configuration
 defaults and local checkpoint/source paths are in
-`configs/evaluation/e2e_v1.toml`. The existing environment configuration controls
+`configs/evaluation/e2e_v2.toml`. The existing environment configuration controls
 PostgreSQL, Qdrant, embedding and Ollama services. MLflow is optional; the report
 records actual local model/checkpoint versions and loading sources.
 
-The production agent first reads `GET_CLAIM` and `GET_INVESTIGATION`, then lets
-the LLM plan further tool calls. Both reads count toward the existing eight-step
-limit and require no LLM generation. An unavailable stored investigation remains
+The production agent first reads `GET_CLAIM`, `GET_INVESTIGATION`, and
+`GET_TRIAGE`, then lets the LLM plan further tool calls. These reads count toward
+the existing eight-step limit and require no LLM generation. An unavailable stored investigation remains
 explicit uncertainty; the agent does not compute one or retry the initial read.
 Investigation evidence includes bounded signal codes and concrete facts (such as
 the extra quoted vehicle part), preserved in the finalizer context. The
-`claims_agent_prompt_v6` instructions distinguish queue priority from required
-follow-up on document discrepancies or recent claim frequency. They ask for
-clarification or repair-expert review when quote items are unexplained, and
-clarification or further human review when the frequency signal is present.
-The benchmark's acceptable actions remain unchanged.
-For collected `ADDITIONAL_QUOTE_DAMAGE`, `UNMAPPED_QUOTE_ITEM`, or
-`RECENT_CLAIM_FREQUENCY` signals, the application restricts the Ollama response
-schema to clarification, expert review,
-or investigation review. The final rationale must cite the relevant assessment.
-An ordinary queue priority or `review_recommended=false` does not remove this
-follow-up requirement. In particular, the frequency signal's 15 points remain
-below the 20-point review-priority threshold; scoring and thresholds are unchanged.
-Historical counts alone, or signal names appearing in retrieved text, do not
-activate this contract. The same checks run before accepting the recommendation,
-including with a custom LLM
-adapter; incompatible output is rejected rather than rewritten. Without a
-collected signal requiring follow-up, the original action choices remain available.
+`claims_agent_prompt_v7` instructions distinguish queue priority from required
+follow-up. Collected `EXPERT_REVIEW` or `INVESTIGATION` triage recommendations,
+an anomaly assessment with `is_anomalous=true`, and the follow-up investigation
+signals listed above constrain the Ollama response schema to clarification,
+expert review, or investigation review. The final rationale must cite a
+triggering assessment. `NORMAL` priority or `review_recommended=false` does not
+cancel a trigger from another assessment. These assessments guide human review
+and do not establish fraud.
+
+The frequency signal's 15 points remain below the 20-point review-priority
+threshold; scoring and thresholds are unchanged. Historical counts alone,
+or signal names appearing in retrieved text, do not activate this contract.
+The same checks run before accepting the recommendation, including with a
+custom LLM adapter; incompatible output is rejected rather than rewritten.
+Without a collected assessment requiring follow-up, the original action choices
+remain available. The v2 real benchmark checks this same conditional contract
+against the observed pipeline assessments while keeping deterministic expectations
+unchanged.
 
 The generation schema also restricts source IDs to collected evidence and fixes
 agent/prompt versions to their current values. Grounding failures retain a

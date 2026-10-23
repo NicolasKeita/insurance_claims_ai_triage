@@ -53,7 +53,7 @@ class _ProgressPipeline:
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("real", "deterministic"), default="real")
-    parser.add_argument("--config", type=Path, default=ROOT / "configs/evaluation/e2e_v1.toml")
+    parser.add_argument("--config", type=Path, default=ROOT / "configs/evaluation/e2e_v2.toml")
     parser.add_argument("--manifest", type=Path, help="Versioned golden scenario manifest")
     parser.add_argument("--scenario", action="append", help="Golden scenario ID; repeat to select multiple")
     parser.add_argument("--include-vision", action=argparse.BooleanOptionalAction, default=None)
@@ -68,7 +68,7 @@ def build_parser():
                         help="Explicitly seed controlled demos in a new disposable schema and vector collections; requires explicit safe test database and Qdrant URLs")
     parser.add_argument("--llm-model", help="Already installed Ollama model; never downloads/pulls")
     parser.add_argument("--vision-device", help="Use 0 for CUDA or cpu")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/evaluation/e2e_v1")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/evaluation/e2e_v2")
     parser.add_argument("--fail-fast", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--dependency-unavailable", choices=("SKIP", "FAIL"), default=None)
     parser.add_argument("--preflight-only", action="store_true")

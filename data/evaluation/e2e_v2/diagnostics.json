@@ -1,0 +1,69 @@
+{
+  "benchmark_version": "e2e_claims_v2",
+  "diagnostics": [
+    {
+      "scenario_id": "reference_claim_documents",
+      "description": "The original document-centric demonstration case preserves its two empty JPEG assets. Vision must remain explicitly unavailable with a reason.",
+      "claim_source": "data/CLAIM-2026-00001",
+      "expected_facts": {},
+      "expected_signals": [],
+      "forbidden_signals": [],
+      "acceptable_agent_actions": [
+        "CONTINUE_STANDARD_REVIEW",
+        "REQUEST_ADDITIONAL_INFORMATION",
+        "REFER_TO_EXPERT",
+        "REFER_FOR_INVESTIGATION_REVIEW",
+        "NO_RECOMMENDATION"
+      ],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": false,
+      "infrastructure_requirements": [
+        "postgresql",
+        "triage",
+        "anomaly"
+      ],
+      "inputs": {
+        "use_reference_case": true
+      },
+      "files": [
+        "data/CLAIM-2026-00001/claim.json",
+        "data/CLAIM-2026-00001/documents/claim_form.pdf",
+        "data/CLAIM-2026-00001/documents/accident_report.pdf",
+        "data/CLAIM-2026-00001/documents/garage_quote.pdf",
+        "data/CLAIM-2026-00001/images/car_front.jpg",
+        "data/CLAIM-2026-00001/images/car_left.jpg"
+      ],
+      "external_assets": []
+    },
+    {
+      "scenario_id": "local_cardd_multimodal_diagnostic",
+      "description": "Real local damage and vehicle-part checkpoints process previously selected local CarDD photos. Declaration and quote are synthetic; no detection or insurance ground truth is claimed.",
+      "claim_source": "external-local-CarDD-manifest",
+      "expected_facts": {},
+      "expected_signals": [],
+      "forbidden_signals": [],
+      "acceptable_agent_actions": [],
+      "expected_knowledge_sources": [],
+      "expected_uncertainties": [],
+      "vision_required": true,
+      "infrastructure_requirements": [
+        "damage_vision",
+        "part_vision",
+        "local_cardd_assets"
+      ],
+      "inputs": {
+        "external_vision_diagnostic": true
+      },
+      "files": [],
+      "external_assets": [
+        {
+          "source_manifest": "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json",
+          "redistributed": false,
+          "ground_truth_available": false,
+          "provenance": "Existing local source selection from STEP29/STEP30; source IDs and local paths must be retained in the execution trace."
+        }
+      ]
+    }
+  ]
+}

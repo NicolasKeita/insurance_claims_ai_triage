@@ -7,7 +7,7 @@ MESSAGES = {
     "UNKNOWN_EVIDENCE_ID": "A cited ID is not in the collected evidence; copy exact allowed_evidence_ids.",
     "NO_EVIDENCE": "Without collected evidence, the recommendation must abstain.",
     "NO_SUPPORTING_RATIONALE": "A supported action needs at least one factual, cited rationale.",
-    "INCOMPATIBLE_FOLLOW_UP": "Required repair or historical follow-up must use one of the allowed actions.",
+    "INCOMPATIBLE_FOLLOW_UP": "Required assessment follow-up must use one of the allowed actions.",
     "FOLLOW_UP_ASSESSMENT_NOT_CITED": "A follow-up rationale must cite an ID from required_follow_up_evidence_ids.",
     "REPAIR_ASSESSMENT_NOT_CITED": "A follow-up rationale must cite an ID from required_follow_up_evidence_ids.",
     "INVALID_KNOWLEDGE_METADATA": "A knowledge source is missing authoritative citation metadata.",

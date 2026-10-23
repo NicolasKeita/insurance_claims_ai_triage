@@ -44,13 +44,31 @@ def review_evidence(stored_review):
     return ReadOnlyAgentTools(factory).execute(claim.claim_id, plan("GET_INVESTIGATION")).evidence[0]
 
 
-@pytest.fixture(params=["ADDITIONAL_QUOTE_DAMAGE", "UNMAPPED_QUOTE_ITEM", "RECENT_CLAIM_FREQUENCY"])
+@pytest.fixture(
+    params=[
+        ("investigation", "ADDITIONAL_QUOTE_DAMAGE"),
+        ("investigation", "UNMAPPED_QUOTE_ITEM"),
+        ("investigation", "RECENT_CLAIM_FREQUENCY"),
+        ("investigation", "ANOMALOUS_PATTERN"),
+        ("investigation", "EXTREME_ANOMALY_PERCENTILE"),
+        ("triage", "EXPERT_REVIEW"),
+        ("triage", "INVESTIGATION"),
+        ("anomaly", True),
+    ],
+    ids=lambda value: f"{value[0]}-{value[1]}",
+)
 def follow_up_evidence(stored_review, request):
     claim, factory, _, records = stored_review
+    kind, trigger = request.param
+    if kind != "investigation":
+        item = ReadOnlyAgentTools(factory).execute(claim.claim_id, plan(f"GET_{kind.upper()}")).evidence[0]
+        if kind == "triage":
+            item.structured_data["result"]["recommended_workflow"] = trigger
+        return item
     previous = records["investigation"]
     assessment = previous.result.model_dump()
-    assessment["signals"][0]["code"] = request.param
-    if request.param == "RECENT_CLAIM_FREQUENCY":
+    assessment["signals"][0]["code"] = trigger
+    if trigger == "RECENT_CLAIM_FREQUENCY":
         assessment.update(review_score=15, review_priority="NORMAL", review_recommended=False)
         assessment["signals"][0].update(
             category="HISTORICAL_CONTEXT",

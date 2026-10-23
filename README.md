@@ -820,12 +820,16 @@ context through the existing structured LLM adapter to avoid the default local
 The recommendation always has `human_review_required=true`. Its allowed next
 actions are `CONTINUE_STANDARD_REVIEW`, `REQUEST_ADDITIONAL_INFORMATION`,
 `REFER_TO_EXPERT`, `REFER_FOR_INVESTIGATION_REVIEW`, and `NO_RECOMMENDATION`.
-When a collected investigation assessment records `ADDITIONAL_QUOTE_DAMAGE`,
-`UNMAPPED_QUOTE_ITEM`, or `RECENT_CLAIM_FREQUENCY`, the generation schema and
+When a collected triage assessment recommends `EXPERT_REVIEW` or `INVESTIGATION`,
+an anomaly assessment records `is_anomalous=true`, or an investigation assessment
+records `ADDITIONAL_QUOTE_DAMAGE`, `UNMAPPED_QUOTE_ITEM`, `RECENT_CLAIM_FREQUENCY`,
+`ANOMALOUS_PATTERN`, or `EXTREME_ANOMALY_PERCENTILE`, the generation schema and
 validator require a follow-up action (additional information, expert review, or
-investigation review) with a rationale citing the assessment. This requirement
-also applies at `NORMAL` priority with `review_recommended=false`; frequency
-scoring remains 15 points and does not establish fraud.
+investigation review) with a rationale citing a triggering assessment.
+`NORMAL` investigation priority or `review_recommended=false` does not cancel
+these triggers. Frequency scoring remains 15 points; all ML and investigation
+thresholds are unchanged. A follow-up is human workflow guidance and does not
+establish fraud.
 A human retains the final claim decision. The demo policies and procedures
 remain **synthetic** and do not establish real coverage or handling requirements.
 
@@ -989,7 +993,7 @@ start with the [business scenarios](tests/e2e/SCENARIOS.md), including repeated
 claims as a potential fraud risk requiring investigation. The
 [test guide](tests/e2e/README.md) also explains the supporting checks.
 
-The versioned `e2e_claims_v1` benchmark covers ten controlled golden scenarios
+The versioned `e2e_claims_v2` benchmark covers ten controlled golden scenarios
 from document ingestion and structured extraction through investigation, RAG,
 multimodal evidence and advisory agent recommendations. Fast deterministic tests
 under `tests/e2e/` run offline in ordinary pytest; real PostgreSQL, Qdrant,
@@ -999,7 +1003,7 @@ embeddings, Ollama and local model evaluation run through the dedicated script.
 .\.venv\Scripts\python.exe -m pytest tests/e2e -q
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
 $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v1/real
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v2/real
 ```
 
 The isolated mode validates the explicit test database and uses a temporary
@@ -1008,12 +1012,20 @@ controlled demo data, then cleans up its own schema/collections. Preflight stays
 read-only. The command uses the existing installed local model and test-service
 ports; no model download is performed.
 
-The manifest is `data/evaluation/e2e_v1/scenarios.json`. Reports distinguish
+The manifest is `data/evaluation/e2e_v2/scenarios.json`. Reports distinguish
 `PASS`, `FAIL` and `SKIP`; a skip never counts as a pass, and an unavailable
 mandatory component leaves the run `PARTIAL`. The two empty reference JPEGs
 remain unchanged. Separate local vision diagnostics preserve asset/model
 provenance and do not imply golden-label accuracy. JSON/CSV artifacts and
-structured traces are saved under `artifacts/evaluation/e2e_v1/`.
+structured traces are saved under `artifacts/evaluation/e2e_v2/`.
+
+In real mode, each golden case's `real_agent_action_policy` requires follow-up
+when the observed assessments contain one of the triggers above; otherwise its
+explicit alternative actions apply. The unusual-claim case permits standard
+review when no trigger is observed, instead of imposing the deterministic anomaly
+label on a real model. Missing assessments block the conditional check.
+Deterministic expectations and all model thresholds are unchanged. The v1
+manifests and configuration remain preserved; v1 and v2 baselines cannot be compared.
 
 The benchmark validates expected behavior on controlled demo scenarios. It is not a measurement of real-world insurance decision accuracy.
 

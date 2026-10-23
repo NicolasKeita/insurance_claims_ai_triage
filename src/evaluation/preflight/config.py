@@ -6,8 +6,10 @@ from pathlib import Path
 
 import tomllib
 
+from evaluation import E2E_BENCHMARK_VERSION
+
 ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v1.toml"
+DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v2.toml"
 SWITCH_KEYS = (
     "include_vision",
     "include_agent",
@@ -43,7 +45,7 @@ class RealEvaluationConfig:
     diagnostic_max_images: int = 2
     synthetic_declared_damage: tuple[str, ...] = ("FRONT_BUMPER",)
     synthetic_quoted_damage: tuple[str, ...] = ()
-    fixture_dir: Path = ROOT / "artifacts/evaluation/e2e_v1/fixtures"
+    fixture_dir: Path = ROOT / "artifacts/evaluation/e2e_v2/fixtures"
     isolated_demo_stack: bool = False
 
     def __post_init__(self):
@@ -58,7 +60,7 @@ class RealEvaluationConfig:
     def from_toml(cls, path: Path = DEFAULT_CONFIG, **overrides):
         """Current project environment settings take precedence over versioned defaults."""
         raw = tomllib.loads(Path(path).read_text(encoding="utf-8"))
-        if raw.get("benchmark_version") != "e2e_claims_v1":
+        if raw.get("benchmark_version") != E2E_BENCHMARK_VERSION:
             raise ValueError("Unsupported real evaluation benchmark_version")
         values = {key: raw[key] for key in SWITCH_KEYS if key in raw}
         values.update(checkpoint_paths(raw.get("models", {})))

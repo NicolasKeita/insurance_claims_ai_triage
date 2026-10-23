@@ -1,5 +1,6 @@
 """Scenario-level agent action and uncertainty expectations."""
 
+from evaluation.assertions.agent.action_policy import acceptable_actions
 from evaluation.assertions.recording import Check
 
 
@@ -10,15 +11,17 @@ def check_agent_scenario(recorder):
     """
     scenario, agent = recorder.scenario, recorder.observation.agent
     recommendation = agent.get("recommendation") or {}
-    if scenario.acceptable_agent_actions:
+    actions, blocked = acceptable_actions(recorder)
+    if actions:
         action = recommendation.get("recommended_next_action")
         recorder.record(
             Check(
                 "agent:acceptable_action",
                 "agent",
-                scenario.acceptable_agent_actions,
+                actions,
                 action,
-                action in scenario.acceptable_agent_actions,
+                action in actions,
+                blocked=blocked,
             )
         )
     if scenario.expected_uncertainties:

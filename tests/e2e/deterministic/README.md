@@ -11,7 +11,7 @@ Les données et certaines réponses de modèles sont préparées à l'avance. Ce
 <details>
 <summary>Préparation technique et consignes d'exécution</summary>
 
-La fixture [`golden_run`](./_support.py#L12) charge le [manifeste JSON](../../../data/evaluation/e2e_v1/scenarios.json) et l'évalue avec [`ClaimsEvaluationPipeline`](../../../src/evaluation/pipeline.py). Elle crée des PDF synthétiques dans un répertoire temporaire, les extrait, compare les documents, calcule les caractéristiques, produit les évaluations et lance l'agent. Qdrant fonctionne en mémoire avec les composants réels d'indexation et de recherche.
+La fixture [`golden_run`](./_support.py#L12) charge le [manifeste JSON](../../../data/evaluation/e2e_v2/scenarios.json) et l'évalue avec [`ClaimsEvaluationPipeline`](../../../src/evaluation/pipeline.py). Elle crée des PDF synthétiques dans un répertoire temporaire, les extrait, compare les documents, calcule les caractéristiques, produit les évaluations et lance l'agent. Qdrant fonctionne en mémoire avec les composants réels d'indexation et de recherche.
 
 Les prédicteurs de triage et d'anomalie, l'historique, les embeddings, le LLM et les détections visuelles sont des doublures déterministes. L'agent utilise les services réels avec des outils fournissant des instantanés contrôlés. La fusion visuelle utilise le service réel et des observations de détecteurs explicitement fournies.
 
@@ -282,4 +282,4 @@ Dans une copie de `visual_additional_damage`, le test supprime `version` de `vis
 
 ## Maintenir ce document
 
-Lorsqu'une fonction `test_*`, une variante ou un résultat vérifié change, actualiser sa fiche et les nombres annoncés. Expliquer d'abord **la situation du dossier, le risque ou l'erreur que l'on veut éviter et la réaction attendue**, puis adapter les détails techniques. Les données exécutables restent dans le [manifeste](../../../data/evaluation/e2e_v1/scenarios.json) et les explications métier dans le [catalogue](../SCENARIOS.md).
+Lorsqu'une fonction `test_*`, une variante ou un résultat vérifié change, actualiser sa fiche et les nombres annoncés. Expliquer d'abord **la situation du dossier, le risque ou l'erreur que l'on veut éviter et la réaction attendue**, puis adapter les détails techniques. Les données exécutables restent dans le [manifeste](../../../data/evaluation/e2e_v2/scenarios.json) et les explications métier dans le [catalogue](../SCENARIOS.md).

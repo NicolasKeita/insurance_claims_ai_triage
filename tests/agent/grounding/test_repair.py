@@ -5,10 +5,11 @@ from types import SimpleNamespace
 import pytest
 
 from agent.evidence import EvidenceValidationError
-from agent.models import EvidenceItem
 from agent.planner import StructuredAgentFinalizer
 from claims.llm import LlmError, OllamaStructuredLlm
 from tests.agent.grounding._support import finalizer_state
+from tests.agent.review._support import follow_up_evidence as follow_up_evidence
+from tests.agent.review._support import stored_review as stored_review
 from tests.infrastructure.support.agent_fakes import FakeStructuredLlm, make_evidence, make_recommendation
 
 
@@ -57,20 +58,12 @@ def test_wrapped_ollama_schema_error_gets_one_correction(monkeypatch, failure):
     assert "provider-secret" not in feedback_prompt
 
 
-@pytest.mark.parametrize("code", ["ADDITIONAL_QUOTE_DAMAGE", "RECENT_CLAIM_FREQUENCY"])
-def test_missing_investigation_citation_is_corrected_by_model_not_rewritten(code):
+def test_missing_follow_up_citation_is_corrected_by_model_not_rewritten(follow_up_evidence):
     claim = make_evidence()
-    investigation = EvidenceItem(
-        evidence_id="investigation:stored",
-        source_type="INVESTIGATION_ASSESSMENT",
-        source_reference="stored",
-        summary="The collected assessment contains a signal requiring follow-up.",
-        structured_data={"signals": [{"code": code}]},
-    )
     first = make_recommendation([claim.evidence_id])
-    corrected = make_recommendation([investigation.evidence_id])
+    corrected = make_recommendation([follow_up_evidence.evidence_id])
     llm = FakeStructuredLlm([first, corrected])
-    result = StructuredAgentFinalizer(llm).finalize(finalizer_state(claim, investigation))
+    result = StructuredAgentFinalizer(llm).finalize(finalizer_state(claim, follow_up_evidence))
     assert result == corrected and len(llm.calls) == 2
     assert first.rationale[0].evidence_ids == [claim.evidence_id]
     assert "FOLLOW_UP_ASSESSMENT_NOT_CITED" in llm.calls[1][0]

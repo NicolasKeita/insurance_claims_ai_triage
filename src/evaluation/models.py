@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from agent.models import RecommendedNextAction
 from evaluation import E2E_BENCHMARK_VERSION
 
 
@@ -19,6 +20,12 @@ class EvaluationModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class RealAgentActionPolicy(EvaluationModel):
+    """Require observed model/signal follow-up, otherwise use declared scenario actions."""
+
+    otherwise_acceptable_actions: list[RecommendedNextAction] = Field(min_length=1)
+
+
 class EvaluationScenario(EvaluationModel):
     scenario_id: str = Field(pattern=r"^[a-z][a-z0-9_]+$")
     description: str
@@ -27,6 +34,7 @@ class EvaluationScenario(EvaluationModel):
     expected_signals: list[str] = Field(default_factory=list)
     forbidden_signals: list[str] = Field(default_factory=list)
     acceptable_agent_actions: list[str] = Field(default_factory=list)
+    real_agent_action_policy: RealAgentActionPolicy | None = None
     expected_knowledge_sources: list[str] = Field(default_factory=list)
     expected_uncertainties: list[str] = Field(default_factory=list)
     vision_required: bool = False
