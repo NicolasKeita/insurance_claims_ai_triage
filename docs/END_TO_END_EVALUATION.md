@@ -214,6 +214,27 @@ collections owned by that run. The setup audit is saved with the artifacts.
 The endpoints above are this project's local test-service ports; they are
 explicit rather than inferred from the production application database.
 
+For `agent_missing_tool_data`, the manifest explicitly requests a controlled
+`GET_HISTORY` outage. In real mode this requires `--isolated-demo-stack` and an
+enabled agent. The runner injects an operational connection failure only into
+the agent's history session factory; the production history tool converts it
+to `NOT_AVAILABLE`. Other database reads, the upstream `history` assessment,
+and LLM generations use the real services. The upstream history stage must
+still pass; the injection does not erase history or force its counts to zero.
+The agent is required to attempt `GET_HISTORY`, within its existing tool-step
+budget, so the outage cannot go unobserved merely because the LLM omits the call.
+
+`provenance.agent_tool_outages` identifies the requested tools, controlled
+injection method, agent-only scope and isolated schema. The agent trace records
+whether `GET_HISTORY` actually returned `NOT_AVAILABLE`; configuration alone
+does not establish that the expected failure was observed. This provenance
+distinguishes the controlled outage from an unexpected service failure.
+Lightweight preflight blocks scenarios requesting tool outages without isolated
+setup, with an unknown or unsupported tool, or with the agent disabled, before
+model loading or inference. These guards also apply with `--preflight-only`.
+An eligible configuration does not guarantee a successful LLM recommendation;
+its action, grounding and retained uncertainty still require evaluation.
+
 Without isolated setup, the runner requires matching already prepared claims
 in its configured database for history, similar claims and agent tools.
 Unseeded controlled cases are skipped before any model loading. The installed

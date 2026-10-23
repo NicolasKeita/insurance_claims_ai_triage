@@ -61,6 +61,8 @@ def record_eligibility(session, scenario, names, *, models_loaded=False):
     """Record explicit missing prerequisites separately from execution failures."""
     config = session.config
     checks = {"retrieval_configuration", f"scenario_files:{scenario.scenario_id}"}
+    if scenario.inputs.get("unavailable_tools"):
+        checks.add(f"scenario_agent_tools:{scenario.scenario_id}")
     for name in names:
         if config.isolated_demo_stack and name in ISOLATED_COLLECTIONS:
             continue

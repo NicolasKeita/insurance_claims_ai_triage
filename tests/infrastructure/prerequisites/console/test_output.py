@@ -79,6 +79,35 @@ def test_available_model_is_readable_without_a_hash_dump(capsys):
     assert "Required for: Retrieving relevant policy passages" in output
 
 
+@pytest.mark.parametrize(
+    "reason,action",
+    [
+        ("Controlled agent tool outages require --include-agent", "Enable --include-agent"),
+        ("Controlled agent tool outages require --isolated-demo-stack", "Use --isolated-demo-stack"),
+        ("Unsupported controlled agent tool outages: GET_CLAIM", "Select a supported controlled tool outage"),
+    ],
+)
+def test_unverifiable_agent_outage_has_a_readable_preflight_action(capsys, tmp_path, reason, action):
+    name = "scenario_agent_tools:controlled"
+    report = PreflightReport(
+        rows=[
+            {"component": name, "status": "SKIP", "reason": f"RuntimeError: {reason}"},
+            {"component": "prerequisites:controlled", "status": "SKIP", "missing_components": [name]},
+        ],
+        blocked_scenarios={"controlled": [f"{name}: RuntimeError: {reason}"]},
+    )
+
+    print_preflight_summary(report, [SimpleNamespace(scenario_id="controlled")], tmp_path)
+
+    output = capsys.readouterr().out
+    assert "[SKIP] controlled: test not run" in output
+    assert "Scenario agent tool outages" in output
+    assert reason in output
+    assert action in output
+    assert "No models loaded; no scenarios executed" in output
+    assert "RuntimeError" not in output
+
+
 @pytest.mark.parametrize("compose_exists,db_blocked", [(True, True), (False, True), (True, False)])
 def test_compose_hint_requires_an_existing_file_and_a_blocked_database(
     capsys, tmp_path, monkeypatch, compose_exists, db_blocked

@@ -21,11 +21,14 @@ def create_claims_agent_service(
     knowledge_retriever=None,
     similar_service_loader=None,
     knowledge_retriever_loader=None,
+    history_session_factory=None,
+    require_history: bool = False,
 ):
     """Construct once; retrieval components are loaded only when a tool needs them.
 
     Injected loader callbacks let FastAPI reuse its lifespan-scoped caches.
     The standalone script gets the same lazy behavior without constructing an app.
+    A dedicated history session factory affects only this service's historical reads.
     """
     if factory is None:
         raise ValueError("Database is not configured")
@@ -47,8 +50,9 @@ def create_claims_agent_service(
         knowledge_retriever=knowledge_retriever,
         similar_service_loader=similar_service_loader,
         knowledge_retriever_loader=knowledge_retriever_loader,
+        history_session_factory=history_session_factory,
     )
-    return _service(factory, llm, tools, model)
+    return _service(factory, llm, tools, model, require_history=require_history)
 
 
 def _retrieval_loaders(
@@ -80,11 +84,11 @@ def _llm(model):
     )
 
 
-def _service(factory, llm, tools, model):
+def _service(factory, llm, tools, model, *, require_history: bool = False):
     return ClaimsAgentService(
         AgentServiceConfig(
             tools,
-            StructuredAgentPlanner(llm, require_investigation=True),
+            StructuredAgentPlanner(llm, require_investigation=True, require_history=require_history),
             StructuredAgentFinalizer(llm),
             run_store=AgentRunStore(factory),
             llm_model=model,

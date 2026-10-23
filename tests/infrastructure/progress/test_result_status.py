@@ -26,7 +26,10 @@ def test_agent_terminal_result_is_classified_before_progress(tmp_path, monkeypat
     recorder, observation = AgentRecorder(), PipelineObservation()
     recorder.resources = {"llm_model": "offline-model", "session_factory": object()}
     monkeypatch.setattr(recorder, "review", lambda *args: result)
-    run = SimpleNamespace(case=SimpleNamespace(claim=SimpleNamespace(claim_id=result.claim_id)))
+    run = SimpleNamespace(
+        case=SimpleNamespace(claim=SimpleNamespace(claim_id=result.claim_id)),
+        scenario=SimpleNamespace(inputs={}),
+    )
     with ScenarioProgress(tmp_path, "unit", interval=60) as monitor:
         recorder.progress = monitor
         recorder._run_agent(run, observation)

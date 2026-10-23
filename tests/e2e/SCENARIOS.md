@@ -412,17 +412,27 @@ injustifié.
 
 **La réaction attendue.** L'IA doit mentionner cette incertitude, conserver la
 revue humaine et demander des informations, ou s'abstenir de recommander une
-action. Cette panne est simulée pour le test ; le parcours réel actuel ne sait
-pas reproduire cette panne précise et laisse cette partie non vérifiée.
+action. La panne est contrôlée : en mode réel, son injection est limitée à la
+pile de démonstration isolée. Le comportement du LLM réel reste à observer ; la
+préparation du défaut ne garantit pas une recommandation conforme.
 
 <details>
 <summary>Détails techniques et vérifications exactes</summary>
 
 **Préparation et parcours.** Sinistre `E2E-TOOLGAP-0001`, documents complets et
 cohérents sur `FRONT_BUMPER`. L'entrée `unavailable_tools: ["GET_HISTORY"]`
-rend cet outil explicitement indisponible dans les outils de test de l'agent.
-Ce défaut porte sur l'accès de l'agent : il ne supprime pas les calculs
-d'historique déjà effectués en amont. Sans vision ; RAG selon le socle commun.
+rend cet outil explicitement indisponible dans les outils déterministes de
+l'agent. En mode réel avec `--isolated-demo-stack`, une erreur opérationnelle
+de connexion est injectée uniquement dans la fabrique de sessions réservée à
+la consultation d'historique de l'agent. Le gestionnaire d'erreur de l'outil
+de production renvoie alors `NOT_AVAILABLE`. Les autres lectures de base de
+données et les appels LLM utilisent les services réels. L'agent doit tenter
+`GET_HISTORY` dans sa limite habituelle d'appels, même si le planneur LLM ne
+l'aurait pas choisi.
+
+Ce défaut porte sur l'accès de l'agent : l'étape `history` calculée en amont
+doit rester `PASS`. L'injection ne supprime pas l'historique et ne remplace pas
+ses comptes par zéro. Sans vision ; RAG selon le socle commun.
 
 **Résultats vérifiés.** La recommandation conserve la revue humaine. La liste
 `uncertainties` de l'agent est non vide et sa trace contient au moins une
@@ -434,18 +444,28 @@ Les erreurs opérationnelles de connexion ou de délai de la consultation
 d'historique sont également converties en indisponibilité explicite ; les
 erreurs de programmation restent des échecs.
 
-**Actions acceptables.** `NO_RECOMMENDATION` ou
-`REQUEST_ADDITIONAL_INFORMATION`.
+**Actions acceptables.** En déterministe, `NO_RECOMMENDATION` ou
+`REQUEST_ADDITIONAL_INFORMATION`. En réel, les évaluations effectivement
+observées peuvent imposer les actions de suivi définies par la politique
+commune, dont une expertise ou une revue d'investigation ; la panne d'historique
+reste une incertitude explicite dans tous les cas.
 
 **Interdits.** `RECENT_CLAIM_FREQUENCY`, `PREVIOUS_ANOMALOUS_CLAIMS` et
 `VISUAL_ADDITIONAL_DAMAGE`.
 
-**Limites.** L'[adaptateur réel](../../src/evaluation/real/stages/agent.py)
-ne sait pas imposer cette panne particulière de `GET_HISTORY` aux outils de
-l'application. Il marque donc l'agent `SKIP` avec une raison explicite, y
-compris en pile isolée, plutôt que d'employer des outils de test. Ce scénario
-ne peut actuellement pas prouver en réel le comportement de l'agent face à
-cette panne.
+**Provenance et limites.** L'[adaptateur réel](../../src/evaluation/real/stages/agent.py)
+enregistre l'injection demandée dans `provenance.agent_tool_outages` : outils
+visés, méthode d'injection, portée limitée à l'agent et schéma isolé concerné.
+La trace doit également montrer le retour `NOT_AVAILABLE` de `GET_HISTORY` ;
+la configuration du défaut ne prouve pas à elle seule son observation.
+Ce marquage distingue la panne contrôlée d'une indisponibilité accidentelle.
+
+Le préflight léger bloque ce scénario avant chargement de modèles ou inférence
+si l'exécution réelle n'utilise pas la pile isolée, si une panne demandée vise
+un outil inconnu ou non pris en charge, ou si l'agent est désactivé. Ces contrôles
+s'appliquent aussi avec `--preflight-only`. Une configuration éligible permet
+d'observer l'agent réel ; sa réussite doit ensuite être établie par les résultats,
+les citations et la conservation effective de l'incertitude.
 
 </details>
 

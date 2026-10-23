@@ -37,8 +37,10 @@ class ReadOnlyAgentTools:
         *,
         similar_service_loader: Callable | None = None,
         knowledge_retriever_loader: Callable | None = None,
+        history_session_factory: Callable | None = None,
     ):
         self.factory = factory
+        self.history_session_factory = factory if history_session_factory is None else history_session_factory
         self.similar_service = similar_service
         self.knowledge_retriever = knowledge_retriever
         self.similar_service_loader = similar_service_loader

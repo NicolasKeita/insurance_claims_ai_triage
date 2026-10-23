@@ -16,22 +16,28 @@ from claims.llm import StructuredLlm
 
 
 class StructuredAgentPlanner:
-    def __init__(self, llm: StructuredLlm, *, require_investigation: bool = False):
+    def __init__(self, llm: StructuredLlm, *, require_investigation: bool = False, require_history: bool = False):
         self.llm = llm
         self.require_investigation = require_investigation
-        self.minimum_tool_steps = 3 if require_investigation else 1
+        self.require_history = require_history
+        required_actions = ["GET_CLAIM"] if require_investigation or require_history else []
+        if require_investigation:
+            required_actions.extend(("GET_INVESTIGATION", "GET_TRIAGE"))
+        if require_history:
+            required_actions.append("GET_HISTORY")
+        self.required_actions = tuple(required_actions)
+        self.minimum_tool_steps = max(1, len(self.required_actions))
 
     def _required_step(self, state):
         """The application collects core stored evidence before discretionary LLM planning."""
-        if self.require_investigation:
-            attempted = {item["tool_name"] for item in state["observations"]}
-            for action in ("GET_CLAIM", "GET_INVESTIGATION", "GET_TRIAGE"):
-                if action not in attempted:
-                    return AgentPlanStep(
-                        action=action,
-                        arguments={},
-                        reason="Required initial read of claim facts, investigation signals and triage guidance.",
-                    )
+        attempted = {item["tool_name"] for item in state["observations"]}
+        for action in self.required_actions:
+            if action not in attempted:
+                return AgentPlanStep(
+                    action=action,
+                    arguments={},
+                    reason="Required initial read of stored claim evidence for human review.",
+                )
         return None
 
     def plan(self, state) -> AgentPlanStep:

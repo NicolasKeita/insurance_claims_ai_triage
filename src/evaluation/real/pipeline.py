@@ -36,7 +36,10 @@ class RealClaimsEvaluationPipeline(
         self.preflight.close()
 
     def _skip_prerequisites(self, run):
-        missing = self.preflight.blocked_scenarios.get(run.scenario.scenario_id)
+        missing = list(self.preflight.blocked_scenarios.get(run.scenario.scenario_id, []))
+        outage_reason = self._agent_tool_outage_reason(run.scenario)
+        if outage_reason:
+            missing.append(outage_reason)
         if missing:
             self._skip(run.observed, "prerequisites", "; ".join(missing), dependency=True)
         return bool(missing)
@@ -48,8 +51,8 @@ class RealClaimsEvaluationPipeline(
         Evaluation fixtures are never silently imported into the application DB. History for
         controlled claims requires an explicit prepared/seeded source.
 
-        Real stored absence represents the unavailable-tool case; the read-only application tools see
-        genuine missing assessment rows.
+        Declared outages are restricted to the isolated stack: assessment tools see missing rows;
+        GET_HISTORY uses an agent-scoped connection failure and its production error handler.
         """
         run = RealRun(scenario=scenario)
         observed = run.observed

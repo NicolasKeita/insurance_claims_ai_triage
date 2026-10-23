@@ -3,8 +3,7 @@
 import os
 
 from evaluation.real.agent_environment import llm_environment
-
-ASSESSMENT_TOOLS = {"GET_TRIAGE", "GET_ANOMALY", "GET_INVESTIGATION", "GET_VISUAL_ASSESSMENT"}
+from evaluation.tool_outages import history_outage_session, tool_outage_reason
 
 
 class AgentSteps:
@@ -27,14 +26,9 @@ class AgentSteps:
             return True
         if not self._available(observed, "agent", ["postgresql", "ollama"]):
             return True
-        unavailable = set(scenario.inputs.get("unavailable_tools", []))
-        if unavailable and (not self.config.isolated_demo_stack or unavailable - ASSESSMENT_TOOLS):
-            self._skip(
-                observed,
-                "agent",
-                "Requested deterministic tool outage cannot be safely imposed on the real application service; "
-                "no fake tools used",
-            )
+        outage_reason = self._agent_tool_outage_reason(scenario)
+        if outage_reason:
+            self._skip(observed, "agent", outage_reason)
             return True
         vision = observed.components.get("vision")
         if scenario.vision_required and vision and vision.status == "SKIP":
@@ -52,24 +46,54 @@ class AgentSteps:
             return True
         return False
 
+    def _agent_tool_outage_reason(self, scenario):
+        """Require both declared opt-in and the active disposable schema at execution."""
+        reason = tool_outage_reason(self.config, scenario)
+        if reason is None and scenario.inputs.get("unavailable_tools") and not self.resources.get("isolated_schema"):
+            return "Controlled agent tool outages require an active isolated schema"
+        return reason
+
     def _run_agent(self, run, observed):
         """Run the real application service and record its review result."""
         from agent.factory import create_claims_agent_service
 
+        unavailable = set(run.scenario.inputs.get("unavailable_tools", []))
+        options = {}
+        inputs = {"claim_id": run.case.claim.claim_id, "source": "existing PostgreSQL claim"}
+        if unavailable:
+            reason = self._agent_tool_outage_reason(run.scenario)
+            if reason:
+                raise ValueError(reason)
+            inputs["controlled_unavailable_tools"] = sorted(unavailable)
+            observed.provenance["agent_tool_outages"] = {
+                "controlled": True,
+                "scope": "agent_only",
+                "requested_tools": sorted(unavailable),
+                "isolated_schema": self.resources["isolated_schema"],
+                "methods": {
+                    tool: "injected_history_connection_failure" if tool == "GET_HISTORY" else "omitted_isolated_assessment"
+                    for tool in sorted(unavailable)
+                },
+            }
+        if "GET_HISTORY" in unavailable:
+            options.update(history_session_factory=history_outage_session, require_history=True)
         with llm_environment(self.resources["llm_model"]):
             service = create_claims_agent_service(
                 self.resources["session_factory"],
                 similar_service_loader=self.similar_service,
                 knowledge_retriever_loader=self.knowledge_retriever,
+                **options,
             )
-            result = self._record(
-                observed,
-                "agent",
-                lambda: self.review(service, run),
-                inputs={"claim_id": run.case.claim.claim_id, "source": "existing PostgreSQL claim"},
-                error_from_result=self._agent_error,
-            )
-            service.tools.close()
+            try:
+                result = self._record(
+                    observed,
+                    "agent",
+                    lambda: self.review(service, run),
+                    inputs=inputs,
+                    error_from_result=self._agent_error,
+                )
+            finally:
+                service.tools.close()
         if result is not None:
             self._record_result(observed, result)
 

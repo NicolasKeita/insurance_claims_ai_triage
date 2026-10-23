@@ -10,6 +10,49 @@ from tests.agent.tools._evidence import plan
 from tests.agent.tools._repositories import configured as configured
 
 
+def test_history_uses_the_regular_session_factory_by_default(configured):
+    claim, factory, calls, _ = configured
+    tools = ReadOnlyAgentTools(factory)
+
+    observation = tools.execute(claim.claim_id, plan("GET_HISTORY"))
+
+    assert tools.history_session_factory is factory
+    assert observation.status == ObservationStatus.OK
+    assert calls.count(("history", claim.claim_id)) == 1
+    assert factory.open_count == 0
+
+
+def test_scoped_history_outage_keeps_other_repository_reads_available(configured):
+    claim, factory, calls, _ = configured
+
+    class UnavailableHistorySessions:
+        attempts = 0
+
+        def __bool__(self):
+            return False
+
+        def __call__(self):
+            self.attempts += 1
+            raise OperationalError(None, None, RuntimeError("controlled history connection failure"))
+
+    unavailable = UnavailableHistorySessions()
+    tools = ReadOnlyAgentTools(factory, history_session_factory=unavailable)
+    assert tools.history_session_factory is unavailable
+    tools.require_claim(claim.claim_id)
+    for action in ("GET_CLAIM", "GET_TRIAGE", "GET_ANOMALY", "GET_INVESTIGATION"):
+        assert tools.execute(claim.claim_id, plan(action)).status == ObservationStatus.OK
+    assert unavailable.attempts == 0
+
+    observation = tools.execute(claim.claim_id, plan("GET_HISTORY"))
+
+    assert unavailable.attempts == 1
+    assert observation.status == ObservationStatus.NOT_AVAILABLE
+    assert observation.data is None and observation.evidence == []
+    assert ("history", claim.claim_id) not in calls
+    assert tools.execute(claim.claim_id, plan("GET_CLAIM")).status == ObservationStatus.OK
+    assert factory.open_count == 0
+
+
 @pytest.mark.parametrize(
     "error",
     [

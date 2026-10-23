@@ -10,6 +10,7 @@ LABELS = {
     "knowledge_collections": "knowledge collections",
     "similar_claims_collection": "similar claims collection",
     "scenario_files": "Scenario files",
+    "scenario_agent_tools": "Scenario agent tool outages",
     "stored_claim": "scenario data",
     "triage_files": "Triage model file",
     "anomaly_files": "Anomaly model file",
@@ -74,6 +75,13 @@ def explanation(component, reason):
             "required schema or test data unavailable",
             "Prepare the expected data or use --isolated-demo-stack with the test services.",
         )
+    if name == "scenario_agent_tools":
+        detail = reason.partition(": ")[2] if ": " in reason else reason
+        if "--include-agent" in reason:
+            return detail, "Enable --include-agent so the scenario can verify the agent's response to missing data."
+        if "--isolated-demo-stack" in reason:
+            return detail, "Use --isolated-demo-stack with the test services to impose the requested tool outage."
+        return detail, "Select a supported controlled tool outage; see preflight.json for details."
     if name in {"knowledge_collections", "similar_claims_collection"}:
         return (
             "required collection missing or inaccessible",

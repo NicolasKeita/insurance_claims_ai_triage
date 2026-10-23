@@ -2,6 +2,7 @@
 
 from evaluation.preflight.files import embedding_files, require_file, scenario_files, trained_model_files
 from evaluation.preflight.report import record_eligibility, requirements
+from evaluation.tool_outages import tool_outage_reason
 
 
 class PrerequisiteChecks:
@@ -28,11 +29,25 @@ class PrerequisiteChecks:
             session.probe_ollama()
         for scenario in scenarios:
             session.probe(f"scenario_files:{scenario.scenario_id}", lambda item=scenario: scenario_files(item))
+            if scenario.inputs.get("unavailable_tools"):
+                session.probe(
+                    f"scenario_agent_tools:{scenario.scenario_id}", lambda item=scenario: self.agent_tools(item)
+                )
             if "postgresql" in required[scenario.scenario_id] and not self.config.isolated_demo_stack:
                 session.probe(f"stored_claim:{scenario.scenario_id}", lambda item=scenario: self.stored_claim(item))
         self.check_model_files(names)
         for scenario in scenarios:
             record_eligibility(session, scenario, required[scenario.scenario_id])
+
+    def agent_tools(self, scenario):
+        reason = tool_outage_reason(self.config, scenario)
+        if reason is not None:
+            raise RuntimeError(reason)
+        return {
+            "unavailable_tools": sorted(set(scenario.inputs["unavailable_tools"])),
+            "isolated_demo_stack": self.config.isolated_demo_stack,
+            "meaning": "Controlled agent tool outages supported in the isolated demo stack; no tool executed",
+        }
 
     def isolated_configuration(self):
         from evaluation.preflight.config import ROOT

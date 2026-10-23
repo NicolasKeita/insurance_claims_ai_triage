@@ -31,7 +31,7 @@ def _read_claim(self, claim_id, tool):
 
 def _read_history(self, claim_id, tool):
     try:
-        with self.factory() as session:
+        with self.history_session_factory() as session:
             profile = HistoricalClaimRepository(session).get_profile(claim_id)
     except (InterfaceError, OperationalError, TimeoutError):
         return self._missing(tool, "Historical claim data is temporarily unavailable", unavailable=True)
