@@ -10,7 +10,9 @@ def run_with_progress(pipeline, scenario, output_dir):
     model = pipeline.resources.get("llm_model")
     reference = previous_timings(output_dir, scenario.scenario_id, model)
     previous = pipeline.progress
-    with ScenarioProgress(output_dir, scenario.scenario_id, reference) as monitor:
+    runtime = pipeline.resources.get("vision_runtime")
+    reader = runtime.monitor.last_sample if runtime is not None else None
+    with ScenarioProgress(output_dir, scenario.scenario_id, reference, gpu_reader=reader) as monitor:
         pipeline.progress = monitor
         try:
             result = pipeline.run(scenario)

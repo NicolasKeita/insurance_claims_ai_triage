@@ -37,7 +37,7 @@ def test_isolated_indexing_reuses_the_preflight_provider_when_models_match(
     assert (rag._model is claims._model) == (claims_model == "shared")
     expected = ["shared"] if claims_model == "shared" else ["shared", "claims-only"]
     assert [name for name, _ in model_loads] == expected
-    assert all(options == {"local_files_only": True} for _, options in model_loads)
+    assert all(options == {"local_files_only": True, "device": "cpu"} for _, options in model_loads)
 
 
 def test_similar_only_preflight_does_not_load_or_require_unused_rag_model(monkeypatch, model_loads):
@@ -50,5 +50,5 @@ def test_similar_only_preflight_does_not_load_or_require_unused_rag_model(monkey
     PrerequisiteChecks(session).check_model_files({"embeddings"})
     session.probe_embeddings()
     assert checked == ["claims-only"]
-    assert model_loads == [("claims-only", {"local_files_only": True})]
+    assert model_loads == [("claims-only", {"local_files_only": True, "device": "cpu"})]
     assert session.report.resources["similar_embeddings"]._model is session.report.resources["embeddings"]._model

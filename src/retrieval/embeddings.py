@@ -21,13 +21,23 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     normalized = True
 
-    def __init__(self, model_name: str, *, asymmetric: bool = False, local_files_only: bool = False):
+    def __init__(
+        self,
+        model_name: str,
+        *,
+        asymmetric: bool = False,
+        local_files_only: bool = False,
+        device: str = "cpu",
+    ):
         """
         Existing claim-to-claim indexes retain their symmetric encode contract.
+
+        CPU placement avoids competing with vision models for GPU resources.
         """
         self.model_name = model_name
         self.asymmetric = asymmetric
         self.local_files_only = local_files_only
+        self.device = device
         self._model = None
         self._lock = Lock()
 
@@ -37,13 +47,16 @@ class SentenceTransformerEmbeddingProvider:
                 from sentence_transformers import SentenceTransformer
 
                 options = {"local_files_only": True} if self.local_files_only else {}
-                self._model = SentenceTransformer(self.model_name, **options)
+                self._model = SentenceTransformer(self.model_name, device=self.device, **options)
             return self._model
 
     def with_encoding_mode(self, *, asymmetric: bool):
         """Share loaded weights while keeping each provider's encoding mode independent."""
         provider = SentenceTransformerEmbeddingProvider(
-            self.model_name, asymmetric=asymmetric, local_files_only=self.local_files_only
+            self.model_name,
+            asymmetric=asymmetric,
+            local_files_only=self.local_files_only,
+            device=self.device,
         )
         provider._model = self._load()
         return provider
@@ -65,6 +78,7 @@ class SentenceTransformerEmbeddingProvider:
             normalize_embeddings=True,
             convert_to_numpy=True,
             show_progress_bar=False,
+            device=self.device,
         )
         return np.asarray(vectors, dtype=np.float32).tolist()
 

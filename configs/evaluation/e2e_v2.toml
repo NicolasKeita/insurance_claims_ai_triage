@@ -4,7 +4,7 @@ include_vision = true
 include_agent = true
 include_rag = true
 include_similar = true
-fail_fast = false
+fail_fast = true
 dependency_unavailable = "SKIP"
 timeout_seconds = 2.0
 
@@ -16,6 +16,13 @@ anomaly_checkpoint = "artifacts/anomaly_v1/anomaly_detector.joblib"
 damage_checkpoint = "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
 part_checkpoint = "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
 vision_device = "0"
+
+[vision_safety]
+# Sequential inference, one resident YOLO, one image per prediction.
+# CPU resizing also bounds retina masks; assertions use the resized dimensions.
+vision_image_size = 640
+# Conservative operational cutoff, not a manufacturer-certified safety limit.
+vision_max_temperature_c = 80.0
 
 [vision_diagnostic]
 # Existing source manifest; images remain outside Git and are never copied/redistributed.

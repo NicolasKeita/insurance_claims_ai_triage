@@ -12,11 +12,12 @@ from evaluation.real.progress.journal import ProgressJournal
 class ScenarioProgress:
     """One heartbeat thread observes the active operation; it never executes test stages."""
 
-    def __init__(self, output_dir, scenario_id, reference=None, *, interval=5):
+    def __init__(self, output_dir, scenario_id, reference=None, *, interval=5, gpu_reader=None):
         self.journal = ProgressJournal(output_dir, scenario_id)
         self.reference = reference or {}
         self.estimate = HistoricalEstimate(self.reference)
         self.interval = interval
+        self.gpu_reader = gpu_reader or read_gpu
         self.started = perf_counter()
         self.current = None
         self.lock, self.stop = Lock(), Event()
@@ -61,7 +62,7 @@ class ScenarioProgress:
                 active = self.current
             if active is None:
                 continue
-            sample = read_gpu()
+            sample = self.gpu_reader()
             with self.lock:
                 if self.closed or self.stop.is_set() or active != self.current:
                     continue

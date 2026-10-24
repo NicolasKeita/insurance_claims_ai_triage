@@ -36,16 +36,21 @@ class DiagnosticSteps:
         if not self._available(observed, "vision", ["damage_vision", "part_vision"]):
             self._skip(observed, "investigation", "Vision dependencies unavailable")
             return
-        run.vision = self._record(
-            observed,
-            "vision",
-            lambda: self.infer_diagnostic(run),
-            inputs={
-                "synthetic_declared_damage": list(self.config.synthetic_declared_damage),
-                "ground_truth_available": False,
-            },
-            sources=[str(self.config.source_summary), str(self.config.training_summary)],
-        )
+        try:
+            run.vision = self._record(
+                observed,
+                "vision",
+                lambda: self.infer_diagnostic(run),
+                inputs={
+                    "synthetic_declared_damage": list(self.config.synthetic_declared_damage),
+                    "ground_truth_available": False,
+                },
+                sources=[str(self.config.source_summary), str(self.config.training_summary)],
+            )
+        finally:
+            runtime = self.resources.get("vision_runtime")
+            if runtime is not None:
+                runtime.release()
         self._capture_vision(observed, run.vision)
         self.investigate(run)
 

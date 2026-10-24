@@ -3,6 +3,7 @@
 from evaluation.models import EvaluationScenario, PipelineObservation
 from evaluation.preflight import PreflightReport, RealEvaluationConfig, run_preflight
 from evaluation.real.context import ComponentRecorder, RealRun
+from evaluation.real.diagnostics import DiagnosticSteps
 from evaluation.real.similar_claims import SimilarClaimsSteps
 from evaluation.real.stages.agent import AgentSteps
 from evaluation.real.stages.claim import ClaimSteps
@@ -15,6 +16,7 @@ from evaluation.real.stages.vision import VisionSteps
 
 class RealClaimsEvaluationPipeline(
     ComponentRecorder,
+    DiagnosticSteps,
     ClaimSteps,
     FeatureSteps,
     ScoringSteps,
@@ -47,7 +49,6 @@ class RealClaimsEvaluationPipeline(
     def run(self, scenario: EvaluationScenario) -> PipelineObservation:
         """
         The shared helper uses real PDF ingestion and production extraction functions.
-
         Evaluation fixtures are never silently imported into the application DB. History for
         controlled claims requires an explicit prepared/seeded source.
 

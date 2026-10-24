@@ -1,5 +1,6 @@
 """Versioned real-evaluation configuration and environment overrides."""
 
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +30,7 @@ class RealEvaluationConfig:
     include_agent: bool = True
     include_rag: bool = True
     include_similar: bool = True
-    fail_fast: bool = False
+    fail_fast: bool = True
     dependency_unavailable: str = "SKIP"
     timeout_seconds: float = 2.0
     database_url: str | None = None
@@ -40,6 +41,8 @@ class RealEvaluationConfig:
     damage_checkpoint: Path = ROOT / "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
     part_checkpoint: Path = ROOT / "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
     vision_device: str | None = None
+    vision_image_size: int = 640
+    vision_max_temperature_c: float = 80.0
     source_summary: Path = ROOT / "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json"
     training_summary: Path = ROOT / "artifacts/vision/damage_segmentation_v1/training_summary.json"
     diagnostic_max_images: int = 2
@@ -55,6 +58,19 @@ class RealEvaluationConfig:
             raise ValueError("timeout_seconds must be positive and at most 30")
         if self.diagnostic_max_images < 1:
             raise ValueError("diagnostic_max_images must be positive")
+        if (
+            isinstance(self.vision_image_size, bool)
+            or not isinstance(self.vision_image_size, int)
+            or not 32 <= self.vision_image_size <= 640
+            or self.vision_image_size % 32
+        ):
+            raise ValueError("vision_image_size must be a multiple of 32 between 32 and 640")
+        if (
+            isinstance(self.vision_max_temperature_c, bool)
+            or not math.isfinite(self.vision_max_temperature_c)
+            or self.vision_max_temperature_c <= 0
+        ):
+            raise ValueError("vision_max_temperature_c must be finite and positive")
 
     @classmethod
     def from_toml(cls, path: Path = DEFAULT_CONFIG, **overrides):
@@ -65,6 +81,8 @@ class RealEvaluationConfig:
         values = {key: raw[key] for key in SWITCH_KEYS if key in raw}
         values.update(checkpoint_paths(raw.get("models", {})))
         values.update(vision_diagnostic_paths(raw.get("vision_diagnostic", {})))
+        safety = raw.get("vision_safety", {})
+        values.update({key: safety[key] for key in ("vision_image_size", "vision_max_temperature_c") if key in safety})
         values.update({key: value for key, value in overrides.items() if value is not None})
         return cls(**values)
 

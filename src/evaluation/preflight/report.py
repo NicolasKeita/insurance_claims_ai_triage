@@ -25,12 +25,17 @@ class PreflightReport:
         return next((row.get("reason", "") for row in self.rows if row["component"] == name), "Not preflighted")
 
     def close(self):
-        engine = self.resources.get("database_engine")
-        if engine is not None:
-            engine.dispose()
-        client = self.resources.get("qdrant_client")
-        if client is not None:
-            client.close()
+        runtime = self.resources.pop("vision_runtime", None)
+        try:
+            if runtime is not None:
+                runtime.close()
+        finally:
+            engine = self.resources.get("database_engine")
+            if engine is not None:
+                engine.dispose()
+            client = self.resources.get("qdrant_client")
+            if client is not None:
+                client.close()
 
 
 def checkpoint_version(path: Path) -> str:

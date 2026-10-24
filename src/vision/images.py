@@ -16,8 +16,9 @@ class ImageValidationError(ValueError):
 def load_validated_image(path: Path, settings: VisionSettings | None = None):
     """Return a detached RGB Pillow image after applying EXIF orientation.
 
-    The caller owns the returned image and should close it after use. No manual
-    resize/normalization is applied; Ultralytics handles model preprocessing.
+    The caller owns the returned image and should close it after use. An optional
+    CPU thumbnail bounds both inference inputs and native-resolution GPU masks.
+    Assessment dimensions then describe this oriented, bounded image.
     """
     from PIL import Image, ImageOps, UnidentifiedImageError
 
@@ -42,8 +43,17 @@ def load_validated_image(path: Path, settings: VisionSettings | None = None):
                 image.load()
                 oriented = ImageOps.exif_transpose(image)
                 try:
-                    return oriented.convert("RGB")
+                    return _bounded_rgb(oriented, settings.inference_image_size)
                 finally:
                     oriented.close()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as error:
         raise ImageValidationError(f"Image cannot be safely decoded: {path}") from error
+
+
+def _bounded_rgb(image, size):
+    from PIL import Image
+
+    decoded = image.convert("RGB")
+    if size is not None:
+        decoded.thumbnail((size, size), Image.Resampling.LANCZOS)
+    return decoded

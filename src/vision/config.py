@@ -17,6 +17,7 @@ class VisionSettings:
     device: str | None = None
     max_image_bytes: int = 50 * 1024 * 1024
     max_image_pixels: int = 40_000_000
+    inference_image_size: int | None = None
 
     def __post_init__(self):
         object.__setattr__(self, "model_path", Path(self.model_path).expanduser())
@@ -27,6 +28,12 @@ class VisionSettings:
             raise ValueError("Image size limits must be positive")
         if self.device is not None and not self.device.strip():
             raise ValueError("Damage inference device must be nonempty when supplied")
+        if self.inference_image_size is not None and (
+            isinstance(self.inference_image_size, bool)
+            or not isinstance(self.inference_image_size, int)
+            or self.inference_image_size < 1
+        ):
+            raise ValueError("Inference image size must be a positive integer")
 
     @classmethod
     def from_env(cls):

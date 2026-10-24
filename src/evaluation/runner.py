@@ -37,6 +37,10 @@ def _observe(pipeline, scenario, mode):
         observation = PipelineObservation.model_validate(pipeline.run(scenario))
         assertions = evaluate_assertions(scenario, observation, mode=mode)
     except Exception as error:
+        from evaluation.real.safety.telemetry import VisionSafetyStop
+
+        if isinstance(error, VisionSafetyStop):
+            raise
         if observation is None:
             observation = PipelineObservation()
         assertions = _pipeline_failure(scenario, observation, error)

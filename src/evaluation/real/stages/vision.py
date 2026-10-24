@@ -29,13 +29,18 @@ class VisionSteps:
 
         service = ClaimMultimodalVisionService(self.resources["damage_detector"], self.resources["part_detector"])
         quoted = map_quote_damage_types(run.quote)[0] if run.quote is not None else ()
-        run.vision = self._record(
-            observed,
-            "vision",
-            lambda: service.assess_claim(run.case, quoted_damage_types=quoted),
-            inputs={"declared_damage": [item.value for item in run.case.claim.declared_damage]},
-            sources=[str(asset.path) for asset in assets],
-        )
+        try:
+            run.vision = self._record(
+                observed,
+                "vision",
+                lambda: service.assess_claim(run.case, quoted_damage_types=quoted),
+                inputs={"declared_damage": [item.value for item in run.case.claim.declared_damage]},
+                sources=[str(asset.path) for asset in assets],
+            )
+        finally:
+            runtime = self.resources.get("vision_runtime")
+            if runtime is not None:
+                runtime.release()
         self._capture_vision(observed, run.vision)
 
     @staticmethod
@@ -55,3 +60,19 @@ class VisionSteps:
             except Exception as error:
                 reasons.append(f"{asset.filename}: {type(error).__name__}: {error}")
         return assets, reasons
+
+    def _capture_vision(self, observation, vision):
+        if vision is None:
+            return
+        observation.vision = vision.model_dump(mode="json")
+        observation.facts["vision"] = observation.vision
+        observation.model_versions.update(
+            damage_vision=vision.damage_model_metadata.version, part_vision=vision.part_model_metadata.version
+        )
+        observation.policy_versions["fusion"] = vision.fusion_policy.version
+        observation.provenance["vision"] = {
+            "images": [image.filename for image in vision.images],
+            "damage_model": vision.damage_model_metadata.model_dump(mode="json"),
+            "part_model": vision.part_model_metadata.model_dump(mode="json"),
+            "geometry": "Production schema validates normalized geometry and source identity",
+        }

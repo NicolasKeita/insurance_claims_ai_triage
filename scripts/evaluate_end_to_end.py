@@ -30,6 +30,10 @@ class _ProgressPipeline:
         self.output_dir = Path(output_dir) if output_dir is not None else None
 
     def run(self, scenario):
+        runtime = getattr(self.pipeline, "resources", {}).get("vision_runtime")
+        if runtime is not None:
+            runtime.monitor.check()
+            runtime.monitor.event("scenario_start", scenario_id=scenario.scenario_id)
         preflight = getattr(self.pipeline, "preflight", None)
         missing = preflight.blocked_scenarios.get(scenario.scenario_id) if preflight is not None else None
         if not missing:
@@ -47,6 +51,9 @@ class _ProgressPipeline:
         statuses = ", ".join(f"{key}={item.status}" for key, item in result.components.items() if key != "total")
         if not missing:
             print(f"  {statuses}", flush=True)
+        if runtime is not None:
+            runtime.monitor.event("scenario_end", scenario_id=scenario.scenario_id)
+            runtime.monitor.check()
         return result
 
 
@@ -68,6 +75,10 @@ def build_parser():
                         help="Explicitly seed controlled demos in a new disposable schema and vector collections; requires explicit safe test database and Qdrant URLs")
     parser.add_argument("--llm-model", help="Already installed Ollama model; never downloads/pulls")
     parser.add_argument("--vision-device", help="Use 0 for CUDA or cpu")
+    parser.add_argument("--vision-image-size", type=int, help="Maximum image side, multiple of 32 from 32 to 640 (default: 640)")
+    parser.add_argument("--vision-max-temperature-c", type=float, help="Stop GPU tests at this temperature (default: 80 C)")
+    parser.add_argument("--vision-max-images", dest="diagnostic_max_images", type=int,
+                        help="Maximum number of external diagnostic images; start with 1, then increase")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/evaluation/e2e_v2")
     parser.add_argument("--fail-fast", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--dependency-unavailable", choices=("SKIP", "FAIL"), default=None)
@@ -84,6 +95,7 @@ def main(argv=None) -> int:
     from evaluation.scenarios import load_scenarios
     from evaluation.runner import evaluate_scenarios
     from evaluation.reporting import compare_baseline, create_baseline, write_report
+    from evaluation.real.safety.telemetry import VisionSafetyStop
     scenarios = load_scenarios(args.manifest, args.scenario)
     preflight, pipeline = None, None
     contexts = ExitStack()
@@ -100,7 +112,8 @@ def main(argv=None) -> int:
             from evaluation.preflight.console import print_preflight_summary
             from evaluation.real import RealClaimsEvaluationPipeline
             names = ("include_vision", "include_agent", "include_rag", "include_similar", "fail_fast",
-                     "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack")
+                     "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack",
+                     "vision_image_size", "vision_max_temperature_c", "diagnostic_max_images")
             print("Checking prerequisites before loading models...", flush=True)
             config, preflight = prepare_preflight(
                 args.config, scenarios,
@@ -139,10 +152,10 @@ def main(argv=None) -> int:
         print(f"Artifacts: {args.output_dir.resolve()}")
         failed = counts["FAIL"] > 0
 
-        if args.mode == "real" and args.include_diagnostics and runnable:
+        if args.mode == "real" and args.include_diagnostics and runnable and not (failed and fail_fast):
             from evaluation.real import real_diagnostic_scenarios
             diagnostics = evaluate_scenarios(real_diagnostic_scenarios(), _ProgressPipeline(pipeline, args.output_dir / "diagnostics"), mode="real",
-                preflight=preflight.rows, fail_fast=False)
+                preflight=preflight.rows, fail_fast=fail_fast)
             diagnostics.limitations.append("DIAGNOSTICS ONLY: excluded from the golden benchmark pass-rate denominator; no image detection ground truth")
             write_report(diagnostics, args.output_dir / "diagnostics")
             print(f"Separate diagnostic artifacts: {(args.output_dir / 'diagnostics').resolve()}")
@@ -150,6 +163,8 @@ def main(argv=None) -> int:
 
         if args.mode == "real" and args.include_diagnostics and not runnable:
             print("Diagnostics skipped: no selected golden scenario passed prerequisites", flush=True)
+        elif args.mode == "real" and args.include_diagnostics and failed and fail_fast:
+            print("Diagnostics stopped after the first failure (--fail-fast)", flush=True)
 
         if args.save_baseline:
             path = args.output_dir / "baseline_summary.json"
@@ -165,6 +180,10 @@ def main(argv=None) -> int:
             print(f"Baseline regressions: {len(regressions)}")
             failed |= bool(regressions)
         return int(failed)
+    except VisionSafetyStop as error:
+        _write_json(args.output_dir / "safety_stop.json", {"status": "STOPPED", "reason": str(error)})
+        print(f"Vision safety stop: {error}. Inspect events.jsonl and gpu.csv in {args.output_dir.resolve()}", flush=True)
+        return 1
     finally:
         contexts.close()
         if preflight is not None:

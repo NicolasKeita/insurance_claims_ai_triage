@@ -102,4 +102,4 @@ def test_offline_embedding_load_is_lazy_and_missing_cache_cannot_download(monkey
     assert calls == []
     with pytest.raises(OSError, match="absent from local cache"):
         _ = provider.dimension
-    assert calls == [("uncached/test-model", {"local_files_only": True})]
+    assert calls == [("uncached/test-model", {"local_files_only": True, "device": "cpu"})]

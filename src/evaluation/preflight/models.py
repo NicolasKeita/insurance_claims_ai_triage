@@ -72,19 +72,36 @@ class ModelProbes:
         from vision.damage.detector import UltralyticsDamageDetector
         from vision.parts.detector import UltralyticsVehiclePartDetector, VehiclePartSettings
 
+        runtime = self.vision_runtime()
+        settings = {"device": runtime.device, "inference_image_size": self.config.vision_image_size}
         if kind == "damage":
-            adapter = UltralyticsDamageDetector(
-                VisionSettings(model_path=self.config.damage_checkpoint, device=self.config.vision_device)
-            )
+            adapter = UltralyticsDamageDetector(VisionSettings(model_path=self.config.damage_checkpoint, **settings))
         else:
             adapter = UltralyticsVehiclePartDetector(
-                VehiclePartSettings(model_path=self.config.part_checkpoint, device=self.config.vision_device)
+                VehiclePartSettings(model_path=self.config.part_checkpoint, **settings)
             )
-        model = adapter._load_model()
-        self.report.resources[kind + "_detector"] = adapter
-        return {
-            "version": adapter.model_metadata.version,
-            "checkpoint": adapter.model_metadata.identifier,
-            "task": model.task,
-            "class_count": len(model.names),
-        }
+        managed = runtime.manage(adapter, name=kind)
+        model = None
+        try:
+            model = managed.load()
+            metadata = {
+                "version": managed.model_metadata.version,
+                "checkpoint": managed.model_metadata.identifier,
+                "task": model.task,
+                "class_count": len(model.names),
+            }
+        finally:
+            model = None
+            runtime.release()
+        self.report.resources[kind + "_detector"] = managed
+        return metadata
+
+    def vision_runtime(self):
+        """Start one run-scoped monitor before placing any vision weights on CUDA."""
+        if "vision_runtime" not in self.report.resources:
+            from evaluation.real.safety import create_vision_runtime
+
+            runtime = create_vision_runtime(self.config)
+            self.report.resources["vision_runtime"] = runtime
+            runtime.monitor.start()
+        return self.report.resources["vision_runtime"]

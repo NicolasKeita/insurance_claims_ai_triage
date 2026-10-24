@@ -100,12 +100,12 @@ class PrerequisiteChecks:
                 session.probe(f"{kind}_files", lambda key=setting: self.vision_file(key))
         if "embeddings" in names and session.report.available("retrieval_configuration"):
             models = {session.knowledge_config.embedding_model} if self.config.include_rag else set()
-            if self.config.include_similar:
+            if self.config.include_similar or self.config.isolated_demo_stack:
                 models.add(session.retrieval_config.embedding_model)
             session.probe(
                 "embedding_files",
                 lambda: self.cached_embeddings(models),
-                enabled=self.config.include_rag or self.config.include_similar,
+                enabled=self.config.include_rag or self.config.include_similar or self.config.isolated_demo_stack,
             )
 
     @staticmethod

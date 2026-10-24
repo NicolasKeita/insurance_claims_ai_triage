@@ -41,15 +41,24 @@ class ComponentRecorder:
             self.progress(component, status, observation, **details)
 
     def _record(self, observation, component, operation, *, error_from_result=None, **trace_details):
+        runtime = getattr(self, "resources", {}).get("vision_runtime")
+        if runtime is not None:
+            runtime.monitor.check()
         self._notify(observation, component, "RUNNING")
         started = perf_counter()
         try:
             result = operation()
+            if runtime is not None:
+                runtime.monitor.check()
             value = payload(result)
             outputs = value if isinstance(value, dict) else {"result": value}
             reason = error_from_result(result) if error_from_result is not None else None
             status = "FAIL" if reason is not None else "PASS"
         except Exception as error:
+            from evaluation.real.safety.telemetry import VisionSafetyStop
+
+            if isinstance(error, VisionSafetyStop):
+                raise
             result, outputs = None, {}
             status, reason = "FAIL", f"{type(error).__name__}: {error}"
         if status == "FAIL":
@@ -94,22 +103,6 @@ class ComponentRecorder:
         if row.get("version"):
             observation.model_versions[kind] = str(row["version"])
         observation.provenance[kind] = {key: value for key, value in row.items() if key != "duration_seconds"}
-
-    def _capture_vision(self, observation, vision):
-        if vision is None:
-            return
-        observation.vision = vision.model_dump(mode="json")
-        observation.facts["vision"] = observation.vision
-        observation.model_versions.update(
-            damage_vision=vision.damage_model_metadata.version, part_vision=vision.part_model_metadata.version
-        )
-        observation.policy_versions["fusion"] = vision.fusion_policy.version
-        observation.provenance["vision"] = {
-            "images": [image.filename for image in vision.images],
-            "damage_model": vision.damage_model_metadata.model_dump(mode="json"),
-            "part_model": vision.part_model_metadata.model_dump(mode="json"),
-            "geometry": "Production schema validates normalized geometry and source identity",
-        }
 
     @staticmethod
     def _finish(observation, started):

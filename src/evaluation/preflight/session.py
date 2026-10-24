@@ -29,6 +29,10 @@ class PreflightSession(ComponentProbes, ModelProbes):
                 metadata = operation() or {}
                 row.update(status="PASS", reason=None, **metadata)
             except Exception as error:
+                from evaluation.real.safety.telemetry import VisionSafetyStop
+
+                if isinstance(error, VisionSafetyStop):
+                    raise
                 row.update(
                     status="SKIP" if name == "mlflow" else self.config.dependency_unavailable,
                     reason=f"{type(error).__name__}: {error}",
@@ -111,4 +115,5 @@ class PreflightSession(ComponentProbes, ModelProbes):
                 "local_files_only": True,
             }
 
-        self.probe("embeddings", embeddings, enabled=self.config.include_rag or self.config.include_similar)
+        enabled = self.config.include_rag or self.config.include_similar or self.config.isolated_demo_stack
+        self.probe("embeddings", embeddings, enabled=enabled)

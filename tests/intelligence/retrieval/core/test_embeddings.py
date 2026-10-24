@@ -4,6 +4,8 @@ import subprocess
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from retrieval.embeddings import SentenceTransformerEmbeddingProvider
 from tests.intelligence.retrieval.core._support import components as components
 
@@ -27,8 +29,8 @@ def test_provider_loads_once_and_normalizes_symmetric_embeddings(monkeypatch):
     loads, calls = [], []
 
     class Model:
-        def __init__(self, name):
-            loads.append(name)
+        def __init__(self, name, **options):
+            loads.append((name, options))
 
         def get_embedding_dimension(self):
             return 4
@@ -44,11 +46,13 @@ def test_provider_loads_once_and_normalizes_symmetric_embeddings(monkeypatch):
     assert provider.embed_documents(["a", "b"]) == [[1, 0, 0, 0], [1, 0, 0, 0]]
     assert provider.embed_query("a") == [1, 0, 0, 0]
     assert provider.embed_documents([]) == []
-    assert loads == ["mock-model"]
+    assert loads == [("mock-model", {"device": "cpu"})]
     assert all(call["normalize_embeddings"] for call in calls)
+    assert all(call["device"] == "cpu" for call in calls)
 
 
-def test_encoding_modes_share_weights_without_changing_rag_or_claim_vectors(monkeypatch):
+@pytest.mark.parametrize("device", ["cpu", "cuda:1"])
+def test_encoding_modes_share_weights_without_changing_rag_or_claim_vectors(monkeypatch, device):
     loads, encodes = [], []
 
     class Model:
@@ -56,25 +60,55 @@ def test_encoding_modes_share_weights_without_changing_rag_or_claim_vectors(monk
             loads.append((name, options))
 
         def encode(self, texts, **options):
+            assert options["device"] == device
             encodes.append("symmetric")
             return [[1, 0] for _ in texts]
 
         def encode_document(self, texts, **options):
+            assert options["device"] == device
             encodes.append("document")
             return [[0, 1] for _ in texts]
 
         def encode_query(self, texts, **options):
+            assert options["device"] == device
             encodes.append("query")
             return [[0, -1] for _ in texts]
 
     monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(SentenceTransformer=Model))
-    rag = SentenceTransformerEmbeddingProvider("shared", asymmetric=True, local_files_only=True)
+    rag = SentenceTransformerEmbeddingProvider("shared", asymmetric=True, local_files_only=True, device=device)
     claims = rag.with_encoding_mode(asymmetric=False)
     assert rag._model is claims._model and rag is not claims
     assert rag.asymmetric is True and claims.asymmetric is False
+    assert rag.device == claims.device == device
     assert rag.embed_documents(["policy"]) == [[0, 1]]
     assert rag.embed_query("question") == [0, -1]
     assert claims.embed_documents(["claim"]) == [[1, 0]]
     assert claims.embed_query("claim") == [1, 0]
     assert encodes == ["document", "query", "symmetric", "symmetric"]
-    assert loads == [("shared", {"local_files_only": True})]
+    assert loads == [("shared", {"local_files_only": True, "device": device})]
+
+
+def test_empty_documents_do_not_load_model_or_import_sentence_transformers(monkeypatch):
+    def unexpected_load(*args, **kwargs):
+        pytest.fail("Empty input must not load a model")
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(SentenceTransformer=unexpected_load))
+    provider = SentenceTransformerEmbeddingProvider("unused")
+    assert provider.embed_documents([]) == []
+    assert provider._model is None
+
+
+def test_asymmetric_fallback_keeps_explicit_cpu_placement():
+    calls = []
+
+    class LegacyModel:
+        def encode(self, texts, **options):
+            calls.append(options)
+            return [[1, 0] for _ in texts]
+
+    provider = SentenceTransformerEmbeddingProvider("unused", asymmetric=True)
+    provider._model = LegacyModel()
+    assert provider.embed_documents(["policy"]) == [[1, 0]]
+    assert provider.embed_query("question") == [1, 0]
+    assert len(calls) == 2
+    assert all(options["device"] == "cpu" for options in calls)

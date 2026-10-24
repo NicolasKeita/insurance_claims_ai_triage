@@ -58,7 +58,7 @@ On Windows, the hint explicitly asks the user to open Docker Desktop and wait
 for its engine to be ready before running the Compose command.
 
 When RAG and similar-claims retrieval use the same embedding model, preflight
-loads its weights once and isolated indexing reuses them. Separate provider views
+loads its weights once on CPU and isolated indexing reuses them. Separate provider views
 preserve RAG query/document encoding and symmetric claim encoding. Different
 configured model names still use separate weights. The eligibility check after
 model loading reads the recorded results; it does not repeat service probes.
@@ -68,7 +68,8 @@ and elapsed time. Long operations emit a heartbeat every five seconds with step
 and total elapsed time. Local NVIDIA telemetry is read through `nvidia-smi` when
 available: device utilization, VRAM, temperature and power. These are whole-device
 measurements, not proof that this test caused a hardware fault. Missing GPU tools
-or a telemetry timeout do not stop evaluation. A completed real run for the same
+or a telemetry timeout do not stop evaluation when no GPU vision safety monitor
+is active. GPU vision runs require readable temperature telemetry. A completed real run for the same
 scenario and Ollama model in the same output directory supplies an indicative
 remaining-time estimate (`ETA ~...s remaining`). Completed or skipped stages are
 removed from the estimate, and the active stage's elapsed time is subtracted on
@@ -93,6 +94,53 @@ with its application-owned error reason in the terminal and progress artifacts.
 Retries preserve earlier attempt directories. Monitoring begins at scenario
 execution, after preflight and isolated setup. It does not run for blocked
 scenarios or `--preflight-only`.
+
+## Prudent GPU vision profile
+
+Real evaluation defaults to `fail_fast = true`. MiniLM embeddings explicitly use
+CPU at both loading and encoding. Vision uses one shared execution lock, batch 1,
+no augmentation and one resident YOLO model. Switching detectors removes the
+previous model and cached GPU results before releasing the unused CUDA cache.
+Preflight releases each inspected detector; the vision stage releases its final
+model before later application stages.
+
+`[vision_safety]` in `configs/evaluation/e2e_v2.toml` sets
+`vision_image_size = 640` and `vision_max_temperature_c = 80.0`. The image side
+must be a multiple of 32 between 32 and 640. CPU resizing preserves aspect ratio,
+applies EXIF orientation first and never enlarges small images. This also bounds
+the native segmentation masks, which would otherwise use the full photo size.
+Assessments record the resized dimensions and normalized geometry; original
+source files remain unchanged. Lower resolution can change detections, so compare
+baselines using the same safety settings.
+
+Each GPU vision run starts one monitor before loading vision weights. The output
+directory contains two additional append-only files, separated by `run_id`:
+
+- `events.jsonl`: start/end/error for model loading, inference and unloading, plus
+  scenario boundaries. Events are flushed and synchronized to disk. Load events
+  record before/after PyTorch allocated/reserved bytes; inference events include
+  the peak allocated/reserved bytes after resetting the counters. The first
+  inference is measured too. Counters exclude the CUDA context, non-PyTorch
+  allocations and other processes.
+- `gpu.csv`: whole-device VRAM, temperature, power and utilization, sampled every
+  second using the existing NVIDIA reader. The terminal heartbeat reuses this
+  sample. Sampling can miss short power or memory spikes.
+
+At or above the configured temperature, on CUDA/OOM, or if GPU telemetry or the
+log disk becomes unavailable, evaluation stops without retrying. A cooperative
+check runs between operations; it cannot interrupt an active kernel or guarantee
+protection from a power failure. `80 C` is an operational cutoff, not a certified
+hardware limit. No power limit, clock or manufacturer profile is changed. CPU
+vision runs do not require NVIDIA telemetry. A handled stop writes
+`safety_stop.json`; after an abrupt shutdown, the last unmatched start event
+identifies the last recorded operation, not the underlying cause.
+
+Use the existing real-run command and add `--vision-max-images 1` for the first
+attempt, then a small number of diagnostic images, then the complete sequential
+run. This option limits the external image diagnostic; it does not select or
+reduce the golden scenarios. `--vision-image-size 320` can lower the image bound;
+`--vision-max-temperature-c 75` can lower the cutoff. Progression is manual and
+never automatically retries a failed run. Review the logs between attempts.
 
 ## Frozen golden cases
 
@@ -241,7 +289,9 @@ Unseeded controlled cases are skipped before any model loading. The installed
 `gemma3:4b` model and IPv4 Ollama host above reproduce the local execution;
 other environments can select another already installed model explicitly.
 
-`--fail-fast` is opt-in; the default tries every compatible scenario.
+Real evaluation stops after the first failure by default; `--no-fail-fast`
+explicitly allows other compatible scenarios after ordinary assertion failures.
+CUDA/OOM and safety stops always terminate the run, including diagnostics.
 `--no-include-vision`, `--no-include-agent`, `--no-include-rag` and
 `--no-include-similar-claims` disable individual components explicitly.
 `--no-include-diagnostics` omits the supplemental real diagnostics. Configuration
