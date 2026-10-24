@@ -3,6 +3,7 @@
 from evaluation.preflight.files import embedding_files, require_file, scenario_files, trained_model_files
 from evaluation.preflight.report import record_eligibility, requirements
 from evaluation.tool_outages import tool_outage_reason
+from evaluation.visual_assets import visual_assets
 
 
 class PrerequisiteChecks:
@@ -29,6 +30,11 @@ class PrerequisiteChecks:
             session.probe_ollama()
         for scenario in scenarios:
             session.probe(f"scenario_files:{scenario.scenario_id}", lambda item=scenario: scenario_files(item))
+            if "visual_golden_asset" in required[scenario.scenario_id]:
+                session.probe(
+                    f"visual_golden_asset:{scenario.scenario_id}",
+                    lambda item=scenario: {"assets": visual_assets(item)},
+                )
             if scenario.inputs.get("unavailable_tools"):
                 session.probe(
                     f"scenario_agent_tools:{scenario.scenario_id}", lambda item=scenario: self.agent_tools(item)

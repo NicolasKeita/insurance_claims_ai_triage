@@ -10,6 +10,7 @@ LABELS = {
     "knowledge_collections": "knowledge collections",
     "similar_claims_collection": "similar claims collection",
     "scenario_files": "Scenario files",
+    "visual_golden_asset": "Annotated visual reference image",
     "scenario_agent_tools": "Scenario agent tool outages",
     "stored_claim": "scenario data",
     "triage_files": "Triage model file",
@@ -88,6 +89,8 @@ def explanation(component, reason):
             "Prepare the expected indexes or use --isolated-demo-stack with the test services.",
         )
     detail = reason.partition(": ")[2] if ": " in reason else reason
+    if name == "visual_golden_asset":
+        return detail, "Configure a readable reference image with SHA-256, origin and reviewed damaged-part labels."
     if name.endswith("_files") or name in {"scenario_files", "visual_golden_asset"}:
         return detail, "Check that the listed files exist and that their configured paths are correct."
     return detail, "Fix the indicated configuration; see preflight.json for details."

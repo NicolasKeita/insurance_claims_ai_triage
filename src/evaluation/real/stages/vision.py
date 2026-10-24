@@ -2,10 +2,10 @@
 
 
 class VisionSteps:
-    """Assess real images only when the scenario has matching image assets."""
+    """Run real detectors on configured image assets with explicit provenance."""
 
     def assess_vision(self, run):
-        """Assess real images only when the scenario has matching image assets."""
+        """Run real detectors on configured image assets with explicit provenance."""
         observed = run.observed
         if not self.config.include_vision:
             self._skip(observed, "vision", "Disabled by configuration")
@@ -14,8 +14,8 @@ class VisionSteps:
             self._skip(
                 observed,
                 "vision",
-                "Golden vision uses deterministic detectors; no matching real image ground truth. "
-                "Real external CarDD diagnostic is reported separately",
+                "No annotated visual reference images configured for real detector execution. "
+                "The deterministic geometry fixture cannot replace a reference image.",
             )
             return
         if not self._available(observed, "vision", ["damage_vision", "part_vision"]):
@@ -52,7 +52,7 @@ class VisionSteps:
         reasons = []
         assets = resolve_image_assets(run.case)
         if not assets:
-            reasons.append("Claim has no real image assets")
+            reasons.append("Claim has no image assets for detector inference")
         for asset in assets:
             try:
                 image = load_validated_image(asset.path)

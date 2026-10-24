@@ -1,6 +1,7 @@
 """Generate controlled synthetic claim fixtures in an isolated directory."""
 
 import json
+import shutil
 from decimal import Decimal
 from pathlib import Path
 from tempfile import mkdtemp
@@ -59,15 +60,41 @@ def _write_image(root, payload):
         image.save(images / payload["images"][0])
 
 
-def _write_provenance(root, scenario, source):
+def _copy_visual_assets(root, scenario, payload):
+    from evaluation.visual_assets import visual_assets
+
+    assets = visual_assets(scenario)
+    if not assets:
+        raise RuntimeError("Visual scenario requires validated image assets; no generated geometry fallback")
+    images = root / "images"
+    images.mkdir(exist_ok=True)
+    copied = []
+    for index, asset in enumerate(assets, start=1):
+        filename = f"{index:02d}-{Path(asset['path']).name}"
+        shutil.copyfile(asset["path"], images / filename)
+        copied.append({**asset, "fixture_filename": filename})
+    payload["images"] = [asset["fixture_filename"] for asset in copied]
+    return copied
+
+
+def _write_provenance(root, scenario, source, visual_assets):
+    provenance = (
+        "Controlled synthetic claim and documents; source image origin is recorded per asset."
+        if visual_assets else SYNTHETIC_PROVENANCE
+    )
     (root / "fixture_provenance.json").write_text(
         json.dumps(
             {
                 "scenario_id": scenario.scenario_id,
                 "source_claim": str(source),
-                "provenance": SYNTHETIC_PROVENANCE,
-                "vision_semantics": "Generated pixels exercise geometry only; "
-                "fake detections are explicit test inputs.",
+                "provenance": provenance,
+                "vision_semantics": (
+                    "Validated source images copied unchanged for model inference; "
+                    "image origin and annotation scope are recorded per asset."
+                    if visual_assets else
+                    "Generated pixels exercise geometry only; fake detections are explicit test inputs."
+                ),
+                "visual_assets": visual_assets,
             },
             indent=2,
         ),
@@ -75,11 +102,13 @@ def _write_provenance(root, scenario, source):
     )
 
 
-def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
-    """Create actual demo PDFs and optional generated pixels in an isolated dir.
+def materialize_scenario_case(scenario, root_dir=None, *, use_visual_assets=False) -> ClaimCase:
+    """Create demo PDFs and isolated image fixtures, optionally copying source assets.
 
     The caller owns cleanup of ``root_dir``. If omitted, a fresh temporary dir is
     returned through ``ClaimCase.root_dir``. No inference or fake model is used.
+    Real callers opt into validated image assets; deterministic callers retain
+    the generated geometry fixture independently of external source files.
 
     General overrides are fixture inputs, never inferred from expectations.
 
@@ -94,14 +123,15 @@ def materialize_scenario_case(scenario, root_dir=None) -> ClaimCase:
     amount = Decimal(str(inputs.get("repair_amount", 1500)))
     payload["repair_estimate"]["amount"] = str(amount)
     _apply_overrides(payload, inputs)
+    visual_assets = _copy_visual_assets(root, scenario, payload) if use_visual_assets and scenario.vision_required else []
     texts = document_texts(payload, inputs, quoted, amount)
     docs = root / "documents"
     docs.mkdir(exist_ok=True)
     for kind, filename in filenames.items():
         if kind not in missing:
             _pdf(docs / filename, texts[kind])
-    if payload["images"]:
+    if payload["images"] and not visual_assets:
         _write_image(root, payload)
     (root / "claim.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    _write_provenance(root, scenario, source)
+    _write_provenance(root, scenario, source, visual_assets)
     return load_claim_case(root)

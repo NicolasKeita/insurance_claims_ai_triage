@@ -1,5 +1,6 @@
 """Claim loading, document extraction and feature assessment stages."""
 
+import json
 from pathlib import Path
 from tempfile import mkdtemp
 
@@ -44,7 +45,7 @@ class ClaimSteps:
             run.case = self._record(
                 observed,
                 "claim",
-                lambda: materialize_scenario_case(run.scenario, fixture_root),
+                lambda: materialize_scenario_case(run.scenario, fixture_root, use_visual_assets=True),
                 inputs={"controlled_synthetic_inputs": run.scenario.inputs},
                 sources=[run.scenario.claim_source],
             )
@@ -53,6 +54,10 @@ class ClaimSteps:
         observed.facts["claim"] = run.case.claim.model_dump(mode="json")
         observed.provenance["controlled_synthetic_claim"] = not run.use_reference
         observed.provenance["claim_id"] = run.case.claim.claim_id
+        if not run.use_reference:
+            provenance = json.loads((run.case.root_dir / "fixture_provenance.json").read_text(encoding="utf-8"))
+            if provenance.get("visual_assets"):
+                observed.provenance["visual_assets"] = provenance["visual_assets"]
         self.seed_demo_claim(run)
 
     def seed_demo_claim(self, run):

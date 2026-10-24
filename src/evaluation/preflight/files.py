@@ -29,7 +29,7 @@ def scenario_files(scenario):
         if asset.get("path"):
             require_file(ROOT / asset["path"])
     if scenario.vision_required and not scenario.external_assets:
-        raise RuntimeError("Matching real visual golden assets are unavailable; synthetic pixels are not ground truth")
+        raise RuntimeError("No annotated visual reference images configured; deterministic geometry pixels are insufficient")
     return {"source": str(source)}
 
 

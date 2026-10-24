@@ -23,7 +23,10 @@ HISTORY_SIGNALS = {"RECENT_CLAIM_FREQUENCY", "PREVIOUS_ANOMALOUS_CLAIMS"}
 def check_expected_facts(recorder):
     """Verify controlled structured facts, blocking on unavailable upstream data."""
     scenario, observation = recorder.scenario, recorder.observation
-    for path, expected in scenario.expected_facts.items():
+    expected_facts = dict(scenario.expected_facts)
+    if recorder.mode == "real":
+        expected_facts.update(scenario.real_expected_facts)
+    for path, expected in expected_facts.items():
         if recorder.mode == "real" and path in scenario.inputs.get("deterministic_only_facts", []):
             continue
         component = COMPONENT_MAP.get(path.split(".")[0], path.split(".")[0])

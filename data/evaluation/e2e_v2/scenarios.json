@@ -738,7 +738,24 @@
       "files": [
         "data/CLAIM-2026-00001/claim.json"
       ],
-      "external_assets": [],
+      "external_assets": [
+        {
+          "path": "data/evaluation/e2e_v2/assets/hood_front_bumper_generated_v1.png",
+          "sha256": "e6f170fbabf819590f6faf9155c05b5616e34d5f36fc2666be3f2be0a20ffb93",
+          "origin": "ai_generated",
+          "provenance": "Created with image_gen for this controlled scenario and visually approved by the user. Synthetic image, not a CarDD photograph or evidence from a real claim.",
+          "annotation": {
+            "damaged_parts": ["FRONT_BUMPER", "HOOD"],
+            "description": "Visible scratches and deformation on the hood; abrasion, cracking and deformation on the front bumper.",
+            "scope": "Qualitative damaged-part reference for an AI-generated image; no pixel-level annotation or real-world accuracy claim."
+          }
+        }
+      ],
+      "real_expected_facts": {
+        "vision.aggregate_mapped_damage_types": {"$set_equals": ["FRONT_BUMPER", "HOOD"]},
+        "vision.consistency.additional_visual_damage": {"$set_equals": ["HOOD"]},
+        "vision.consistency.visually_supported_declared_damage": {"$set_equals": ["FRONT_BUMPER"]}
+      },
       "real_agent_action_policy": {
         "otherwise_acceptable_actions": [
           "REQUEST_ADDITIONAL_INFORMATION",

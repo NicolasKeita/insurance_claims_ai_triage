@@ -201,10 +201,28 @@ threshold; it checks the handling of the assessments actually observed.
 
 The controlled documents are generated from manifest inputs in an isolated
 temporary directory. Their provenance identifies the synthetic benchmark;
-the original reference claim is preserved. Geometric visual golden cases use
-explicit synthetic observations rather than third-party photographs. Real vision
-cannot establish those particular golden labels without appropriate controlled
-image assets, even when model checkpoints are loadable.
+the original reference claim is preserved. Deterministic visual cases retain
+explicit geometry observations. For real detector execution, each visual reference
+requires a readable image, SHA-256, explicit origin and reviewed damaged-part labels.
+The `visual_golden_asset:<scenario_id>` check is scoped to each scenario, so a
+passing reference for one scenario cannot make a different scenario eligible.
+
+`visual_additional_damage` now includes the user-approved AI-generated image
+`data/evaluation/e2e_v2/assets/hood_front_bumper_generated_v1.png`, with its generation
+prompt alongside it. Its hood and front bumper show damage; the controlled claim
+and quote declare only the front bumper. Real detectors receive the image pixels,
+copied unchanged into the isolated claim fixture. Reference annotations are retained
+in the fixture provenance and observation, never injected as predictions. The
+console identifies the reference as AI-generated. This controlled synthetic image
+does not establish performance on real photographs or provide pixel-level metrics.
+
+`real_expected_facts` overrides only the specified facts in real mode: both damaged
+parts must be detected, the front bumper must support the declaration, and the hood
+must be the additional damage. The required signal and advisory agent follow-up
+remain mandatory. The deterministic expectations are unchanged. No detection
+threshold or model response is adjusted to force a passing result. Scenario
+`visual_non_detection` still lacks a configured annotated image and remains blocked
+in real mode.
 
 `data/evaluation/e2e_v2/diagnostics.json` separately versions two real execution
 diagnostics: the original `CLAIM-2026-00001` documents and prior locally available

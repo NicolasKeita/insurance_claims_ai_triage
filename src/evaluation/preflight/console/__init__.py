@@ -19,6 +19,9 @@ def print_preflight_row(row):
     if version and row.get("model_family"):
         identity = " ".join(str(row[key]) for key in ("model_family", "parameter_size") if row.get(key))
         version = f" ({row['version']}; {identity})"
+    if name.startswith("visual_golden_asset:") and row.get("assets"):
+        if all(asset["origin"] == "ai_generated" for asset in row["assets"]):
+            version = " (AI-generated)"
     print(f"  [OK] {label(name)}{version}", flush=True)
     if name in PURPOSES:
         print(f"    Required for: {PURPOSES[name]}", flush=True)

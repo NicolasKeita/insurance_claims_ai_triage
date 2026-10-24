@@ -71,7 +71,8 @@ def record_eligibility(session, scenario, names, *, models_loaded=False):
     for name in names:
         if config.isolated_demo_stack and name in ISOLATED_COLLECTIONS:
             continue
-        checks.add(FILE_CHECKS.get(name, name))
+        check = f"visual_golden_asset:{scenario.scenario_id}" if name == "visual_golden_asset" else FILE_CHECKS.get(name, name)
+        checks.add(check)
     if "postgresql" in names and not config.isolated_demo_stack:
         checks.add(f"stored_claim:{scenario.scenario_id}")
     if models_loaded:

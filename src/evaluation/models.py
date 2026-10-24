@@ -31,6 +31,7 @@ class EvaluationScenario(EvaluationModel):
     description: str
     claim_source: str
     expected_facts: dict[str, Any] = Field(default_factory=dict)
+    real_expected_facts: dict[str, Any] = Field(default_factory=dict)
     expected_signals: list[str] = Field(default_factory=list)
     forbidden_signals: list[str] = Field(default_factory=list)
     acceptable_agent_actions: list[str] = Field(default_factory=list)
