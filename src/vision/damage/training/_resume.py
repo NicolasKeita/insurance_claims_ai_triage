@@ -93,6 +93,7 @@ def validate_resume_checkpoint(
     args = checkpoint.get("train_args", {})
     expected = {key: getattr(config, key) for key in ("epochs", "imgsz", "batch", "patience", "seed", "workers")}
     expected.update({"task": "segment", "split": "val", "val": True, "pretrained": True})
+    expected.update(config.training_overrides())
     if any(args.get(key) != value for key, value in expected.items()):
         raise ValueError("last.pt training arguments differ from the configured TRAIN/VAL baseline")
     if config.optimizer != "auto" and args.get("optimizer") != config.optimizer:

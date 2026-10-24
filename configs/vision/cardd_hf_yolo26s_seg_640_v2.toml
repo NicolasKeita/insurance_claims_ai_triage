@@ -1,0 +1,18 @@
+# Capacity experiment: same prepared images, annotations and frozen split as v1.
+# Set DAMAGE_DATASET_YAML to the original prepared dataset.yaml.
+# Pretrained small weights may be downloaded when training is explicitly started.
+version = "cardd_hf_yolo26s_seg_640_v2"
+epochs = 100
+imgsz = 640
+batch = 4
+patience = 20
+seed = 42
+device = "0"
+workers = 0
+optimizer = "auto"
+base_model = "yolo26s-seg.pt"
+dataset_yaml = "data/external_prepared/cardd_hf_v1/dataset.yaml"
+output_dir = "artifacts/vision/damage_segmentation_small_v2"
+experiment_name = "insurance-claims-vision-damage"
+track_mlflow = false
+log_checkpoint = false

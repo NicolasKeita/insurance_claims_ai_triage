@@ -1,0 +1,18 @@
+# Resolution experiment: same prepared images, annotations and frozen split as v1.
+# Set DAMAGE_DATASET_YAML to the original prepared dataset.yaml.
+# Start a new run from pretrained weights; do not resume the completed v1 run.
+version = "cardd_hf_yolo26n_seg_960_v2"
+epochs = 100
+imgsz = 960
+batch = 4
+patience = 20
+seed = 42
+device = "0"
+workers = 0
+optimizer = "auto"
+base_model = "yolo26n-seg.pt"
+dataset_yaml = "data/external_prepared/cardd_hf_v1/dataset.yaml"
+output_dir = "artifacts/vision/damage_segmentation_960_v2"
+experiment_name = "insurance-claims-vision-damage"
+track_mlflow = false
+log_checkpoint = false

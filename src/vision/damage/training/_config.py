@@ -14,6 +14,7 @@ from vision.config import ROOT
 
 REPO_ROOT = ROOT
 DEFAULT_TRAINING_CONFIG = REPO_ROOT / "configs/vision/cardd_hf_yolo26n_seg_v1.toml"
+_OPTIONAL_TRAINING_FIELDS = ("mask_ratio", "mosaic", "scale", "close_mosaic")
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,10 @@ class DamageTrainingConfig:
     experiment_name: str
     track_mlflow: bool = False
     log_checkpoint: bool = False
+    mask_ratio: int | None = None
+    mosaic: float | None = None
+    scale: float | None = None
+    close_mosaic: int | None = None
 
     def __post_init__(self) -> None:
         for name in ("epochs", "imgsz", "batch"):
@@ -48,12 +53,29 @@ class DamageTrainingConfig:
         for name in ("track_mlflow", "log_checkpoint"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
+        if self.mask_ratio is not None and (type(self.mask_ratio) is not int or self.mask_ratio <= 0):
+            raise ValueError("mask_ratio must be a positive integer")
+        for name in ("mosaic", "scale"):
+            value = getattr(self, name)
+            if value is not None and (type(value) not in (int, float) or not 0 <= value <= 1):
+                raise ValueError(f"{name} must be a finite number between zero and one")
+        if self.close_mosaic is not None and (
+            type(self.close_mosaic) is not int or not 0 <= self.close_mosaic <= self.epochs
+        ):
+            raise ValueError("close_mosaic must be an integer between zero and epochs")
 
     def payload(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["dataset_yaml"] = str(self.dataset_yaml)
         payload["output_dir"] = str(self.output_dir)
+        for name in _OPTIONAL_TRAINING_FIELDS:
+            if payload[name] is None:
+                del payload[name]
         return payload
+
+    def training_overrides(self) -> dict[str, Any]:
+        """Leave framework defaults unchanged unless an experiment sets a control."""
+        return {name: getattr(self, name) for name in _OPTIONAL_TRAINING_FIELDS if getattr(self, name) is not None}
 
 
 def load_training_config(path: Path = DEFAULT_TRAINING_CONFIG) -> DamageTrainingConfig:

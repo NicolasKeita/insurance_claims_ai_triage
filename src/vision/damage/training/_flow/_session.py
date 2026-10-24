@@ -86,6 +86,7 @@ class TrainingSession:
             save=True,
             plots=True,
         )
+        arguments.update(config.training_overrides())
         if self.prepared.recovery:
             arguments.update(
                 {
