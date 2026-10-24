@@ -20,6 +20,7 @@ class EvaluationParams:
     confidence_threshold: float | None = None
     tracking_factory: Callable[..., Any] | None = None
     include_part_errors: bool = False
+    ap_confidence: float | None = None
 
 
 @dataclass(frozen=True)
@@ -32,3 +33,4 @@ class EvaluationRequest:
     checkpoint: Path
     summary: dict[str, Any]
     threshold: float
+    ap_confidence: float

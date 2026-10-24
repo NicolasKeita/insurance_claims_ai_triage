@@ -13,6 +13,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate only the completed training run's best.pt on TEST.")
     parser.add_argument("--config", type=Path, default=DEFAULT_TRAINING_CONFIG)
     parser.add_argument("--device", help="Override config device, e.g. cpu or 0")
+    parser.add_argument(
+        "--ap-confidence", type=float, default=0.001,
+        help="Prediction confidence floor for AP; separate from the recorded operational threshold (default: 0.001)",
+    )
     parser.add_argument("--error-examples", type=int, default=8, help="Maximum annotated diagnostic examples; 0 disables analysis")
     args = parser.parse_args()
     try:
@@ -41,7 +45,8 @@ def main() -> int:
         metrics = run_evaluation(
             config,
             params=EvaluationParams(
-                model_factory=load_model, environment_provider=environment, max_error_examples=args.error_examples
+                model_factory=load_model, environment_provider=environment, max_error_examples=args.error_examples,
+                ap_confidence=args.ap_confidence,
             ),
         )
     except (OSError, ValueError, RuntimeError) as error:

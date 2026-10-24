@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-def _evaluate_model(model, config, threshold, evaluation_dir, environment):
+def _evaluate_model(model, config, ap_confidence, evaluation_dir, environment):
     validation_device: str | None = None
 
     def capture_validation_device(validator: Any) -> None:
@@ -25,7 +25,7 @@ def _evaluate_model(model, config, threshold, evaluation_dir, environment):
     result = model.val(
         data=str(config.dataset_yaml),
         split="test",
-        conf=threshold,
+        conf=ap_confidence,
         imgsz=config.imgsz,
         batch=config.batch,
         device=config.device,

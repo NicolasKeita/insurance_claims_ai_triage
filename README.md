@@ -189,6 +189,10 @@ This is a seeded/reproducible configuration, with no bitwise GPU determinism
 promise. Check CUDA in the actual training interpreter, since the global Python
 and the application's virtualenv may use different torch builds.
 
+For VAL diagnostics and independent resolution, model-capacity and mask-training
+experiments using the same prepared dataset, see
+[Améliorer Damage avec le dataset actuel](docs/DAMAGE_MODEL_IMPROVEMENT.md).
+
 ```powershell
 # Use the same .venv for the application, CUDA vision and pytest.
 .\.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available())"

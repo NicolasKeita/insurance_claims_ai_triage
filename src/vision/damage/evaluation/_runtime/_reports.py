@@ -14,13 +14,17 @@ from vision.damage.training import (
 def _evaluation_payload(request, environment, result):
     config, manifest, summary, threshold = request.config, request.manifest, request.summary, request.threshold
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "split": "test",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "checkpoint": "train/weights/best.pt",
         "checkpoint_sha256": summary["best_checkpoint_sha256"],
         "checkpoint_selection_split": "val",
         "confidence_threshold": threshold,
+        "ap_confidence": request.ap_confidence,
+        "ap_protocol": "Ultralytics AP over predictions above ap_confidence; "
+        "confidence_threshold is reserved for operational error examples. "
+        "Compare experiments only at the same AP confidence floor.",
         "threshold_selection": "configured baseline; no TEST threshold tuning",
         "environment": environment,
         "evaluation_config": config.payload(),

@@ -8,6 +8,19 @@ from vision.damage.evaluation._checkpoint import selected_checkpoint
 from vision.damage.evaluation._params import EvaluationRequest
 
 
+def _ap_confidence(params, threshold):
+    """Preserve API callers' historic floor unless a separate AP floor is requested."""
+    value = threshold if params.ap_confidence is None else params.ap_confidence
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or not 0 <= value <= threshold
+    ):
+        raise ValueError("AP confidence must be finite and between zero and the operational confidence threshold")
+    return value
+
+
 def _prepare_request(config, params):
     max_error_examples = params.max_error_examples
     dataset_loader, provenance_provider = params.dataset_loader, params.provenance_provider
@@ -34,8 +47,9 @@ def _prepare_request(config, params):
             "Confidence threshold differs from training metadata. "
             "Configure it before training or calibrate on VAL in a new version; never select it on TEST."
         )
+    ap_confidence = _ap_confidence(params, threshold)
     evaluation_dir = config.output_dir / "evaluation"
     metrics_path = config.output_dir / "test_metrics.json"
     if evaluation_dir.exists() or metrics_path.exists():
         raise FileExistsError("Held-out evaluation artifacts already exist; choose a new experiment version")
-    return EvaluationRequest(config, params, manifest, checkpoint, summary, threshold)
+    return EvaluationRequest(config, params, manifest, checkpoint, summary, threshold, ap_confidence)
