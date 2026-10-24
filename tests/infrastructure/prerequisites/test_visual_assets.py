@@ -82,12 +82,16 @@ def test_passing_reference_does_not_unblock_another_visual_scenario(gate, asset)
     )
 
 
-def test_approved_scenario_nine_reference_is_available_and_explicitly_generated(capsys):
-    scenario = load_scenarios(scenario_ids=["visual_additional_damage"])[0]
+@pytest.mark.parametrize("scenario_id,damaged_parts", [
+    ("visual_additional_damage", {"HOOD", "FRONT_BUMPER"}),
+    ("visual_non_detection", set()),
+])
+def test_scenario_reference_is_available_and_explicitly_generated(capsys, scenario_id, damaged_parts):
+    scenario = load_scenarios(scenario_ids=[scenario_id])[0]
     assets = visual_assets(scenario)
     assert len(assets) == 1
     assert assets[0]["origin"] == "ai_generated"
-    assert set(assets[0]["annotation"]["damaged_parts"]) == {"HOOD", "FRONT_BUMPER"}
+    assert set(assets[0]["annotation"]["damaged_parts"]) == damaged_parts
     assert "not a CarDD photograph" in assets[0]["provenance"]
     print_preflight_row({"component": f"visual_golden_asset:{scenario.scenario_id}", "status": "PASS", "assets": assets})
     assert "Annotated visual reference image (AI-generated)" in capsys.readouterr().out

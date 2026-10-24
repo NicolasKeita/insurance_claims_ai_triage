@@ -1,10 +1,13 @@
 """Image expectations can differ by backend without executing a scenario."""
 
+import json
+
 import pytest
 
 from evaluation.assertions.facts import check_expected_facts
 from evaluation.assertions.recording import AssertionRecorder
 from evaluation.models import EvaluationScenario, PipelineObservation
+from evaluation.scenarios import ROOT, load_scenarios
 
 
 def scenario():
@@ -94,3 +97,75 @@ def test_scenarios_without_real_overrides_keep_their_existing_contract():
         check_expected_facts(recorder)
         assert len(recorder.checks) == 1
         assert recorder.checks[0].status == "PASS"
+
+
+def non_detection_checks(*, mode="real", detections=(), images_present=True):
+    selected = load_scenarios(scenario_ids=["visual_non_detection"])[0]
+    observation = PipelineObservation(facts={
+        "vision": {
+            "aggregate_mapped_damage_types": [],
+            "consistency": {
+                "additional_visual_damage": [],
+                "declared_damage_not_visually_confirmed": ["LEFT_HEADLIGHT"],
+                "visually_supported_declared_damage": [],
+                "visually_supported_quote_damage": [],
+            },
+            "images": [{"damage_assessment": {"detections": list(detections)}}] if images_present else [],
+        },
+        "investigation": {
+            "policy_version": "investigation_policy_v3",
+            "review_score": 99,
+            "signals": [{"code": "ANOMALOUS_PATTERN"}],
+        },
+        "triage": {"recommended_workflow": "EXPERT_REVIEW"},
+        "anomaly": {"is_anomalous": True},
+        "history": {"previous_claim_count": 3},
+    })
+    recorder = AssertionRecorder(selected, observation, mode=mode)
+    check_expected_facts(recorder)
+    return selected, {item.name: item for item in recorder.checks}
+
+
+def test_manifest_non_detection_requires_intact_image_and_unconfirmed_headlight():
+    _, result = non_detection_checks()
+    visual = {name: item for name, item in result.items() if name.startswith("fact:vision.")}
+    assert "fact:vision.images" in visual
+    assert "fact:vision.images.0.damage_assessment.detections" in visual
+    assert "fact:vision.consistency.visually_supported_declared_damage" in visual
+    assert "fact:vision.consistency.visually_supported_quote_damage" in visual
+    assert all(item.status == "PASS" for item in visual.values())
+    assert visual["fact:vision.consistency.declared_damage_not_visually_confirmed"].expected == ["LEFT_HEADLIGHT"]
+
+
+def test_manifest_non_detection_rejects_unmapped_false_detection():
+    _, result = non_detection_checks(detections=[{"damage_type": "SCRATCH"}])
+    assert result["fact:vision.aggregate_mapped_damage_types"].status == "PASS"
+    assert result["fact:vision.images.0.damage_assessment.detections"].status == "FAIL"
+
+
+def test_manifest_non_detection_requires_an_image_even_when_no_parts_are_mapped():
+    _, result = non_detection_checks(images_present=False)
+    assert result["fact:vision.aggregate_mapped_damage_types"].status == "PASS"
+    assert result["fact:vision.images"].status == "FAIL"
+    assert result["fact:vision.images.0.damage_assessment.detections"].status == "FAIL"
+
+
+def test_manifest_non_detection_preserves_original_deterministic_expectations():
+    selected, result = non_detection_checks(mode="deterministic", images_present=False)
+    legacy = json.loads((ROOT / "data/evaluation/e2e_v1/scenarios.json").read_text(encoding="utf-8"))
+    previous = next(item for item in legacy["scenarios"] if item["scenario_id"] == selected.scenario_id)
+    assert selected.expected_facts == previous["expected_facts"]
+    assert selected.inputs == previous["inputs"]
+    assert all(item.status == "PASS" for name, item in result.items() if name.startswith("fact:vision."))
+    assert "fact:vision.images" not in result
+    assert "fact:vision.images.0.damage_assessment.detections" not in result
+    assert result["fact:investigation.review_score"].status == "FAIL"
+    assert result["fact:investigation.signals"].status == "FAIL"
+
+
+def test_manifest_non_detection_keeps_real_ml_and_history_findings_independent():
+    _, result = non_detection_checks()
+    assert result["fact:investigation.policy_version"].status == "PASS"
+    assert "fact:investigation.review_score" not in result
+    assert "fact:investigation.signals" not in result
+    assert not any(name.startswith(("fact:triage.", "fact:anomaly.", "fact:history.")) for name in result)

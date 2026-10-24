@@ -220,9 +220,18 @@ does not establish performance on real photographs or provide pixel-level metric
 parts must be detected, the front bumper must support the declaration, and the hood
 must be the additional damage. The required signal and advisory agent follow-up
 remain mandatory. The deterministic expectations are unchanged. No detection
-threshold or model response is adjusted to force a passing result. Scenario
-`visual_non_detection` still lacks a configured annotated image and remains blocked
-in real mode.
+threshold or model response is adjusted to force a passing result.
+
+`visual_non_detection` uses `data/evaluation/e2e_v2/assets/intact_front_headlights_generated_v1.png`,
+an AI-generated frontal image with intact headlights, hood and bumper. Its explicit
+empty `damaged_parts` annotation records no visible damage; it does not assert that
+the customer's declared headlight damage is false. Real mode still requires empty
+mapped/additional damage, unconfirmed LEFT_HEADLIGHT and human review. Real-only
+facts also require at least one analyzed image, no damage detections (including
+unmapped detections) and no visual support for the declared or quoted headlight damage.
+Independent ML risk observations retain their existing handling; non-detection
+alone must not create a risk signal. Both image references and generation prompts
+are stored in Git, fingerprinted and copied unchanged for model inference.
 
 `data/evaluation/e2e_v2/diagnostics.json` separately versions two real execution
 diagnostics: the original `CLAIM-2026-00001` documents and prior locally available

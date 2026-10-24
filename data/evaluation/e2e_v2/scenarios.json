@@ -840,7 +840,25 @@
       "files": [
         "data/CLAIM-2026-00001/claim.json"
       ],
-      "external_assets": [],
+      "external_assets": [
+        {
+          "path": "data/evaluation/e2e_v2/assets/intact_front_headlights_generated_v1.png",
+          "sha256": "22efc37c23f99072a0ecc312cc82feae4086f3633f3527efaed4893199410ca9",
+          "origin": "ai_generated",
+          "provenance": "Created with image_gen at the user's request and visually reviewed for this controlled non-detection scenario. Synthetic image, not a CarDD photograph or evidence from a real claim.",
+          "annotation": {
+            "damaged_parts": [],
+            "description": "Frontal view with both headlight lenses intact and no visible damage on the headlights, hood or front bumper.",
+            "scope": "Qualitative visible-damage reference for an AI-generated image; absence of visible damage does not disprove the declared headlight damage or establish real-world accuracy."
+          }
+        }
+      ],
+      "real_expected_facts": {
+        "vision.consistency.visually_supported_declared_damage": [],
+        "vision.consistency.visually_supported_quote_damage": [],
+        "vision.images": {"$min_length": 1},
+        "vision.images.0.damage_assessment.detections": []
+      },
       "real_agent_action_policy": {
         "otherwise_acceptable_actions": [
           "CONTINUE_STANDARD_REVIEW",

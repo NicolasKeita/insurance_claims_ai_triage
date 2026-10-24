@@ -121,8 +121,12 @@ def test_load_case_preserves_image_origin_in_observation(visual_source, tmp_path
     assert run.observed.provenance["controlled_synthetic_claim"] is True
 
 
-def test_scenario_nine_materializes_approved_generated_asset_unchanged(tmp_path):
-    scenario = load_scenarios(scenario_ids=["visual_additional_damage"])[0]
+@pytest.mark.parametrize("scenario_id,damaged_parts", [
+    ("visual_additional_damage", {"HOOD", "FRONT_BUMPER"}),
+    ("visual_non_detection", set()),
+])
+def test_scenario_materializes_generated_asset_unchanged(tmp_path, scenario_id, damaged_parts):
+    scenario = load_scenarios(scenario_ids=[scenario_id])[0]
     asset = scenario.external_assets[0]
     source = (ROOT / asset["path"]).resolve()
     case = materialize_scenario_case(scenario, tmp_path / "fixture", use_visual_assets=True)
@@ -134,4 +138,4 @@ def test_scenario_nine_materializes_approved_generated_asset_unchanged(tmp_path)
     provenance = json.loads((case.root_dir / "fixture_provenance.json").read_text(encoding="utf-8"))
     assert provenance["visual_assets"] == [{**asset, "path": str(source), "fixture_filename": filename}]
     assert provenance["visual_assets"][0]["origin"] == "ai_generated"
-    assert set(provenance["visual_assets"][0]["annotation"]["damaged_parts"]) == {"HOOD", "FRONT_BUMPER"}
+    assert set(provenance["visual_assets"][0]["annotation"]["damaged_parts"]) == damaged_parts
