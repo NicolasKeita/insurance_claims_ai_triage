@@ -1016,6 +1016,32 @@ controlled demo data, then cleans up its own schema/collections. Preflight stays
 read-only. The command uses the existing installed local model and test-service
 ports; no model download is performed.
 
+To run all ten golden cases automatically with a 30-second pause between cases:
+
+```powershell
+.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end_suite.py `
+  --mode real `
+  --config configs/evaluation/e2e_v2_damage960_val640.toml `
+  --llm-model claims-e2e-partiel `
+  --include-vision --vision-device 0 --damage-confidence-threshold 0.35 `
+  --no-include-diagnostics --isolated-demo-stack `
+  --database-url "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test" `
+  --qdrant-url "http://127.0.0.1:6335" `
+  --cooldown-seconds 30 `
+  --output-dir artifacts/evaluation/e2e_v2/serial_damage960_conf035
+```
+
+Cases run in manifest order in separate child processes, with vision enabled only
+for the last two. Damage is still unloaded before Part is loaded; the existing
+temperature guard remains active. Choose `--cooldown-seconds 60` or `120` for a
+longer pause; a fixed delay cannot guarantee GPU temperature. Add `--dry-run` to
+preview without execution or output files. Each run retains scenario reports and
+an incremental `suite_summary.json` under a unique output subdirectory. The suite
+stops at the first failed, skipped or incomplete case by default;
+`--no-fail-fast` continues ordinary failures, while a vision safety stop always
+stops the suite. See the [suite guide](docs/END_TO_END_EVALUATION.md#run-all-ten-scenarios-with-pauses)
+for details.
+
 The manifest is `data/evaluation/e2e_v2/scenarios.json`. Reports distinguish
 `PASS`, `FAIL` and `SKIP`; a skip never counts as a pass, and an unavailable
 mandatory component leaves the run `PARTIAL`. The two empty reference JPEGs

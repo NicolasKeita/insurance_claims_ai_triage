@@ -401,6 +401,56 @@ When a restricted Windows sandbox cannot create pytest's default temporary
 directory, use a writable workspace `--basetemp` directory after creating its
 parent. This is an execution-environment workaround, not a reason to skip tests.
 
+## Run all ten scenarios with pauses
+
+`scripts/evaluate_end_to_end_suite.py` runs the ten golden cases in manifest
+order, one Python child process at a time. It waits for each child to exit and
+finish cleanup, then pauses before starting the next scenario. The default pause
+is 30 seconds; choose `--cooldown-seconds 60` or `120` for a longer rest.
+
+From the repository root in PowerShell, using the installed
+`claims-e2e-partiel` Ollama model and the existing test services:
+
+```powershell
+.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end_suite.py `
+  --mode real `
+  --config configs/evaluation/e2e_v2_damage960_val640.toml `
+  --llm-model claims-e2e-partiel `
+  --include-vision `
+  --vision-device 0 `
+  --damage-confidence-threshold 0.35 `
+  --no-include-diagnostics `
+  --isolated-demo-stack `
+  --database-url "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test" `
+  --qdrant-url "http://127.0.0.1:6335" `
+  --cooldown-seconds 30 `
+  --output-dir artifacts/evaluation/e2e_v2/serial_damage960_conf035
+```
+
+The suite enables vision only for cases requiring it: `visual_additional_damage`
+and `visual_non_detection`, the last two cases in the current manifest. The first
+eight therefore avoid loading the vision checkpoints during preflight. Within
+each visual case, the existing runtime still unloads Damage and clears its unused
+CUDA cache before loading Part. The child process exits before the next pause,
+releasing its CUDA context. The profile retains 640-pixel inference, batch 1 and
+the existing 80 C temperature cutoff. Diagnostics are excluded from this command.
+
+The pause applies between scenarios, with no final wait. A fixed delay does not
+guarantee a particular GPU temperature or prevent a crash. Ollama runs in a
+separate server and may retain its model in VRAM after a child exits.
+
+Add `--dry-run` to the command to inspect scenario order, vision activation and
+pauses without starting a child, running inference, waiting or writing artifacts.
+The default stops after the first failed, skipped or incomplete scenario;
+`--no-fail-fast` continues after ordinary failures or skips. A vision safety stop
+always terminates the suite, with no automatic retry.
+
+Each invocation creates a unique `run_<timestamp>/` directory beneath
+`--output-dir`, retaining each scenario's reports and a `suite_summary.json`
+updated as children finish. It records results and counts, and reports `COMPLETE`
+only when every selected scenario passes with a complete child report. Skipped,
+unexecuted or incomplete cases cannot produce a successful complete suite.
+
 ## Assertions, metrics and artifacts
 
 `PASS` means every mandatory expectation was checked and satisfied. `FAIL`

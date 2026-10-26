@@ -9,6 +9,8 @@ class VisionSteps:
         observed = run.observed
         if not self.config.include_vision:
             self._skip(observed, "vision", "Disabled by configuration")
+            if not run.scenario.vision_required:
+                observed.components["vision"].metadata["applicable"] = False
             return
         if run.scenario.vision_required and not run.scenario.external_assets:
             self._skip(
