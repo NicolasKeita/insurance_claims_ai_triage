@@ -12,31 +12,12 @@ from claims.loader import load_claim_case
 from persistence.mappers import AssessmentRecord
 from persistence.repositories import ClaimNotFoundError
 from tests.agent.tools._constants import ASSESSMENT_ID
+from tests.agent.tools._repository_support import ReadSessionFactory, install_visual_repository
 from tests.domain.persistence.mapping._support import (
     make_anomaly,
     make_investigation,
     make_triage,
 )
-
-
-class ReadSessionFactory:
-    def __init__(self):
-        self.open_count = 0
-
-    def __call__(self):
-        return self
-
-    def __enter__(self):
-        self.open_count += 1
-        return self
-
-    def __exit__(self, *_):
-        self.open_count -= 1
-
-    def add(self, *_):
-        raise AssertionError("Business writes are forbidden")
-
-    flush = commit = add
 
 
 @pytest.fixture
@@ -58,6 +39,7 @@ def configured(monkeypatch):
     monkeypatch.setattr(claim_adapters, "ClaimRepository", Claims)
     monkeypatch.setattr(assessment_adapters, "HistoricalClaimRepository", History)
     monkeypatch.setattr(assessment_adapters, "AssessmentRepository", Assessments)
+    install_visual_repository(monkeypatch, calls, records)
     return claim, factory, calls, records
 
 

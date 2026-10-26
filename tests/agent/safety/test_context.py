@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 from agent.config import MAX_FINALIZER_EVIDENCE_CHARS
+from agent.models import EvidenceSourceType
 from agent.planner import StructuredAgentFinalizer
 from claims.llm import OllamaStructuredLlm
 from tests.agent.safety._constants import CLAIM_ID
@@ -55,3 +56,27 @@ def test_agent_context_window_is_forwarded_through_existing_llm(monkeypatch):
     assert calls[0]["options"]["num_ctx"] == 8192
     assert calls[0]["options"]["temperature"] == 0
     assert calls[0]["options"]["seed"] == 42
+
+
+def test_image_availability_survives_truncated_finalizer_context():
+    claim = make_evidence()
+    claim.structured_data = {"claim_id": CLAIM_ID, "image_count": 1}
+    registry = {claim.evidence_id: claim.model_dump(mode="json")}
+    for number in range(40):
+        item = make_evidence(f"history:{number}", summary="x" * 4000)
+        item.source_type = EvidenceSourceType.HISTORY
+        registry[item.evidence_id] = item.model_dump(mode="json")
+    finalizer = FakeStructuredLlm([make_recommendation()])
+    StructuredAgentFinalizer(finalizer).finalize(
+        {
+            "claim_id": CLAIM_ID,
+            "objective": "Review",
+            "stop_reason": None,
+            "evidence_registry": registry,
+            "observations": [],
+        }
+    )
+    context = json.loads(finalizer.calls[0][0].split("UNTRUSTED TASK AND TOOL EVIDENCE (JSON):\n")[1])
+    assert context["evidence_context_truncated"] is True
+    assert context["claim_image_count"] == 1
+    assert "Do not describe those images as missing." in finalizer.calls[0][0]

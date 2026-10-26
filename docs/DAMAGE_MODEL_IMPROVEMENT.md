@@ -66,6 +66,56 @@ sont dans le rapport opérationnel séparé. La matrice Ultralytics apparie les
 les confusions de masques. Les sorties existantes ne sont pas écrasées : choisir
 un nouveau `--output-dir` pour un nouveau diagnostic.
 
+## Seuil retenu pour `960_v2` à 640 pixels
+
+Le 26 octobre 2026, le checkpoint `damage_segmentation_960_v2/train/weights/best.pt`
+(SHA-256 `5a3eb30507f58a1991311fdd9ae5e909e90a1fe8ed916dc30086647566fef148`)
+a été mesuré sur les **423 images VAL et 898 annotations**, sur CPU, avec
+`--imgsz 640 --batch 1`. Les trois diagnostics ont utilisé les mêmes données et
+le même checkpoint, avec appariement des masques par classe à IoU 0,50.
+
+| Seuil | TP | FP | FN | Précision | Rappel | F1 micro | F1 moyen des 6 classes |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 0,25 | 518 | 315 | 380 | 62,18 % | 57,68 % | 59,85 % | 69,60 % |
+| **0,35** | **492** | **205** | **406** | **70,59 %** | **54,79 %** | **61,69 %** | **70,65 %** |
+| 0,50 | 431 | 102 | 467 | 80,86 % | 48,00 % | 60,24 % | 68,88 % |
+
+**0,35** maximise le F1 moyen des classes parmi ces trois candidats ; le F1 micro
+le confirme. Par rapport à 0,25, il retire 110 faux positifs et perd 26 vrais
+positifs. Pour `lamp broken`, la précision passe de 81,94 % à 85,29 % et le rappel
+de 79,73 % à 78,38 %. Le seuil 0,50 réduit davantage les faux positifs, avec une
+perte de rappel plus forte. Il ne s'agit pas d'un optimum sur tous les seuils.
+
+Pour reproduire les mesures, utiliser la préparation de session ci-dessus et
+lancer trois fois le diagnostic avec le TOML `cardd_hf_yolo26n_seg_960_v2.toml`,
+`--imgsz 640 --batch 1 --device cpu`, puis `--operating-confidence 0.25`, `0.35`
+et `0.5`, dans trois nouveaux répertoires. Les rapports de cette comparaison sont
+dans `artifacts/vision/damage_diagnostics/nano960_v2_val640_conf025_20261026/`,
+`nano960_v2_val640_conf035_20261026/` et `nano960_v2_val640_conf050_20261026/` ;
+le fichier `nano960_v2_val640_calibration_20261026.json` rassemble leur provenance,
+les comptes par classe et le critère de sélection. Les poids et métadonnées
+d'entraînement ne sont pas modifiés.
+
+Le profil [e2e_v2_damage960_val640.toml](../configs/evaluation/e2e_v2_damage960_val640.toml)
+configure ce checkpoint et le seuil 0,35. Pour l'utiliser lors d'une prochaine
+exécution E2E explicitement demandée, ajouter à la commande habituelle :
+
+```powershell
+--config configs/evaluation/e2e_v2_damage960_val640.toml --damage-confidence-threshold 0.35
+```
+
+L'option explicite empêche une ancienne variable `DAMAGE_CONFIDENCE_THRESHOLD`
+de masquer la valeur du profil. Vérifier le checkpoint annoncé au préflight :
+`DAMAGE_MODEL_PATH` reste prioritaire sur le chemin du TOML. Le profil générique
+`e2e_v2.toml` conserve son modèle v1 et ses seuils 0,25 ; les seuils de fusion
+restent inchangés. L'image golden et TEST n'ont pas servi à sélectionner ce seuil,
+et aucun scénario E2E n'a été relancé pour cette calibration.
+
+Toutes les images VAL contiennent au moins un dommage annoté. Ces résultats
+mesurent le compromis précision/rappel sur ce split et ne démontrent pas le taux
+de faux positifs sur des véhicules intacts ni la généralisation aux photos réelles.
+Un changement de checkpoint ou de résolution exige une nouvelle validation.
+
 ## Réentraîner seulement les essais utiles
 
 Chaque ligne est une expérience indépendante, initialisée depuis les poids

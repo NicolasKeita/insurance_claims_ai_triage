@@ -45,7 +45,12 @@ def preflight_doubles(monkeypatch):
 @pytest.mark.parametrize("kind", ["damage", "part"])
 def test_detector_preflight_uses_managed_cpu_settings_and_releases_weights(tmp_path, preflight_doubles, kind):
     events, models = preflight_doubles
-    config = RealEvaluationConfig(vision_device="cpu", fixture_dir=tmp_path / "fixtures")
+    config = RealEvaluationConfig(
+        vision_device="cpu",
+        fixture_dir=tmp_path / "fixtures",
+        damage_confidence_threshold=0.45,
+        part_confidence_threshold=0.65,
+    )
     session = PreflightSession(config)
     try:
         metadata = session.detector(kind)
@@ -55,6 +60,10 @@ def test_detector_preflight_uses_managed_cpu_settings_and_releases_weights(tmp_p
         assert managed.runtime is runtime
         assert managed.adapter.settings.device == runtime.device == "cpu"
         assert managed.adapter.settings.inference_image_size == runtime.imgsz == 640
+        threshold = 0.45 if kind == "damage" else 0.65
+        assert managed.adapter.settings.confidence_threshold == threshold
+        assert metadata["confidence_threshold"] == threshold
+        assert metadata["inference_image_size"] == 640
         assert managed.adapter._model is None
         assert runtime._active is None
         assert not runtime.memory.enabled

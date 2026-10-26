@@ -75,6 +75,12 @@ def build_parser():
                         help="Explicitly seed controlled demos in a new disposable schema and vector collections; requires explicit safe test database and Qdrant URLs")
     parser.add_argument("--llm-model", help="Already installed Ollama model; never downloads/pulls")
     parser.add_argument("--vision-device", help="Use 0 for CUDA or cpu")
+    parser.add_argument("--damage-confidence-threshold", type=float,
+                        help="Damage detection confidence from 0 to 1; overrides "
+                             "DAMAGE_CONFIDENCE_THRESHOLD and model configuration")
+    parser.add_argument("--part-confidence-threshold", type=float,
+                        help="Vehicle-part detection confidence from 0 to 1; overrides "
+                             "PART_CONFIDENCE_THRESHOLD and model configuration")
     parser.add_argument("--vision-image-size", type=int, help="Maximum image side, multiple of 32 from 32 to 640 (default: 640)")
     parser.add_argument("--vision-max-temperature-c", type=float, help="Stop GPU tests at this temperature (default: 80 C)")
     parser.add_argument("--vision-max-images", dest="diagnostic_max_images", type=int,
@@ -113,7 +119,8 @@ def main(argv=None) -> int:
             from evaluation.real import RealClaimsEvaluationPipeline
             names = ("include_vision", "include_agent", "include_rag", "include_similar", "fail_fast",
                      "dependency_unavailable", "database_url", "qdrant_url", "llm_model", "vision_device", "isolated_demo_stack",
-                     "vision_image_size", "vision_max_temperature_c", "diagnostic_max_images")
+                     "vision_image_size", "vision_max_temperature_c", "diagnostic_max_images",
+                     "damage_confidence_threshold", "part_confidence_threshold")
             print("Checking prerequisites before loading models...", flush=True)
             config, preflight = prepare_preflight(
                 args.config, scenarios,

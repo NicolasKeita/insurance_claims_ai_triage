@@ -22,6 +22,8 @@ def print_preflight_row(row):
     if name.startswith("visual_golden_asset:") and row.get("assets"):
         if all(asset["origin"] == "ai_generated" for asset in row["assets"]):
             version = " (AI-generated)"
+    if name in {"damage_vision", "part_vision"} and "confidence_threshold" in row:
+        version = f" (confidence {row['confidence_threshold']:g}; image size {row['inference_image_size']})"
     print(f"  [OK] {label(name)}{version}", flush=True)
     if name in PURPOSES:
         print(f"    Required for: {PURPOSES[name]}", flush=True)

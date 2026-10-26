@@ -8,6 +8,8 @@ from pathlib import Path
 import tomllib
 
 from evaluation import E2E_BENCHMARK_VERSION
+from evaluation.preflight.thresholds import confidence_thresholds, validate_confidence_thresholds
+from vision.config import DEFAULT_CONFIDENCE_THRESHOLD
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v2.toml"
@@ -40,6 +42,8 @@ class RealEvaluationConfig:
     anomaly_checkpoint: Path = ROOT / "artifacts/anomaly_v1/anomaly_detector.joblib"
     damage_checkpoint: Path = ROOT / "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
     part_checkpoint: Path = ROOT / "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
+    damage_confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
+    part_confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
     vision_device: str | None = None
     vision_image_size: int = 640
     vision_max_temperature_c: float = 80.0
@@ -58,6 +62,7 @@ class RealEvaluationConfig:
             raise ValueError("timeout_seconds must be positive and at most 30")
         if self.diagnostic_max_images < 1:
             raise ValueError("diagnostic_max_images must be positive")
+        validate_confidence_thresholds(self)
         if (
             isinstance(self.vision_image_size, bool)
             or not isinstance(self.vision_image_size, int)
@@ -80,6 +85,7 @@ class RealEvaluationConfig:
             raise ValueError("Unsupported real evaluation benchmark_version")
         values = {key: raw[key] for key in SWITCH_KEYS if key in raw}
         values.update(checkpoint_paths(raw.get("models", {})))
+        values.update(confidence_thresholds(raw.get("models", {}), overrides))
         values.update(vision_diagnostic_paths(raw.get("vision_diagnostic", {})))
         safety = raw.get("vision_safety", {})
         values.update({key: safety[key] for key in ("vision_image_size", "vision_max_temperature_c") if key in safety})

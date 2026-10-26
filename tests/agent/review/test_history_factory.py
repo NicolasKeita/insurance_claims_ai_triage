@@ -34,6 +34,7 @@ def test_factory_scopes_history_io_and_keeps_the_required_read_optional(monkeypa
     expected_tools = ["GET_CLAIM", "GET_INVESTIGATION", "GET_TRIAGE"]
     if require_history:
         expected_tools.append("GET_HISTORY")
+    expected_tools.append("GET_VISUAL_ASSESSMENT")
     assert service.tools.history_session_factory is unavailable_history_sessions
     assert [tool.value for tool in result.tools_used] == expected_tools
     assert result.status == "COMPLETED"
@@ -45,7 +46,7 @@ def test_factory_scopes_history_io_and_keeps_the_required_read_optional(monkeypa
     assert len(llm.calls) == 2
     assert store.results == [result] and factory.open_count == 0
     if require_history:
-        assert result.trace[-2].tool_invoked == "GET_HISTORY"
-        assert result.trace[-2].observation_status == ObservationStatus.NOT_AVAILABLE
+        history_step = next(step for step in result.trace if step.tool_invoked == "GET_HISTORY")
+        assert history_step.observation_status == ObservationStatus.NOT_AVAILABLE
         assert "GET_HISTORY: Historical claim data is temporarily unavailable" in result.recommendation.uncertainties
         assert not any(item.source_type == "HISTORY" for item in result.evidence)

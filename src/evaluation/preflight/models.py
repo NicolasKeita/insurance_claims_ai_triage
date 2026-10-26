@@ -74,11 +74,20 @@ class ModelProbes:
 
         runtime = self.vision_runtime()
         settings = {"device": runtime.device, "inference_image_size": self.config.vision_image_size}
+        settings["confidence_threshold"] = getattr(self.config, kind + "_confidence_threshold")
         if kind == "damage":
-            adapter = UltralyticsDamageDetector(VisionSettings(model_path=self.config.damage_checkpoint, **settings))
+            adapter = UltralyticsDamageDetector(
+                VisionSettings(
+                    model_path=self.config.damage_checkpoint,
+                    **settings,
+                )
+            )
         else:
             adapter = UltralyticsVehiclePartDetector(
-                VehiclePartSettings(model_path=self.config.part_checkpoint, **settings)
+                VehiclePartSettings(
+                    model_path=self.config.part_checkpoint,
+                    **settings,
+                )
             )
         managed = runtime.manage(adapter, name=kind)
         model = None
@@ -89,6 +98,8 @@ class ModelProbes:
                 "checkpoint": managed.model_metadata.identifier,
                 "task": model.task,
                 "class_count": len(model.names),
+                "confidence_threshold": adapter.confidence_threshold,
+                "inference_image_size": self.config.vision_image_size,
             }
         finally:
             model = None

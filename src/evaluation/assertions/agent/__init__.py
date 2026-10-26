@@ -3,6 +3,7 @@
 from evaluation.assertions.agent.citations import check_agent_citations, check_agent_review
 from evaluation.assertions.agent.scenario import check_agent_scenario
 from evaluation.assertions.agent.schema import check_agent_schema
+from evaluation.assertions.agent.visual import check_agent_visual
 
 __all__ = ["check_agent_citations", "check_agent_review", "check_agent_schema", "check_agent_scenario"]
 
@@ -15,3 +16,4 @@ def check_agent_expectations(recorder):
     check_agent_citations(recorder)
     check_agent_review(recorder)
     check_agent_scenario(recorder)
+    check_agent_visual(recorder)

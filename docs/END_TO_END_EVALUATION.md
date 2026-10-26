@@ -113,6 +113,17 @@ Assessments record the resized dimensions and normalized geometry; original
 source files remain unchanged. Lower resolution can change detections, so compare
 baselines using the same safety settings.
 
+Damage and vehicle-part detection thresholds are configured separately under
+`[models]` as `damage_confidence_threshold` and `part_confidence_threshold`.
+Both default to `0.25`. The corresponding `DAMAGE_CONFIDENCE_THRESHOLD` and
+`PART_CONFIDENCE_THRESHOLD` environment variables override TOML values;
+`--damage-confidence-threshold` and `--part-confidence-threshold` take precedence
+over both. Values must be finite numbers between zero and one. Preflight records
+and displays the effective thresholds and inference size. Fusion thresholds remain
+separate: a raw detection can be retained while being too weak to confirm damage
+to a vehicle part. Select operational thresholds on VAL for the same checkpoint
+and inference size, not from a golden scenario's desired result.
+
 Each GPU vision run starts one monitor before loading vision weights. The output
 directory contains two additional append-only files, separated by `run_id`:
 
@@ -187,6 +198,12 @@ A collected visual assessment with nonempty `consistency.additional_visual_damag
 also requires follow-up when the investigation assessment is unavailable. Visual
 corroboration and declared damage not visually confirmed do not require that follow-up;
 the latter is retained explicitly in the agent's uncertainties without adding risk points.
+After reading typed claim facts with a positive image count, the agent attempts
+`GET_VISUAL_ASSESSMENT` before discretionary planning, within its existing tool
+budget. A missing stored assessment describes unavailable analysis, not missing
+images. Real benchmark checks require the available visual assessment to be
+collected and its declared-damage non-confirmations to survive finalization,
+including scenarios whose `expected_uncertainties` list is empty.
 Without a trigger, the scenario's explicit alternative actions apply. Missing
 assessment data or required investigation inputs block this negative conclusion;
 optional vision may be omitted. One observed positive trigger still requires

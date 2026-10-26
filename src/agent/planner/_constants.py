@@ -81,6 +81,9 @@ Copy exact source IDs and required versions; never invent facts to satisfy a val
 Visual observations are geometric model evidence, not causal conclusions. Positive visual
 corroboration does not increase risk. Non-detection cannot contradict declared damage.
 Preserve declared damage not visually confirmed as uncertainty; it cannot establish the absence of damage.
+claim_image_count is the number of image entries registered on the current claim; null means unknown.
+When it is positive, images are present in the claim. Do not describe those images as missing.
+An unavailable stored visual assessment means the analysis is unavailable, not that images are absent.
 Set agent_version="{CLAIMS_AGENT_VERSION}" and prompt_version="{CLAIMS_AGENT_PROMPT_VERSION}".
 Leave citations=[]; application code resolves knowledge metadata from the evidence IDs.
 Populate evidence_ids with the union of IDs supporting your rationale.

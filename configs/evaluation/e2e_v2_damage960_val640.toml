@@ -1,0 +1,33 @@
+# Opt-in operating point selected on VAL for the 960_v2 checkpoint at 640 pixels.
+# Checkpoint SHA-256: 5a3eb30507f58a1991311fdd9ae5e909e90a1fe8ed916dc30086647566fef148
+# See docs/DAMAGE_MODEL_IMPROVEMENT.md for measured precision/recall and scope.
+# Environment values override this profile; explicit CLI thresholds take precedence.
+benchmark_version = "e2e_claims_v2"
+include_vision = true
+include_agent = true
+include_rag = true
+include_similar = true
+fail_fast = true
+dependency_unavailable = "SKIP"
+timeout_seconds = 2.0
+
+[models]
+triage_checkpoint = "artifacts/triage_v1/logistic_regression.joblib"
+anomaly_checkpoint = "artifacts/anomaly_v1/anomaly_detector.joblib"
+damage_checkpoint = "artifacts/vision/damage_segmentation_960_v2/train/weights/best.pt"
+part_checkpoint = "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
+damage_confidence_threshold = 0.35
+part_confidence_threshold = 0.25
+vision_device = "0"
+
+[vision_safety]
+vision_image_size = 640
+vision_max_temperature_c = 80.0
+
+[vision_diagnostic]
+source_summary = "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json"
+training_summary = "artifacts/vision/damage_segmentation_v1/training_summary.json"
+max_images = 2
+synthetic_declared_damage = ["FRONT_BUMPER"]
+synthetic_quoted_damage = []
+ground_truth_available = false

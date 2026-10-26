@@ -12,6 +12,7 @@ from agent.planner._constants import (
 from agent.planner._context import finalizer_evidence
 from agent.planner._responses import recommendation_constraints
 from agent.planner._validation import generate_validated
+from agent.planner._visual import claim_image_count, required_visual_step
 from claims.llm import StructuredLlm
 
 
@@ -38,7 +39,7 @@ class StructuredAgentPlanner:
                     arguments={},
                     reason="Required initial read of stored claim evidence for human review.",
                 )
-        return None
+        return required_visual_step(state, attempted)
 
     def plan(self, state) -> AgentPlanStep:
         required = self._required_step(state)
@@ -92,6 +93,7 @@ class StructuredAgentFinalizer:
             "allowed_evidence_ids": list(state["evidence_registry"]),
             "evidence": evidence,
             "evidence_context_truncated": context_truncated,
+            "claim_image_count": claim_image_count(state["evidence_registry"], state["claim_id"]),
             "observations": [
                 {"tool": o["tool_name"], "status": o["status"], "message": o.get("message")}
                 for o in state["observations"]
