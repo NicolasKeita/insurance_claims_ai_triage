@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-insurance-claims"
-version = "0.1.37"
+version = "0.1.38"
 requires-python = ">=3.12"
 
 dependencies = [
@@ -60,6 +60,7 @@ addopts = "--strict-markers"
 markers = [
     "unit: fast tests without external services or model checkpoints",
     "integration: real database, service or model integration",
+    "ocr: opt-in tests requiring the actual Tesseract executable and language packs",
     "vision: real inference in the current Python environment with an existing local checkpoint (no downloads)",
     "rag: retrieval integration using an isolated Qdrant collection and a real embedding model",
     "postgres: integration using the dedicated PostgreSQL test database",

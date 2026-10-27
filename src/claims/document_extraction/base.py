@@ -28,11 +28,16 @@ def text_lines(extraction):
 
 
 def find_prefixed_value(lines: list[str], prefix: str) -> str:
+    values = set()
     for line in lines:
         if line.startswith(prefix):
             value = line[len(prefix) :].strip()
             if value:
-                return value
+                values.add(value)
+    if len(values) > 1:
+        raise DocumentExtractionError(f"Conflicting values for field: {prefix}")
+    if values:
+        return values.pop()
     raise DocumentExtractionError(f"Missing field: {prefix}")
 
 

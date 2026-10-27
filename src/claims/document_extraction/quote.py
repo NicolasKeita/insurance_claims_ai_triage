@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from claims.document_extraction.base import (
+    DAMAGE_LABEL_MAP,
     MONEY_LINE_PATTERN,
     DocumentExtractionError,
     find_prefixed_value,
@@ -41,12 +42,19 @@ def _quote_amounts(lines):
     for line in lines:
         match = MONEY_LINE_PATTERN.match(line)
         if match is None:
+            label = line.partition(":")[0].strip().lower()
+            if label in {*DAMAGE_LABEL_MAP, "labor", "total"}:
+                raise DocumentExtractionError(f"Invalid quote amount: {line}")
             continue
         label = match.group("label").strip()
         money = MoneyAmount(amount=Decimal(match.group("amount").replace(",", ".")), currency=match.group("currency"))
         if label.lower() == "labor":
+            if labor is not None and labor != money:
+                raise DocumentExtractionError("Conflicting labor amounts")
             labor = money
         elif label.lower() == "total":
+            if total is not None and total != money:
+                raise DocumentExtractionError("Conflicting total amounts")
             total = money
         else:
             parts.append(QuoteLineItem(description=label, price=money))

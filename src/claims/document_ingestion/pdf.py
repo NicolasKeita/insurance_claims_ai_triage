@@ -1,6 +1,7 @@
 """Native PDF text extraction with strict structural checks."""
 
 from dataclasses import dataclass
+from time import perf_counter
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
@@ -18,6 +19,8 @@ class PdfTextExtraction:
     asset: DocumentAsset
     pages: tuple[str, ...]
     method: TextExtractionMethod = TextExtractionMethod.NATIVE
+    native_duration_seconds: float = 0.0
+    ocr_duration_seconds: float = 0.0
 
     @property
     def page_count(self) -> int:
@@ -39,6 +42,7 @@ def _has_pdf_signature(asset: DocumentAsset) -> bool:
 
 
 def extract_pdf_text(asset: DocumentAsset) -> PdfTextExtraction:
+    started = perf_counter()
     if not _has_pdf_signature(asset):
         raise DocumentIngestionError(f"File is not a valid PDF: {asset.path}")
     try:
@@ -50,4 +54,9 @@ def extract_pdf_text(asset: DocumentAsset) -> PdfTextExtraction:
     if len(reader.pages) == 0:
         raise DocumentIngestionError(f"PDF contains no pages: {asset.path}")
     pages = tuple((page.extract_text() or "").strip() for page in reader.pages)
-    return PdfTextExtraction(asset=asset, pages=pages, method=TextExtractionMethod.NATIVE)
+    return PdfTextExtraction(
+        asset=asset,
+        pages=pages,
+        method=TextExtractionMethod.NATIVE,
+        native_duration_seconds=perf_counter() - started,
+    )

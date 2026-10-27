@@ -1,12 +1,19 @@
 """Automatic native-then-OCR PDF text extraction."""
 
+from __future__ import annotations
+
+from time import perf_counter
+from typing import TYPE_CHECKING
+
 import pymupdf
 from PIL import Image
 
 from claims.assets import DocumentAsset
 from claims.document_ingestion.pdf import DocumentIngestionError, PdfTextExtraction, extract_pdf_text
 from claims.enums import TextExtractionMethod
-from claims.ocr import OcrEngine
+
+if TYPE_CHECKING:
+    from claims.ocr import OcrEngine
 
 
 def extract_pdf_text_auto(asset: DocumentAsset, ocr_engine: OcrEngine, dpi: int = 300) -> PdfTextExtraction:
@@ -20,12 +27,19 @@ def extract_pdf_text_auto(asset: DocumentAsset, ocr_engine: OcrEngine, dpi: int 
     native = extract_pdf_text(asset)
     if all(page.strip() for page in native.pages):
         return native
+    ocr_started = perf_counter()
     document = _open_document(asset)
     try:
         pages, methods = _render_pages(document, native.pages, ocr_engine, dpi)
     finally:
         document.close()
-    return PdfTextExtraction(asset=asset, pages=tuple(pages), method=_extraction_method(methods))
+    return PdfTextExtraction(
+        asset=asset,
+        pages=tuple(pages),
+        method=_extraction_method(methods),
+        native_duration_seconds=native.native_duration_seconds,
+        ocr_duration_seconds=perf_counter() - ocr_started,
+    )
 
 
 def _open_document(asset):
