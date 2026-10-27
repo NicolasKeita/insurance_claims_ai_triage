@@ -2,6 +2,137 @@
 
 This project extracts claim documents, compares the available evidence, builds structured `TriageFeatures`, and serves three separate assessments: operational triage, statistical anomaly detection, and deterministic investigation signals.
 
+## Portfolio Demo
+
+**AI-assisted insurance claim review platform combining Document AI, ML triage,
+anomaly detection, computer vision, RAG and evidence-grounded agent orchestration.**
+Decisions remain human. Every recommendation retains its provenance, with
+clickable references to the documents, observations and knowledge excerpts used.
+The **Claim Review** console separates workflow triage, statistical anomaly and
+investigation priority. It has no approval, denial, payment or misconduct action.
+
+![Claim Review console with recorded coherent claim](docs/images/step33-coherent-claim.jpg)
+
+Additional captures: [investigation signals](docs/images/step33-investigation-signals.jpg),
+[visual evidence](docs/images/step33-visual-evidence.jpg),
+[agent recommendation](docs/images/step33-agent-recommendation.jpg).
+
+### Minimal demo
+
+Prerequisites: the project's Python 3.12 `.venv` with application dependencies
+installed (see [installation](docs/INSTALLATION.md)), and Node.js 22.12+ with npm.
+No GPU, PostgreSQL, Ollama, Qdrant or downloaded model is needed for this mode.
+Run from the repository root in PowerShell:
+
+```powershell
+# Explicit preparation: canonical controlled fixtures, real document parsers,
+# consistency comparison and deterministic document/completeness signals only.
+.\.venv\Scripts\python.exe scripts/prepare_review_demo.py
+$env:CLAIMS_REVIEW_DEMO = '1'
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+In a second PowerShell window, from the repository root:
+
+```powershell
+Set-Location frontend
+npm ci
+npm run dev
+```
+
+Open [Claim Review](http://127.0.0.1:5173). Choose a controlled claim in the
+selector: coherent documents, additional quote damage, or missing documents.
+The source is `data/evaluation/e2e_v2/scenarios.json`, transformed centrally by
+the existing fixture builder; the console maintains no duplicate claim JSON.
+Preparation writes snapshots under ignored `artifacts/review_demo/`. Refreshing
+the page only reads snapshots. Preparation refuses to overwrite an existing
+demo directory; use `--output-dir` and set `CLAIMS_REVIEW_DEMO_DIR` to that path
+to prepare a separate demonstration.
+
+Absent ML, vision, history, RAG and agent results show explicit states and
+reasons. A partial document assessment is labelled with its limited scope;
+its absence of other signals does not imply those components were evaluated.
+
+### Previously generated results
+
+To show richer evidence without running inference, import an **existing real**
+benchmark run into a separate demo directory. For example, if this local run
+already exists:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/prepare_review_demo.py --output-dir artifacts/review_demo_saved --observations artifacts/evaluation/e2e_v2/serial_damage960_conf035/run_20261027_112250_854978
+$env:CLAIMS_REVIEW_DEMO = '1'
+$env:CLAIMS_REVIEW_DEMO_DIR = (Join-Path $PWD 'artifacts/review_demo_saved')
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+This reads saved results and their source fixtures, not benchmark expectations.
+It never launches the benchmark. Real-run provenance is required; deterministic
+fake model outputs are rejected. A visual claim appears only if an eligible
+saved result exists. Original images must be available and have provenance;
+otherwise their unavailability is explained. Saved results are historical
+snapshots, not new measurements. The repository redistributes no CarDD photos.
+
+### Full-stack demo
+
+This mode reads the actual PostgreSQL repositories, including stored assessment
+and agent histories. Start the existing services and apply migrations:
+
+```powershell
+Remove-Item Env:CLAIMS_REVIEW_DEMO -ErrorAction SilentlyContinue
+Remove-Item Env:CLAIMS_REVIEW_DEMO_DIR -ErrorAction SilentlyContinue
+docker compose up -d --wait postgres qdrant
+$env:DATABASE_URL = 'postgresql+psycopg://claims:claims@127.0.0.1:5433/insurance_claims'
+$env:QDRANT_URL = 'http://127.0.0.1:6333'
+$env:OLLAMA_HOST = 'http://127.0.0.1:11434'
+$env:CLAIMS_LLM_MODEL = 'gemma3:4b'
+$env:CLAIMS_REVIEW_ASSET_ROOT = (Join-Path $PWD 'data')
+$env:DAMAGE_MODEL_PATH = (Join-Path $PWD 'artifacts/vision/damage_segmentation_v1/train/weights/best.pt')
+$env:PART_MODEL_PATH = (Join-Path $PWD 'artifacts/vision/vehicle_parts_v1/train/weights/best.pt')
+.\.venv\Scripts\python.exe -m alembic upgrade head
+# Run once on a new demonstration database; existing business IDs are preserved.
+.\.venv\Scripts\python.exe scripts/import_reference_claim.py
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+Use the same frontend command, then enter `CLAIM-2026-00001` (or a stored claim
+ID). Configure database credentials/ports to match your local Compose overrides.
+Ollama must be served separately with the chosen model already installed when
+explicit generation is needed. Knowledge/similar collections and local vision
+checkpoints are optional; see their existing setup sections below. No model is
+trained, downloaded or run by opening the console. Run expensive assessments
+explicitly through existing services/endpoints, serially, one claim/image at a
+time. The UI itself issues only reads.
+
+`GET /v1/claims/{claim_id}/review` aggregates saved results in the existing
+FastAPI app. `GET /v1/review/demo-claims` lists prepared demo claims (empty in
+database mode). Registered images are served from
+`CLAIMS_REVIEW_ASSET_ROOT/<claim_id>/images/<filename>` through an allowlisted
+read route. Each section reports availability, provenance and timestamps.
+Database document records currently retain availability, not extraction or
+consistency snapshots; these facts are shown when present in prepared demos.
+RAG and similar context can be recovered from stored agent evidence; a standalone
+RAG answer or retrieval similarity is left unavailable when it was not saved.
+
+### Console validation
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests -m unit --ignore=tests/e2e
+.\.venv\Scripts\nk-python.exe check src/claims/review src/api/main.py src/api/review.py src/api/version.py tests/api/review scripts/prepare_review_demo.py
+Set-Location frontend
+npm test
+npm run lint
+npm run format:check
+npm run build
+```
+
+The production frontend is emitted to `frontend/dist/`; `npm run preview`
+previews that build with the same local API proxy. Investigation priority is
+review prioritization, not a fraud probability. Anomaly detection identifies
+unusual patterns; it is not a fraud classifier. Not visually confirmed does
+not mean declared damage is absent. **HUMAN REVIEW REQUIRED** remains visible
+even when no agent recommendation is available.
+
 ## Automated test infrastructure
 
 From an activated `.venv`, `pytest` runs **all unit and integration tests**.
