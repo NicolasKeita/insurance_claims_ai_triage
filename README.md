@@ -40,7 +40,8 @@ that schema. Transactions roll back between tests. Qdrant uses reserved UUID
 collections and cleans only those collections. An explicitly selected missing
 service, invalid connection, missing model or checkpoint fails the suite.
 
-Markers are `unit`, `integration`, `postgres`, `qdrant`, `rag` and `vision`.
+Markers are `unit`, `integration`, `postgres`, `qdrant`, `rag`, `vision` and `ocr`.
+Real OCR tests additionally require the explicit `RUN_OCR_TESTS=1` opt-in.
 Suites live under their domains (`tests/agent`, `tests/domain/claims`, `tests/intelligence/vision`,
 etc.). Shared doubles live in `tests/infrastructure/support`; domain fixtures stay beside the
 suites that use them. PostgreSQL setup/migrations and prerequisite probes live
@@ -1063,3 +1064,108 @@ See [the evaluation guide](docs/END_TO_END_EVALUATION.md) for configuration,
 golden cases, metrics, safety/provenance checks, stable baseline comparison and
 limitations. [CODEX_REPORT_STEP_31.md](CODEX_REPORT_STEP_31.md) records actual
 deterministic and real-stack execution results.
+
+## Document AI robustness evaluation
+
+`document_ocr_v1` measures document processing independently of the E2E system
+benchmark. Native-text PDFs alone do not exercise Tesseract. This CPU-only
+benchmark uses the existing `extract_pdf_text_auto` and the real deterministic
+claim-form, accident-report and garage-quote extractors. It loads no vision
+checkpoint, YOLO, CUDA, Ollama or external service. The optional product LLM
+extractors remain a separate path and are not measured here; no LLM retry is
+hidden in these results.
+
+Five synthetic dossiers provide 15 source documents and 120 cases. Ground truth
+is constructed from controlled structured demo data before PDF generation,
+including a coherent dossier, additional HOOD damage and a deliberate date
+mismatch. Only fields present in the current product models are scored; those
+models do not contain customer identity fields. The implementation lives under
+`evaluation/deterministic/document_robustness` to respect the repository's
+directory limit, with public entry points in `evaluation.document_robustness`.
+
+`native_clean` retains native text. The image-only variants are `scan_clean`,
+`scan_low_resolution`, `scan_jpeg_compressed`, `scan_rotated_small`,
+`scan_blurred` and `scan_noisy`. `mixed_native_and_scan` splits the source text
+between a native page and an image-only page. Actual ingestion methods are
+recorded and checked as `NATIVE`, `OCR` or `HYBRID`. Scan generation uses 180 DPI
+(100 for low resolution), JPEG quality 35, rotation 2 degrees, blur radius 0.65
+or Gaussian noise with standard deviation 8 as applicable. Noise has a stable
+per-document SHA-256-derived seed; every case retains its parameters.
+
+CER/WER use Levenshtein edit distance after whitespace-only normalization.
+Digits, dates, amounts, punctuation and case remain unchanged. Aggregate rates
+sum edit counts and reference lengths instead of averaging document percentages.
+Pure OCR rates exclude native and hybrid documents; hybrid CER/WER describe the
+whole mixed document. These text diagnostics are distinct from business accuracy.
+Field exact match and required-field recall count correct required values;
+required-field presence is reported separately. Amounts use numeric Decimal
+equality, damages use sets, and quote items match exact description, numeric
+amount and currency with duplicate multiplicity. Critical accuracy separately
+tracks claim ID, incident date, repair total, currency and damages.
+
+`consistency_preservation_rate` is the fraction of evaluable degraded dossier
+variants retaining every expected fact from the real `ClaimConsistencyReport`.
+Evaluation requires all three documents to match their source ground truth.
+The eligible count and excluded count matter: this conditional rate is not a
+claim that every degraded dossier succeeded. Monetary OCR ambiguities and
+conflicting duplicate critical fields fail closed; a valid but wrong date must
+still be detected against ground truth or another document.
+
+Run from the repository with the existing `.venv`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --preflight-only
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --resume
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --document-type garage_quote --output-dir artifacts/evaluation/document_ocr_v1/quotes
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --variant scan_rotated_small --output-dir artifacts/evaluation/document_ocr_v1/rotated
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_03 --output-dir artifacts/evaluation/document_ocr_v1/one_scenario
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_01 --document-type claim_form --variant scan_clean --output-dir artifacts/evaluation/document_ocr_v1/one_case
+```
+
+Selections are repeatable and always run serially. Use a fresh output directory,
+or `--resume` to reuse immutable results and append missing cases. Resume rejects
+changed corpus, parameters, environment or implementation. An interrupted source
+PDF is reused only if its bytes match deterministic regeneration. Recorded
+extraction failures are retained; retrying them requires a new output directory.
+The English corpus explicitly uses `eng`; preflight prints actual package,
+Tesseract and installed-language versions. `--language` and `--tesseract-cmd`
+select existing local installations, never install language packs. If OCR is
+unavailable the status is `OCR benchmark: NOT EXECUTED` with exact reasons,
+unexecuted cases are excluded from aggregate scores, their text and stage
+measurements remain null, and the CLI returns 2.
+
+The default output is `artifacts/evaluation/document_ocr_v1/`: manifest,
+`ground_truth.json`, `summary.json`, `per_document.csv`, `per_variant.csv`,
+`per_document_type.csv`, `critical_fields.csv`, raw text in `ocr_text/`,
+per-case JSON in `results/`, generated PDFs in `sources/`, and field/context
+diagnostics in `failures/`. These generated artifacts remain ignored by Git.
+Latency separates native ingestion, OCR including rendering, and structured
+extraction; total case duration also includes synthetic materialization and
+text-metric computation. Unavailable stage timings are null.
+
+A complete run can create a new baseline with `--write-baseline PATH`; existing
+baselines are never overwritten. The measured reference is
+`configs/evaluation/document_ocr_v1_baseline.json`. To compare future complete
+runs, add `--baseline configs/evaluation/document_ocr_v1_baseline.json` with a
+fresh output directory. Comparisons require matching corpus, configuration,
+OCR environment and document/variant population. Declining critical accuracy,
+new parse failures or declining consistency preservation produce regression
+records and exit code 1. Meaningful changes to scenarios, degradations, ground
+truth or metrics require a new benchmark version; pytest imposes no arbitrary
+CER/WER threshold.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/evaluation/document_robustness -m unit --ignore=tests/e2e --basetemp=.pytest-tmp-document-unit
+$env:RUN_OCR_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest tests/evaluation/document_robustness/test_real_ocr.py -m ocr --ignore=tests/e2e --basetemp=.pytest-tmp-document-ocr
+Remove-Item Env:RUN_OCR_TESTS
+```
+
+Real Tesseract tests have the `ocr` marker and skip by default without opt-in.
+The ordinary deterministic suite uses doubles for OCR and never needs its
+executable. E2E tests remain separate and require explicit authorization.
+The corpus uses synthetic layouts and degradations, is Tesseract-specific,
+does not evaluate handwriting, and does not represent all insurer layouts or
+general production OCR accuracy. Actual results and limitations are recorded in
+[CODEX_REPORT_STEP_32.md](CODEX_REPORT_STEP_32.md).

@@ -1,0 +1,1181 @@
+{
+  "benchmark_version": "document_ocr_v1",
+  "timestamp": "2026-10-27T18:37:45.527854+00:00",
+  "identity": {
+    "benchmark_version": "document_ocr_v1",
+    "extraction_mode": "deterministic",
+    "ocr_render_dpi": 300,
+    "ocr_timeout_seconds": 30,
+    "preflight": {
+      "python": "3.12.14",
+      "language": "eng",
+      "packages": {
+        "PyMuPDF": "1.28.2",
+        "pytesseract": "0.3.13",
+        "Pillow": "12.3.0",
+        "numpy": "2.5.3",
+        "pypdf": "6.19.0"
+      },
+      "executable": "C:\\Program Files\\Tesseract-OCR\\tesseract.EXE",
+      "tesseract_version": "5.5.3.20260724",
+      "available_languages": [
+        "eng",
+        "fra",
+        "osd"
+      ],
+      "errors": [],
+      "missing_imports": [],
+      "document_generation_available": true,
+      "native_available": true,
+      "available": true,
+      "status": "OCR benchmark: READY"
+    },
+    "degradations": {
+      "native_clean": {
+        "variant": "native_clean",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_clean": {
+        "variant": "scan_clean",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_low_resolution": {
+        "variant": "scan_low_resolution",
+        "source_dpi": 100,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_jpeg_compressed": {
+        "variant": "scan_jpeg_compressed",
+        "source_dpi": 180,
+        "jpeg_quality": 35,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_rotated_small": {
+        "variant": "scan_rotated_small",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 2.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_blurred": {
+        "variant": "scan_blurred",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.65,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "scan_noisy": {
+        "variant": "scan_noisy",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 8.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      },
+      "mixed_native_and_scan": {
+        "variant": "mixed_native_and_scan",
+        "source_dpi": 180,
+        "jpeg_quality": null,
+        "rotation_degrees": 0.0,
+        "blur_radius": 0.0,
+        "noise_stddev": 0.0,
+        "noise_mean": 0.0,
+        "seed": 273236191,
+        "font_size": 12,
+        "language": "eng"
+      }
+    },
+    "corpus_sha256": "a1e5c52d1442666dfd80e12f7e1f0be5c902299e2fd554d5b2b4a493866292cd"
+  },
+  "corpus": {
+    "scenarios": 5,
+    "documents": 15,
+    "variants": [
+      "native_clean",
+      "scan_clean",
+      "scan_low_resolution",
+      "scan_jpeg_compressed",
+      "scan_rotated_small",
+      "scan_blurred",
+      "scan_noisy",
+      "mixed_native_and_scan"
+    ],
+    "total_cases": 120
+  },
+  "recorded_cases": 120,
+  "metrics": {
+    "evaluated_count": 120,
+    "not_executed_count": 0,
+    "parse_failure_count": 0,
+    "document_parse_success_rate": 1.0,
+    "field_exact_match_rate": 0.999,
+    "required_field_recall": 0.999,
+    "required_field_presence_rate": 1.0,
+    "unexpected_value_count": 1,
+    "critical_field_accuracy": 1.0,
+    "field_count": 1000,
+    "critical_field_count": 360,
+    "cer": 8.245382585751979e-05,
+    "wer": 0.0002927400468384075,
+    "text_evaluated_count": 120,
+    "ocr_cer": 0.00010993843447669306,
+    "ocr_wer": 0.00039032006245121,
+    "ocr_text_evaluated_count": 90,
+    "hybrid_cer": 0.0,
+    "hybrid_wer": 0.0,
+    "hybrid_text_evaluated_count": 15,
+    "mean_native_duration_seconds": 0.022237518333440676,
+    "mean_ocr_duration_seconds": 1.2205234883334621,
+    "mean_structured_duration_seconds": 0.00025866749995960466,
+    "mean_duration_seconds": 1.5032593033332584,
+    "line_items": {
+      "expected_count": 88,
+      "extracted_count": 88,
+      "matching_items": 88,
+      "missing_items": 0,
+      "unexpected_items": 0
+    },
+    "consistency_preservation_rate": 1.0,
+    "consistency_evaluable_count": 34,
+    "consistency_degraded_group_count": 35
+  },
+  "by_variant": {
+    "native_clean": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": null,
+      "ocr_wer": null,
+      "ocr_text_evaluated_count": 0,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.007064879999961704,
+      "mean_ocr_duration_seconds": 0.0,
+      "mean_structured_duration_seconds": 0.00024593999987700956,
+      "mean_duration_seconds": 0.015302213333537413,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_clean": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.025379159999768794,
+      "mean_ocr_duration_seconds": 1.196707826667019,
+      "mean_structured_duration_seconds": 0.0002705999999307096,
+      "mean_duration_seconds": 1.3647721999999096,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_low_resolution": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.02002398000040557,
+      "mean_ocr_duration_seconds": 0.9858520933332329,
+      "mean_structured_duration_seconds": 0.0002170933328064469,
+      "mean_duration_seconds": 1.0605992933330224,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_jpeg_compressed": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.018578600000182632,
+      "mean_ocr_duration_seconds": 1.2529928600000857,
+      "mean_structured_duration_seconds": 0.00023396666729240677,
+      "mean_duration_seconds": 1.311921433333191,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_rotated_small": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 0.992,
+      "required_field_recall": 0.992,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 1,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0006596306068601583,
+      "wer": 0.00234192037470726,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0006596306068601583,
+      "ocr_wer": 0.00234192037470726,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.022854353332998775,
+      "mean_ocr_duration_seconds": 1.1866868400005235,
+      "mean_structured_duration_seconds": 0.000261300000177774,
+      "mean_duration_seconds": 1.6883633799998885,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_blurred": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.022548660000272017,
+      "mean_ocr_duration_seconds": 1.18069889999994,
+      "mean_structured_duration_seconds": 0.0002526200002951858,
+      "mean_duration_seconds": 1.5286575400001312,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "scan_noisy": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 15,
+      "hybrid_cer": null,
+      "hybrid_wer": null,
+      "hybrid_text_evaluated_count": 0,
+      "mean_native_duration_seconds": 0.023771666666289094,
+      "mean_ocr_duration_seconds": 2.9079139733337795,
+      "mean_structured_duration_seconds": 0.00035088666578910003,
+      "mean_duration_seconds": 3.8232096133336504,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "mixed_native_and_scan": {
+      "evaluated_count": 15,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 125,
+      "critical_field_count": 45,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 15,
+      "ocr_cer": null,
+      "ocr_wer": null,
+      "ocr_text_evaluated_count": 0,
+      "hybrid_cer": 0.0,
+      "hybrid_wer": 0.0,
+      "hybrid_text_evaluated_count": 15,
+      "mean_native_duration_seconds": 0.03767884666764682,
+      "mean_ocr_duration_seconds": 1.0533354133331159,
+      "mean_structured_duration_seconds": 0.00023693333350820466,
+      "mean_duration_seconds": 1.2332487533327368,
+      "line_items": {
+        "expected_count": 11,
+        "extracted_count": 11,
+        "matching_items": 11,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    }
+  },
+  "by_document_type": {
+    "accident_report": {
+      "evaluated_count": 40,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 360,
+      "critical_field_count": 120,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 40,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 30,
+      "hybrid_cer": 0.0,
+      "hybrid_wer": 0.0,
+      "hybrid_text_evaluated_count": 5,
+      "mean_native_duration_seconds": 0.020708350000404607,
+      "mean_ocr_duration_seconds": 1.1946403350004402,
+      "mean_structured_duration_seconds": 0.00023307749961531954,
+      "mean_duration_seconds": 1.46852573749984,
+      "line_items": {
+        "expected_count": 0,
+        "extracted_count": 0,
+        "matching_items": 0,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "claim_form": {
+      "evaluated_count": 40,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 1.0,
+      "required_field_recall": 1.0,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 0,
+      "critical_field_accuracy": 1.0,
+      "field_count": 360,
+      "critical_field_count": 120,
+      "cer": 0.0,
+      "wer": 0.0,
+      "text_evaluated_count": 40,
+      "ocr_cer": 0.0,
+      "ocr_wer": 0.0,
+      "ocr_text_evaluated_count": 30,
+      "hybrid_cer": 0.0,
+      "hybrid_wer": 0.0,
+      "hybrid_text_evaluated_count": 5,
+      "mean_native_duration_seconds": 0.02246016500012047,
+      "mean_ocr_duration_seconds": 1.30253729749993,
+      "mean_structured_duration_seconds": 0.0002715625000746513,
+      "mean_duration_seconds": 1.5973251449998316,
+      "line_items": {
+        "expected_count": 0,
+        "extracted_count": 0,
+        "matching_items": 0,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    },
+    "garage_quote": {
+      "evaluated_count": 40,
+      "not_executed_count": 0,
+      "parse_failure_count": 0,
+      "document_parse_success_rate": 1.0,
+      "field_exact_match_rate": 0.9964285714285714,
+      "required_field_recall": 0.9964285714285714,
+      "required_field_presence_rate": 1.0,
+      "unexpected_value_count": 1,
+      "critical_field_accuracy": 1.0,
+      "field_count": 280,
+      "critical_field_count": 120,
+      "cer": 0.00031017369727047146,
+      "wer": 0.000992063492063492,
+      "text_evaluated_count": 40,
+      "ocr_cer": 0.00041356492969396195,
+      "ocr_wer": 0.0013227513227513227,
+      "ocr_text_evaluated_count": 30,
+      "hybrid_cer": 0.0,
+      "hybrid_wer": 0.0,
+      "hybrid_text_evaluated_count": 5,
+      "mean_native_duration_seconds": 0.02354403999979695,
+      "mean_ocr_duration_seconds": 1.1643928325000161,
+      "mean_structured_duration_seconds": 0.0002713625001888431,
+      "mean_duration_seconds": 1.4439270275001035,
+      "line_items": {
+        "expected_count": 88,
+        "extracted_count": 88,
+        "matching_items": 88,
+        "missing_items": 0,
+        "unexpected_items": 0
+      }
+    }
+  },
+  "critical_fields": {
+    "claim_id": {
+      "matched": 120,
+      "expected": 120,
+      "accuracy": 1.0
+    },
+    "damages": {
+      "matched": 80,
+      "expected": 80,
+      "accuracy": 1.0
+    },
+    "incident_date": {
+      "matched": 80,
+      "expected": 80,
+      "accuracy": 1.0
+    },
+    "total.amount": {
+      "matched": 40,
+      "expected": 40,
+      "accuracy": 1.0
+    },
+    "total.currency": {
+      "matched": 40,
+      "expected": 40,
+      "accuracy": 1.0
+    }
+  },
+  "documents": [
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_accident_report",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_claim_form",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_01_garage_quote",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_accident_report",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_claim_form",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_02_garage_quote",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_accident_report",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_claim_form",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_03_garage_quote",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_accident_report",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_claim_form",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_04_garage_quote",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_accident_report",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_claim_form",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "mixed_native_and_scan",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "native_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_blurred",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_clean",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_jpeg_compressed",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_low_resolution",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_noisy",
+      "parse_success": true
+    },
+    {
+      "document_id": "demo_05_garage_quote",
+      "variant": "scan_rotated_small",
+      "parse_success": true
+    }
+  ]
+}

@@ -1,19 +1,24 @@
 """Offline deterministic evaluation backend for the controlled benchmark."""
 
-from evaluation.deterministic.analysis import investigate, review_agent, score_models
-from evaluation.deterministic.documents import extract_case_documents
-from evaluation.deterministic.fixtures import ROOT, SYNTHETIC_PROVENANCE, materialize_scenario_case
-from evaluation.deterministic.recording import TraceRecorder
-from evaluation.deterministic.retrieval import retrieve_knowledge, retrieve_similar
-from evaluation.deterministic.stages import (
-    DeterministicRun,
-    assess_history,
-    build_features,
-    compare_documents,
-    extract_documents,
-    load_claim,
-)
-from evaluation.deterministic.vision import assess_vision, fake_vision_service
+from importlib import import_module
+
+_EXPORTS = {
+    "analysis": ("investigate", "review_agent", "score_models"),
+    "documents": ("extract_case_documents",),
+    "fixtures": ("ROOT", "SYNTHETIC_PROVENANCE", "materialize_scenario_case"),
+    "recording": ("TraceRecorder",),
+    "retrieval": ("retrieve_knowledge", "retrieve_similar"),
+    "stages": (
+        "DeterministicRun",
+        "assess_history",
+        "build_features",
+        "compare_documents",
+        "extract_documents",
+        "load_claim",
+    ),
+    "vision": ("assess_vision", "fake_vision_service"),
+}
+_MODULES = {name: module for module, names in _EXPORTS.items() for name in names}
 
 __all__ = [
     "ROOT",
@@ -35,3 +40,12 @@ __all__ = [
     "review_agent",
     "score_models",
 ]
+
+
+def __getattr__(name):
+    """Load only the requested evaluation stage, keeping document imports CPU-only."""
+    if name not in _MODULES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(f"{__name__}.{_MODULES[name]}"), name)
+    globals()[name] = value
+    return value
