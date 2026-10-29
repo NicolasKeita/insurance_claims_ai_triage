@@ -53,6 +53,38 @@ Absent ML, vision, history, RAG and agent results show explicit states and
 reasons. A partial document assessment is labelled with its limited scope;
 its absence of other signals does not imply those components were evaluated.
 
+### Starting the backend and understanding connection errors
+
+The backend is the **FastAPI application on port 8000**. Vite serves the frontend
+on port 5173. PostgreSQL stores claims and Qdrant stores retrieval vectors in the
+full-stack configuration; starting those Docker containers does not start FastAPI.
+The prepared snapshot demo needs neither container.
+
+If the console says **Backend unavailable**, open PowerShell at the repository
+root and start FastAPI in demo mode:
+
+```powershell
+$env:CLAIMS_REVIEW_DEMO = '1'
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+Keep that terminal running, then use **Try again** in the console. Retry reloads
+the demo catalogue as well as the selected claim. Python does not automatically
+load `.env`; set these variables in the same terminal that starts the backend.
+For a different prepared snapshot directory, also set `CLAIMS_REVIEW_DEMO_DIR`
+before starting FastAPI. Run the preparation command only when its manifest is
+absent; existing nonempty output directories are preserved.
+
+**Claim not found** means the API responded with 404 for that claim ID.
+**Review service unavailable** means the backend responded but its configuration,
+snapshot files or a required service is unavailable. Actual server failures keep
+their HTTP status and are distinct from a stopped backend. Connection failures
+display the FastAPI start command in the console, including on initial startup
+before a claim has been selected. The check never calls the model-loading `/health`
+endpoint and never starts a service automatically.
+
+[Backend unavailable screen with startup instructions](docs/images/step33-backend-unavailable.jpg)
+
 ### Previously generated results
 
 To show richer evidence without running inference, import an **existing real**

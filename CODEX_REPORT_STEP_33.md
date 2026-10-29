@@ -323,3 +323,29 @@ pyproject en checkout et les métadonnées du paquet installé en distribution.
 - Console/frontend, captures et documentation validés : **0.1.40 → 0.1.41**.
 
 Un PATCH par commit, sans changement MAJOR/MINOR, tag, release, push ou déploiement.
+
+## Update — 29 octobre 2026 : backend indisponible
+
+La console distingue désormais une connexion FastAPI impossible, un claim absent
+(404), un service/configuration indisponible (503) et une erreur serveur réelle
+(500). Le proxy Vite, en développement et en preview, émet un 502 JSON explicite
+`BACKEND_UNREACHABLE` en cas d'erreur de transport ; les réponses HTTP de FastAPI
+ne sont pas réécrites. Aucun appel au endpoint `/health` qui charge des modèles.
+
+L'écran **Backend unavailable** affiche les commandes PowerShell de démarrage
+depuis la racine du dépôt et précise que PostgreSQL/Qdrant ne sont pas nécessaires
+pour les snapshots de démo. Docker ne lance pas FastAPI. Le bouton **Retry
+connection** recharge le catalogue et le claim, même après un premier démarrage
+de l'UI sans backend ni claim sélectionné. Les annulations de requêtes ne sont
+pas présentées comme des pannes.
+
+Validation : **32 tests frontend réussis**, ESLint, Prettier et build TypeScript/
+Vite réussis. Le backend de démonstration a été arrêté de manière contrôlée :
+le proxy réel a renvoyé 502 avec le code attendu, l'écran a montré les instructions,
+puis le redémarrage et un clic sur Retry ont restauré les quatre dossiers et ouvert
+`E2E-COHERENT-0001`. La réponse 404 d'un claim absent reste inchangée. Capture :
+`docs/images/step33-backend-unavailable.jpg`. README complété.
+
+Version : **0.1.41 → 0.1.42**, source unique `pyproject.toml`. Aucune dépendance
+modifiée, aucun test E2E ni inférence GPU exécutés. Les contrôles unitaires frontend
+et le smoke manuel ci-dessus ne lancent aucun scénario du benchmark.

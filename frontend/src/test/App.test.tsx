@@ -6,6 +6,18 @@ import { partialReview } from './fixtures';
 
 beforeEach(() => window.history.replaceState(null, '', '/'));
 
+function response(data: unknown, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => data };
+}
+
+const demoClaims = [
+  {
+    claim_id: 'DEMO-COHERENT',
+    title: 'Coherent claim',
+    description: 'Controlled source documents',
+  },
+];
+
 describe('Review API integration', () => {
   it('loads a demo review using read-only requests and refreshes stored data explicitly', async () => {
     const fetcher = vi
@@ -39,7 +51,7 @@ describe('Review API integration', () => {
       vi
         .fn()
         .mockResolvedValueOnce({ ok: true, json: async () => [] })
-        .mockResolvedValue({ ok: false, status: 404 }),
+        .mockResolvedValue(response({ detail: 'Claim not found' }, 404)),
     );
     render(<App />);
     await screen.findByRole('heading', { name: /Every claim has a story/ });
@@ -49,13 +61,120 @@ describe('Review API integration', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 
-  it('handles an unavailable demo list without hiding manual claim access', async () => {
+  it('explains a backend connection failure before any claim has been selected', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network failure')));
     render(<App />);
-    await screen.findByRole('heading', { name: /Every claim has a story/ });
+    await screen.findByRole('heading', { level: 1, name: 'Backend unavailable' });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('http://127.0.0.1:8000');
+    expect(alert).toHaveTextContent("$env:CLAIMS_REVIEW_DEMO = '1'");
+    expect(alert).toHaveTextContent(
+      String.raw`.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000`,
+    );
+    expect(alert).toHaveTextContent('PostgreSQL and Qdrant are not needed for the prepared demo.');
+    expect(alert).toHaveTextContent('it does not start FastAPI');
+    expect(
+      screen.queryByRole('heading', { name: /Every claim has a story/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText('Demo list unavailable. You can open a claim by ID.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Open claim' })).toBeEnabled();
+  });
+
+  it.each([502, 504])(
+    'handles an HTTP %s gateway failure as an unavailable backend',
+    async (status) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            response(status === 502 ? { error: { code: 'BACKEND_UNREACHABLE' } } : null, status),
+          ),
+      );
+      render(<App />);
+      await screen.findByRole('heading', { level: 1, name: 'Backend unavailable' });
+      expect(screen.getByRole('button', { name: 'Retry connection' })).toBeEnabled();
+      expect(screen.queryByRole('heading', { name: 'Claim not found' })).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    [404, 'Claim not found', 'This claim was not found.'],
+    [503, 'Review service unavailable', 'FastAPI is responding'],
+    [500, 'The request could not be completed', 'HTTP 500'],
+  ])(
+    'keeps a live backend HTTP %s distinct from a stopped backend',
+    async (status, heading, message) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(response([]))
+          .mockResolvedValue(response({ detail: 'Controlled API error' }, status as number)),
+      );
+      render(<App />);
+      await screen.findByRole('heading', { name: /Every claim has a story/ });
+      await userEvent.type(screen.getByRole('textbox', { name: 'Open claim' }), 'UNKNOWN');
+      await userEvent.click(screen.getByRole('button', { name: 'Open review' }));
+      await screen.findByRole('heading', { level: 1, name: heading as string });
+      expect(screen.getByRole('alert')).toHaveTextContent(message as string);
+      expect(
+        screen.queryByRole('heading', { name: 'Backend unavailable' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Start the prepared demo backend')).not.toBeInTheDocument();
+    },
+  );
+
+  it('does not report a catalogue HTTP 404 as a missing claim', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ detail: 'Not Found' }, 404)));
+    render(<App />);
+    await screen.findByRole('heading', { level: 1, name: 'The request could not be completed' });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The demo list could not be loaded (HTTP 404)',
+    );
+    expect(screen.queryByText('This claim was not found.')).not.toBeInTheDocument();
+  });
+
+  it('recovers the demo list and opens a demo claim after the backend starts', async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(response(demoClaims))
+      .mockResolvedValueOnce(response(partialReview()));
+    vi.stubGlobal('fetch', fetcher);
+    render(<App />);
+    await screen.findByRole('heading', { level: 1, name: 'Backend unavailable' });
+    await userEvent.click(screen.getByRole('button', { name: 'Retry connection' }));
+    await screen.findByRole('heading', { level: 1, name: 'DEMO-COHERENT' });
+    expect(screen.getByRole('button', { name: /Coherent claim/ })).toBeEnabled();
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/v1/review/demo-claims',
+      '/v1/review/demo-claims',
+      '/v1/claims/DEMO-COHERENT/review',
+    ]);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('refreshes the catalogue and preserves the requested claim when retrying an API failure', async () => {
+    window.history.replaceState(null, '', '/?claim=DEMO-COHERENT');
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response(demoClaims))
+      .mockResolvedValueOnce(response({ detail: 'Database unavailable' }, 503))
+      .mockResolvedValueOnce(response(demoClaims))
+      .mockResolvedValueOnce(response(partialReview()));
+    vi.stubGlobal('fetch', fetcher);
+    render(<App />);
+    await screen.findByRole('heading', { level: 1, name: 'Review service unavailable' });
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByRole('heading', { level: 1, name: 'DEMO-COHERENT' });
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/v1/review/demo-claims',
+      '/v1/claims/DEMO-COHERENT/review',
+      '/v1/review/demo-claims',
+      '/v1/claims/DEMO-COHERENT/review',
+    ]);
   });
 });

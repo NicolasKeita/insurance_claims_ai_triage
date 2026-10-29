@@ -1,8 +1,9 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { reviewBackendProxy } from './backendProxy';
 
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: { '/v1': 'http://127.0.0.1:8000' } },
-  preview: { proxy: { '/v1': 'http://127.0.0.1:8000' } },
+  server: { proxy: { '/v1': reviewBackendProxy() } },
+  preview: { proxy: { '/v1': reviewBackendProxy() } },
 });

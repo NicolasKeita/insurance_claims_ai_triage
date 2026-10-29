@@ -1461,6 +1461,58 @@ tbody tr:last-child td {
 .welcome .primary-button {
   margin-top: 25px;
 }
+.request-error {
+  max-width: 900px;
+  margin-top: 18px;
+  padding: 30px;
+}
+.request-error h1 {
+  font-size: 29px;
+  margin-bottom: 16px;
+}
+.request-error > p:not(.eyebrow) {
+  color: #536b60;
+  font-size: 13px;
+  max-width: 740px;
+}
+.backend-start-help {
+  background: #f5f8f3;
+  border: 1px solid #dfe7da;
+  border-radius: 6px;
+  padding: 22px;
+  margin-top: 24px;
+}
+.backend-start-help h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.backend-start-help p {
+  font-size: 12px;
+  color: #536b50;
+}
+.backend-start-help pre {
+  border: 1px solid #dce5d5;
+  background: white;
+  color: #34583d;
+  border-radius: 5px;
+  padding: 16px;
+  margin: 15px 0;
+  overflow-x: auto;
+  line-height: 1.9;
+}
+.backend-start-help .docker-help {
+  border-top: 1px solid #dfe7d9;
+  padding-top: 13px;
+  margin-top: 13px;
+}
+.request-error > .primary-button {
+  margin-top: 24px;
+}
+.request-error > .retry-help,
+.request-error > .service-help {
+  font-size: 11px;
+  margin-top: 12px;
+}
 .drawer-backdrop {
   position: fixed;
   inset: 0;

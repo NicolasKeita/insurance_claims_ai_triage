@@ -10,7 +10,10 @@ import {
 } from './components/Evidence';
 import { Anomaly, ClaimHistory, Investigation, Triage } from './components/Intelligence';
 import { VisualConsistency, VisualEvidence } from './components/Vision';
+import { ErrorPanel } from './components/ErrorPanel';
 import { Badge, Metric, anchor, date, humanize, money } from './presentation';
+import { fetchJson, isAbortError, requestFailure } from './request';
+import type { RequestFailure } from './request';
 import type { DemoClaim, ReviewView } from './types';
 
 const navigation = [
@@ -26,20 +29,6 @@ const navigation = [
   ['agent', 'Agent recommendation'],
   ['audit', 'Audit / provenance'],
 ] as const;
-
-async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal, headers: { Accept: 'application/json' } });
-  if (!response.ok) {
-    if (response.status === 404)
-      throw new Error('This claim was not found. Check the claim ID and try again.');
-    if (response.status === 503)
-      throw new Error(
-        'The review service is unavailable. Check the backend configuration and try again.',
-      );
-    throw new Error(`The review could not be loaded (HTTP ${response.status}). Try again.`);
-  }
-  return response.json() as Promise<T>;
-}
 
 export function ReviewConsole({ view }: { view: ReviewView }) {
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
@@ -159,9 +148,10 @@ export default function App() {
   const [claimId, setClaimId] = useState('');
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RequestFailure | null>(null);
   const [demoUnavailable, setDemoUnavailable] = useState(false);
   const pending = useRef<AbortController | null>(null);
+  const catalogPending = useRef<AbortController | null>(null);
 
   const loadClaim = useCallback(async (id: string) => {
     const trimmed = id.trim();
@@ -175,7 +165,7 @@ export default function App() {
     try {
       const result = await fetchJson<ReviewView>(
         `/v1/claims/${encodeURIComponent(trimmed)}/review`,
-        request.signal,
+        { signal: request.signal, resource: 'claim' },
       );
       if (!request.signal.aborted) {
         setView(result);
@@ -184,42 +174,65 @@ export default function App() {
         window.history.replaceState(null, '', url);
       }
     } catch (failure) {
-      if (!request.signal.aborted) {
+      if (!request.signal.aborted && !isAbortError(failure)) {
         setView(null);
-        setError(
-          failure instanceof Error
-            ? failure.message
-            : 'The review could not be loaded. Check the connection and try again.',
-        );
+        setError(requestFailure(failure));
       }
     } finally {
       if (!request.signal.aborted) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    async function initialize() {
+  const loadWorkspace = useCallback(
+    async (selectedId = '') => {
+      catalogPending.current?.abort();
+      pending.current?.abort();
+      const controller = new AbortController();
+      catalogPending.current = controller;
+      setInitializing(true);
+      setLoading(false);
+      setError(null);
       let claims: DemoClaim[] = [];
+      let catalogError: RequestFailure | null = null;
       try {
-        claims = await fetchJson<DemoClaim[]>('/v1/review/demo-claims', controller.signal);
-        if (!controller.signal.aborted) setDemoClaims(claims);
-      } catch {
-        if (!controller.signal.aborted) setDemoUnavailable(true);
+        claims = await fetchJson<DemoClaim[]>('/v1/review/demo-claims', {
+          signal: controller.signal,
+          resource: 'catalog',
+        });
+        if (!controller.signal.aborted) {
+          setDemoClaims(claims);
+          setDemoUnavailable(false);
+        }
+      } catch (failure) {
+        if (controller.signal.aborted) return;
+        if (isAbortError(failure)) {
+          setInitializing(false);
+          return;
+        }
+        setDemoClaims([]);
+        setDemoUnavailable(true);
+        catalogError = requestFailure(failure);
       }
-      if (!controller.signal.aborted) {
-        setInitializing(false);
-        const initial =
-          new URLSearchParams(window.location.search).get('claim') || claims[0]?.claim_id;
-        if (initial) await loadClaim(initial);
+      if (controller.signal.aborted) return;
+      setInitializing(false);
+      const initial = selectedId.trim() || claims[0]?.claim_id;
+      if (initial) await loadClaim(initial);
+      else {
+        setView(null);
+        setError(catalogError);
       }
-    }
-    void initialize();
+    },
+    [loadClaim],
+  );
+
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get('claim') || '';
+    void loadWorkspace(initial);
     return () => {
-      controller.abort();
+      catalogPending.current?.abort();
       pending.current?.abort();
     };
-  }, [loadClaim]);
+  }, [loadWorkspace]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -265,7 +278,7 @@ export default function App() {
                 view?.claim.claim_id === claim.claim_id ? 'demo-case selected' : 'demo-case'
               }
               onClick={() => void loadClaim(claim.claim_id)}
-              disabled={loading}
+              disabled={loading || initializing}
             >
               <span className="demo-case-indicator" aria-hidden="true" />
               <span>
@@ -319,7 +332,11 @@ export default function App() {
               autoComplete="off"
               required
             />
-            <button className="primary-button" type="submit" disabled={loading || !claimId.trim()}>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={loading || initializing || !claimId.trim()}
+            >
               Open review <span aria-hidden="true">↗</span>
             </button>
           </form>
@@ -327,7 +344,7 @@ export default function App() {
             <button
               className="text-button"
               type="button"
-              disabled={loading}
+              disabled={loading || initializing}
               onClick={() => void loadClaim(view.claim.claim_id)}
             >
               <span aria-hidden="true">↻</span> Refresh stored results
@@ -342,14 +359,7 @@ export default function App() {
               <p>Reading available evidence and recorded assessments…</p>
             </div>
           ) : error ? (
-            <section className="welcome error" role="alert">
-              <p className="eyebrow">Review unavailable</p>
-              <h1>We could not open this claim</h1>
-              <p>{error}</p>
-              <button className="primary-button" onClick={() => void loadClaim(claimId)}>
-                Try again
-              </button>
-            </section>
+            <ErrorPanel error={error} onRetry={() => void loadWorkspace(claimId)} />
           ) : view ? (
             <ReviewConsole key={view.claim.claim_id} view={view} />
           ) : (
