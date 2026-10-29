@@ -11,6 +11,7 @@ import {
 import { Anomaly, ClaimHistory, Investigation, Triage } from './components/Intelligence';
 import { VisualConsistency, VisualEvidence } from './components/Vision';
 import { ErrorPanel } from './components/ErrorPanel';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Badge, Metric, anchor, date, humanize, money } from './presentation';
 import { fetchJson, isAbortError, requestFailure } from './request';
 import type { RequestFailure } from './request';
@@ -314,10 +315,13 @@ export default function App() {
             </span>{' '}
             Portfolio workspace
           </span>
-          <span className="workspace-status">
-            <span aria-hidden="true" />
-            Read-only review
-          </span>
+          <div className="topbar-actions">
+            <span className="workspace-status">
+              <span aria-hidden="true" />
+              Read-only review
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
         <div className="claim-toolbar">
           <form onSubmit={submit}>

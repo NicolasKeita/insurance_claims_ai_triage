@@ -11,7 +11,12 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![Claim Review console with recorded coherent claim](docs/images/step33-coherent-claim.jpg)
+![Claim Review console in dark mode](docs/images/step33-dark-mode.jpg)
+
+The console starts in dark mode. The top-right **Light mode / Dark mode** button
+switches the theme and remembers the choice in this browser. The initial page
+canvas is dark before the application loads; photographs and their recorded
+overlays retain their original colours in either theme.
 
 Additional captures: [investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),

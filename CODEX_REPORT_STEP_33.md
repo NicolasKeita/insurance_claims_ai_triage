@@ -349,3 +349,28 @@ puis le redémarrage et un clic sur Retry ont restauré les quatre dossiers et o
 Version : **0.1.41 → 0.1.42**, source unique `pyproject.toml`. Aucune dépendance
 modifiée, aucun test E2E ni inférence GPU exécutés. Les contrôles unitaires frontend
 et le smoke manuel ci-dessus ne lancent aucun scénario du benchmark.
+
+## Update — 29 octobre 2026 : mode sombre
+
+La console utilise désormais un thème sombre par défaut, avec un bouton clair/
+sombre accessible dans l'en-tête. Le choix est conservé dans ce navigateur et
+appliqué avant le chargement de React afin d'éviter un flash blanc. Les accès au
+stockage navigateur sont protégés ; le changement de thème reste utilisable si
+ce stockage est indisponible. Le mode clair reste disponible sur choix explicite.
+
+La palette utilise des variables sémantiques communes aux deux thèmes : page,
+panneaux, navigation, champs, badges, tableaux, alertes, commandes, focus et
+panneau de preuves. Les photos et les masques SVG ne subissent aucun filtre ni
+inversion. Vérifications dans le navigateur : changement clair/sombre et
+persistance après rechargement, drawer sombre, photo chargée sans filtre. Les
+contrastes de textes contrôlés sur le rendu réel sont compris entre 7.25:1 et
+8.69:1 pour les labels, navigation, badges et avertissement humain mesurés.
+
+Validation : **41 tests frontend réussis**, dont neuf tests de préférence,
+clavier, stockage indisponible et initialisation avant React ; ESLint, Prettier
+et build TypeScript/Vite réussis. Le runtime Node local émet un avertissement
+expérimental Web Storage dans un worker ; les 41 tests passent, et le stockage
+du navigateur réel a été vérifié. Capture : `docs/images/step33-dark-mode.jpg`.
+
+Version **0.1.42 → 0.1.43** dans `pyproject.toml`. Aucune dépendance modifiée.
+Tests E2E non exécutés faute de demande explicite ; aucune inférence GPU.
