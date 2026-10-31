@@ -235,8 +235,8 @@ export function ReviewConsole({
       >
         {activeTab === 'overview' && (
           <>
-            <DemoFlow />
             <CaseOverview view={view} onOpenDetails={reveal} />
+            <DemoFlow />
           </>
         )}
         {activeTab === 'evidence' && (

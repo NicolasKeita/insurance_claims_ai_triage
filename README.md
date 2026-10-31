@@ -11,14 +11,18 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![Default photo case with the evidence-to-review workflow](docs/images/step33-default-photo-demo.jpg)
+![Default photo case and its recorded findings](docs/images/step33-generated-workflow-overview.jpg)
 
 Visitors land directly on a prepared case; no initial choice or claim ID is
 required. When present, the photo case is the default. Its source image appears
-in the middle of the first view, below a compact arrow diagram:
-**PDFs & photos → Document AI + vision → LLM agent + policy evidence → review guidance**.
-The recorded next step and review signals sit beside the image. This diagram
-explains the platform; opening the page reads previously generated results.
+in the middle of the first view, with the recorded next step and review signals
+beside it. A generated workflow illustration follows the case:
+**PDFs & photos → Document AI + vision → LLM + policy evidence → human review**.
+It can be opened at full size and has a complete text alternative. Opening the
+console reads previously generated results.
+
+Illustration: [PNG](frontend/src/assets/review-workflow-v1.png),
+[generation prompt](frontend/src/assets/review-workflow-v1.prompt.md).
 
 **Explore other cases** and the collapsed **Try another case** selector are
 optional. **Evidence** opens one source area at a time; **Technical details**
@@ -32,7 +36,8 @@ switches the theme and remembers the choice in this browser. The initial page
 canvas is dark before the application loads; photographs and their recorded
 overlays retain their original colours in either theme.
 
-Additional captures: [investigation signals](docs/images/step33-investigation-signals.jpg),
+Additional captures: [generated workflow in the console](docs/images/step33-generated-workflow.jpg),
+[investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
 

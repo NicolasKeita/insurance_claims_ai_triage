@@ -481,3 +481,35 @@ explicite. README et capture principale mis à jour.
 
 Version **0.1.44 → 0.1.45**, source unique `pyproject.toml`. Aucun tag, push ou
 déploiement.
+
+## Update — 31 octobre 2026 : illustration générée du workflow
+
+Le schéma HTML à quatre cases est remplacé par une image produite avec l'outil
+intégré **image_gen**, sans CLI ni appel à une API avec clé utilisateur.
+Le PNG original de 2172 × 724 pixels est conservé dans
+`frontend/src/assets/review-workflow-v1.png` ; le prompt exact et la provenance
+figurent dans `frontend/src/assets/review-workflow-v1.prompt.md`.
+
+L'illustration représente les PDF/photos, l'analyse Document AI/vision, le LLM
+avec les preuves de police d'assurance, puis la revue humaine. Elle est placée
+après le dossier pour garder la photo du véhicule et les résultats principaux
+visibles dès l'arrivée. Aucun recadrage ni filtre n'est appliqué. Un texte
+alternatif complet décrit le parcours et un lien permet d'ouvrir le PNG en grand.
+La légende rappelle qu'il s'agit d'un workflow illustré, de résultats enregistrés
+et d'une décision humaine. Cette image n'est pas une preuve du dossier.
+
+L'import du PNG passe par Vite et le build inclut l'asset dans `dist/assets`.
+Le premier build a révélé l'absence des déclarations de types pour les assets ;
+l'ajout conventionnel de `vite/client` aux types TypeScript corrige l'import.
+Aucune dépendance ajoutée ou mise à jour.
+
+Validation : **57 tests frontend réussis**, ESLint, Prettier et build
+TypeScript/Vite réussis après correction. Vérification dans le navigateur :
+photo entière dans la première vue, illustration chargée avec ses quatre libellés
+et flèches, lien vers le PNG présent et description accessible. Captures :
+`docs/images/step33-generated-workflow-overview.jpg` et
+`docs/images/step33-generated-workflow.jpg`. README mis à jour.
+
+Aucun modèle d'analyse des claims ni benchmark exécuté. Tests E2E non exécutés
+faute de demande explicite. Version **0.1.45 → 0.1.46**, source unique
+`pyproject.toml`. Aucun tag, push ou déploiement.
