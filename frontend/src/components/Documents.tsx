@@ -1,12 +1,14 @@
 import { Badge, FactList, Section, Tags, humanize } from '../presentation';
+import { useI18n } from '../i18n';
 import type { ReviewView } from '../types';
 
 export function Documents({ view }: { view: ReviewView }) {
+  const { t, translate } = useI18n();
   return (
     <Section
       id="documents"
-      title="Documents"
-      eyebrow="01 / Source material"
+      title={t('Documents')}
+      eyebrow={t('01 / Source material')}
       section={view.documents}
     >
       {(documents) => (
@@ -21,28 +23,31 @@ export function Documents({ view }: { view: ReviewView }) {
                   </span>
                   <div className="document-name">
                     <h3>{humanize(document.type)}</h3>
-                    <p>{document.filename || 'No file supplied'}</p>
+                    <p>{document.filename || t('No file supplied')}</p>
                   </div>
                   <Badge tone={document.available ? 'available' : 'missing'}>
-                    {document.available ? 'Available' : 'Missing'}
+                    {document.available ? t('Available') : t('Missing')}
                   </Badge>
                 </div>
                 <div className="document-meta">
                   <span>
-                    Extraction{' '}
+                    {t('Extraction')}{' '}
                     <strong>
                       {document.extraction_method
                         ? humanize(document.extraction_method)
-                        : 'Not recorded'}
+                        : t('Not recorded')}
                     </strong>
                   </span>
                   <span>
-                    Source <strong>{document.source || 'Claim document manifest'}</strong>
+                    {t('Source')}{' '}
+                    <strong>
+                      {document.source ? translate(document.source) : t('Claim document manifest')}
+                    </strong>
                   </span>
                 </div>
                 {extraction && (
                   <details className="extraction">
-                    <summary>Extracted fields</summary>
+                    <summary>{t('Extracted fields')}</summary>
                     <FactList facts={extraction} />
                   </details>
                 )}
@@ -50,7 +55,7 @@ export function Documents({ view }: { view: ReviewView }) {
             );
           })}
           {!documents.items.length && (
-            <p className="muted">No documents are listed in this claim.</p>
+            <p className="muted">{t('No documents are listed in this claim.')}</p>
           )}
         </div>
       )}
@@ -69,38 +74,41 @@ const comparisons = [
 ] as const;
 
 export function DocumentConsistency({ view }: { view: ReviewView }) {
+  const { t } = useI18n();
   return (
     <Section
       id="consistency"
-      title="Document Consistency"
+      title={t('Document Consistency')}
       section={view.consistency}
-      help="Factual comparisons across the submitted claim form, accident report and repair quote."
+      help={t(
+        'Factual comparisons across the submitted claim form, accident report and repair quote.',
+      )}
     >
       {(report) => (
         <>
           <div className="comparison-grid">
             {comparisons.map(([field, label]) => (
               <div className="comparison" key={field}>
-                <span>{label}</span>
+                <span>{t(label)}</span>
                 <Badge tone={report[field] ? 'available' : 'elevated'}>
                   {report[field] === true
-                    ? 'Matches'
+                    ? t('Matches')
                     : report[field] === false
-                      ? 'Mismatch'
-                      : 'Not assessed'}
+                      ? t('Mismatch')
+                      : t('Not assessed')}
                 </Badge>
               </div>
             ))}
           </div>
           <div className="fact-block">
-            <h3>Additional quote damage</h3>
+            <h3>{t('Additional quote damage')}</h3>
             <Tags
               items={report.additional_quote_damage}
-              empty="No additional damage in the recorded comparison"
+              empty={t('No additional damage in the recorded comparison')}
             />
           </div>
           <div className="fact-block">
-            <h3>Unmapped quote items</h3>
+            <h3>{t('Unmapped quote items')}</h3>
             <Tags items={report.unmapped_quote_items} />
           </div>
         </>

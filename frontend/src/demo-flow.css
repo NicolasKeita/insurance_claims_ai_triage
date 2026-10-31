@@ -83,3 +83,25 @@
 .sidebar-case-options[open] > summary {
   margin-bottom: 8px;
 }
+
+.language-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line-accent);
+  border-radius: 5px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.language-toggle button {
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.language-toggle button[aria-pressed='true'] {
+  background: var(--surface-accent);
+  color: var(--teal);
+  font-weight: 600;
+}

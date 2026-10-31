@@ -532,3 +532,56 @@ l'étape de localisation suivante. Aucun modèle du projet ni benchmark lancé.
 E2E non exécutés faute de demande explicite.
 
 Version de cette étape **0.1.46 → 0.1.47**, source `pyproject.toml`.
+
+## Update — 31 octobre 2026 : console français / anglais
+
+La console démarre en français et propose les boutons **FR / EN**, nommés
+**Français / English** pour l'accessibilité. Le choix est mémorisé séparément du
+thème sombre. Un stockage refusé ne bloque pas la sélection. Le titre de page,
+`document.lang`, les libellés, erreurs, cas de démonstration et formats de dates,
+montants, nombres et pourcentages suivent la langue choisie sans recharger le
+dossier ni déclencher de nouvelle analyse.
+
+Sources uniques de traduction : `frontend/locales/fr.toml` et
+`frontend/locales/en.toml`, **485 clés identiques** avec placeholders validés.
+Un plugin Vite/Vitest utilise le Python existant de `.venv` et `tomllib` pour
+produire un module virtuel au build/développement/tests. Les dictionnaires sont
+embarqués dans le JavaScript de production ; aucun parseur TOML, service de
+traduction ou nouvelle dépendance ne s'exécute dans le navigateur. Les fragments
+temporaires de travail ont été fusionnés puis retirés. La modification des TOML
+invalide le module et recharge la page de développement.
+
+Les quatre cas préparés disposent de **85 traductions narratives contrôlées** :
+raisons d'indisponibilité, synthèses, justifications, incertitudes, signaux et
+extraits contractuels. UUID, références, nombres, exclusions et montants ont été
+conservés. Les textes originaux de recommandation et des extraits restent dans
+des zones repliées, avec leur langue d'origine indiquée pour les lecteurs
+d'écran. Les récits inconnus restent dans leur texte source ; de nouveaux jeux
+de données peuvent demander des entrées de catalogue supplémentaires. Aucun
+payload API ou snapshot n'a été modifié.
+
+L'illustration sélectionne maintenant la version FR ou EN selon la langue. Elle
+reste avant les onglets Synthèse / Overview et comporte un texte alternatif
+localisé ainsi qu'un lien vers le PNG complet. La légende de la voiture devient
+**Image de démonstration / Demo image**, sans modification de sa provenance
+enregistrée. Les images ont été produites avec l'outil image_gen intégré ; les
+deux PNG et prompts sont conservés sous `frontend/src/assets/`.
+
+Captures réelles : `docs/images/step33-bilingual-fr.jpg` et
+`docs/images/step33-bilingual-en.jpg`. Vérifications dans le navigateur : première
+vue FR, changement EN, persistance après rechargement, retour FR, recommandation
+traduite, ouverture d'une preuve avec son identifiant exact, titres et libellés
+localisés. README mis à jour. Le backend déjà actif a été réutilisé.
+
+Validation finale : **65 tests frontend** et **8 tests unitaires du compilateur
+TOML** réussis ; ESLint, Prettier, TypeScript/Vite et `nk-python check` des trois
+fichiers Python concernés passent. Les tests couvrent le défaut FR, les choix
+persistants, le stockage indisponible, les formats, les récits inconnus, les clés
+de prototype JavaScript, les références intactes et la bascule sans GET
+supplémentaire. Le runtime Node conserve son avertissement expérimental Web
+Storage dans les workers ; les tests et le navigateur réel passent.
+
+Tests E2E non exécutés faute de demande explicite. Aucun benchmark ni modèle
+d'analyse de sinistre exécuté. Version de la localisation **0.1.47 → 0.1.48** ;
+version totale de la tâche **0.1.46 → 0.1.48**, source unique `pyproject.toml`.
+Aucun changement de dépendance, tag, push ou déploiement.

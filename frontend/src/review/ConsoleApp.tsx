@@ -1,7 +1,9 @@
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ErrorPanel } from '../components/ErrorPanel';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { LanguageToggle } from '../components/LanguageToggle';
 import { fetchJson, isAbortError, requestFailure } from '../request';
 import type { RequestFailure } from '../request';
 import type { DemoClaim, ReviewView } from '../types';
@@ -10,6 +12,12 @@ import { ScenarioPicker } from './ScenarioPicker';
 import { scenarioCopy } from './scenarios';
 
 export default function App() {
+  const { t } = useI18n();
+
+  useEffect(() => {
+    document.title = t('Claim review · Insurance AI');
+  }, [t]);
+
   const [demoClaims, setDemoClaims] = useState<DemoClaim[]>([]);
   const [view, setView] = useState<ReviewView | null>(null);
   const [claimId, setClaimId] = useState('');
@@ -139,10 +147,10 @@ export default function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
-        Skip to claim review
+        {t('Skip to claim review')}
       </a>
-      <aside className="sidebar guided-sidebar" aria-label="Review workspace">
-        <a className="brand" href="/" aria-label="Insurance AI home">
+      <aside className="sidebar guided-sidebar" aria-label={t('Review workspace')}>
+        <a className="brand" href="/" aria-label={t('Insurance AI home')}>
           <span className="brand-mark" aria-hidden="true">
             ▦
           </span>
@@ -152,19 +160,19 @@ export default function App() {
         </a>
         <div className="workspace-label">
           <span className="workspace-dot" aria-hidden="true" />
-          Interactive review
+          {t('Interactive review')}
         </div>
         {(view || error) && demoClaims.length > 0 ? (
           <>
             {selectedScenario && (
               <div className="sidebar-current-case">
-                <div className="sidebar-heading">CURRENT DEMO</div>
-                <strong>{scenarioCopy(selectedScenario).title}</strong>
-                <p>A prepared claim, ready to explore.</p>
+                <div className="sidebar-heading">{t('CURRENT DEMO')}</div>
+                <strong>{t(scenarioCopy(selectedScenario).title)}</strong>
+                <p>{t('A prepared claim, ready to explore.')}</p>
               </div>
             )}
             <details className="sidebar-case-options">
-              <summary>Try another case</summary>
+              <summary>{t('Try another case')}</summary>
               <ScenarioPicker
                 claims={demoClaims}
                 compact
@@ -176,13 +184,15 @@ export default function App() {
           </>
         ) : (
           <p className="sidebar-home-note">
-            {demoUnavailable
-              ? error?.kind === 'backend-unavailable'
-                ? 'Start FastAPI to load the prepared cases.'
-                : 'The case list could not be loaded. Check the connection details.'
-              : demoClaims.length > 0
-                ? 'Choose a case to begin. You do not need a claim ID.'
-                : 'Open a stored claim using its claim ID.'}
+            {t(
+              demoUnavailable
+                ? error?.kind === 'backend-unavailable'
+                  ? 'Start FastAPI to load the prepared cases.'
+                  : 'The case list could not be loaded. Check the connection details.'
+                : demoClaims.length > 0
+                  ? 'Choose a case to begin. You do not need a claim ID.'
+                  : 'Open a stored claim using its claim ID.',
+            )}
           </p>
         )}
         <div className="sidebar-footer">
@@ -190,16 +200,17 @@ export default function App() {
             ◇
           </span>
           <div>
-            <strong>Human decisions</strong>
-            <p>Evidence you can trace.</p>
+            <strong>{t('Human decisions')}</strong>
+            <p>{t('Evidence you can trace.')}</p>
           </div>
         </div>
       </aside>
       <div className="main-shell">
         <div className="topbar">
-          <span>Claim review</span>
+          <span>{t('Claim review')}</span>
           <div className="topbar-actions">
-            <span className="workspace-status">Prepared evidence</span>
+            <span className="workspace-status">{t('Prepared evidence')}</span>
+            <LanguageToggle />
             <ThemeToggle />
           </div>
         </div>
@@ -207,8 +218,8 @@ export default function App() {
           {busy ? (
             <div className="loading" role="status">
               <span className="loading-mark" aria-hidden="true" />
-              <h1>Loading claim review</h1>
-              <p>Reading the saved evidence…</p>
+              <h1>{t('Loading claim review')}</h1>
+              <p>{t('Reading the saved evidence…')}</p>
             </div>
           ) : error ? (
             <>
@@ -217,10 +228,10 @@ export default function App() {
                 <button
                   className="case-breadcrumb"
                   type="button"
-                  aria-label="Explore other cases"
+                  aria-label={t('Explore other cases')}
                   onClick={backToCases}
                 >
-                  Explore other cases
+                  {t('Explore other cases')}
                 </button>
               )}
             </>
@@ -234,59 +245,64 @@ export default function App() {
           ) : (
             <section className="journey-home">
               <div className="journey-intro">
-                <p className="eyebrow">Explore the platform</p>
+                <p className="eyebrow">{t('Explore the platform')}</p>
                 <h1 id="journey-title" tabIndex={-1}>
-                  Explore a claim review
+                  {t('Explore a claim review')}
                 </h1>
                 <p>
-                  {demoClaims.length > 0
-                    ? 'Choose a prepared case. Understand the findings, then follow the evidence behind them.'
-                    : 'Open a stored claim by ID to explore its recorded findings and supporting evidence.'}
+                  {t(
+                    demoClaims.length > 0
+                      ? 'Choose a prepared case. Understand the findings, then follow the evidence behind them.'
+                      : 'Open a stored claim by ID to explore its recorded findings and supporting evidence.',
+                  )}
                 </p>
               </div>
-              <ol className="journey-steps" aria-label="How to explore the demo">
+              <ol className="journey-steps" aria-label={t('How to explore the demo')}>
                 <li>
-                  <span>1</span>Choose a case
+                  <span>1</span>
+                  {t('Choose a case')}
                 </li>
                 <li>
-                  <span>2</span>Read the overview
+                  <span>2</span>
+                  {t('Read the overview')}
                 </li>
                 <li>
-                  <span>3</span>Inspect the evidence
+                  <span>3</span>
+                  {t('Inspect the evidence')}
                 </li>
               </ol>
               {demoClaims.length > 0 && (
                 <ScenarioPicker claims={demoClaims} onSelect={(id) => void loadClaim(id)} />
               )}
               <details className="demo-about">
-                <summary>About this demo</summary>
+                <summary>{t('About this demo')}</summary>
                 <p>
-                  These controlled, synthetic cases show how document analysis, ML, computer vision
-                  and source-grounded AI support a human reviewer. Results are already prepared.
-                  Some components may be unavailable; those limits remain visible. No insurance
-                  decision is made automatically.
+                  {t(
+                    'These controlled, synthetic cases show how document analysis, ML, computer vision and source-grounded AI support a human reviewer. Results are already prepared. Some components may be unavailable; those limits remain visible. No insurance decision is made automatically.',
+                  )}
                 </p>
               </details>
             </section>
           )}
           {!busy && (
             <details className="manual-claim" open={demoClaims.length === 0 || undefined}>
-              <summary>Open a claim by ID</summary>
+              <summary>{t('Open a claim by ID')}</summary>
               <div className="claim-toolbar">
                 <form onSubmit={submit}>
-                  <label htmlFor="claim-id">Open claim</label>
+                  <label htmlFor="claim-id">{t('Open claim')}</label>
                   <input
                     id="claim-id"
                     name="claim-id"
                     type="text"
                     value={claimId}
                     onChange={(event) => setClaimId(event.target.value)}
-                    placeholder="Enter a claim ID"
+                    placeholder={t('Enter a claim ID')}
                     autoComplete="off"
                     required
                   />
                   <button className="primary-button" type="submit" disabled={!claimId.trim()}>
-                    Open review <span aria-hidden="true">↗</span>
+                    {t('Open review')}
+                    <span aria-hidden="true">↗</span>
                   </button>
                 </form>
                 {view && (
@@ -295,7 +311,7 @@ export default function App() {
                     type="button"
                     onClick={() => void loadClaim(view.claim.claim_id)}
                   >
-                    Refresh stored results
+                    {t('Refresh stored results')}
                   </button>
                 )}
               </div>

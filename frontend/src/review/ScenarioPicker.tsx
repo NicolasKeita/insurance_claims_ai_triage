@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { DemoClaim } from '../types';
 import { scenarioCopy } from './scenarios';
 
@@ -14,6 +15,8 @@ export function ScenarioPicker({
   compact?: boolean;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className={compact ? 'scenario-picker-compact' : 'scenario-grid'}>
       {claims.map((claim) => {
@@ -24,16 +27,17 @@ export function ScenarioPicker({
             type="button"
             key={claim.claim_id}
             disabled={disabled}
-            aria-label={`Open ${copy.title}`}
+            aria-label={t('Open {title}', { title: t(copy.title) })}
             aria-current={selectedId === claim.claim_id ? 'page' : undefined}
             onClick={() => onSelect(claim.claim_id)}
           >
-            {!compact && <span className="scenario-kicker">{copy.focus}</span>}
-            <strong>{copy.title}</strong>
-            {!compact && <span className="scenario-description">{copy.description}</span>}
+            {!compact && <span className="scenario-kicker">{t(copy.focus)}</span>}
+            <strong>{t(copy.title)}</strong>
+            {!compact && <span className="scenario-description">{t(copy.description)}</span>}
             {!compact && (
               <span className="scenario-card-cta">
-                Open case <span aria-hidden="true">↗</span>
+                {t('Open case')}
+                <span aria-hidden="true">↗</span>
               </span>
             )}
           </button>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { currentLocale, translateText, useI18n } from './i18n';
 import type { Facts, ReviewSection, ReviewStatus } from './types';
 
 const labels: Record<ReviewStatus, string> = {
@@ -11,40 +12,61 @@ const labels: Record<ReviewStatus, string> = {
 };
 
 export function humanize(value: string): string {
-  return value
-    .replaceAll('_', ' ')
-    .toLowerCase()
-    .replace(/^./, (letter) => letter.toUpperCase());
+  const exact = translateText(value);
+  if (exact !== value) return exact;
+  return translateText(
+    value
+      .replaceAll('_', ' ')
+      .toLowerCase()
+      .replace(/^./, (letter) => letter.toUpperCase()),
+  );
 }
 
 export function decimal(value: number | null | undefined, places = 3): string {
   return value == null
-    ? 'Not available'
-    : value.toLocaleString('en-GB', { maximumFractionDigits: places });
+    ? translateText('Not available')
+    : value.toLocaleString(currentLocale() === 'fr' ? 'fr-FR' : 'en-GB', {
+        maximumFractionDigits: places,
+      });
 }
 
 export function percent(value: number | null | undefined): string {
-  return value == null ? 'Not available' : `${decimal(value * 100, 1)}%`;
+  return value == null
+    ? translateText('Not available')
+    : new Intl.NumberFormat(currentLocale() === 'fr' ? 'fr-FR' : 'en-GB', {
+        style: 'percent',
+        maximumFractionDigits: 1,
+      }).format(value);
 }
 
 export function money(value: number | string | null | undefined, currency?: string | null): string {
-  if (value == null || !currency) return 'Not available';
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(Number(value));
+  if (value == null || !currency || !Number.isFinite(Number(value)))
+    return translateText('Not available');
+  return new Intl.NumberFormat(currentLocale() === 'fr' ? 'fr-FR' : 'en-GB', {
+    style: 'currency',
+    currency,
+  }).format(Number(value));
 }
 
 export function date(value: string | null | undefined, time = false): string {
-  if (!value) return 'Not recorded';
+  if (!value) return translateText('Not recorded');
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
-    : new Intl.DateTimeFormat('en-GB', {
+    : new Intl.DateTimeFormat(currentLocale() === 'fr' ? 'fr-FR' : 'en-GB', {
         dateStyle: 'medium',
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(value) ? { timeZone: 'UTC' } : {}),
         ...(time ? { timeStyle: 'short' as const } : {}),
       }).format(parsed);
 }
 
 export function Badge({ children, tone = '' }: { children: ReactNode; tone?: string }) {
-  return <span className={`badge ${tone.toLowerCase()}`}>{children}</span>;
+  const { translate } = useI18n();
+  return (
+    <span className={`badge ${tone.toLowerCase()}`}>
+      {typeof children === 'string' ? translate(children) : children}
+    </span>
+  );
 }
 
 export function StateBadge({ status }: { status: ReviewStatus }) {
@@ -68,19 +90,20 @@ export function Section<T>({
   className?: string;
   help?: string;
 }) {
+  const { t, translate } = useI18n();
   const displayData = section.data != null && section.status !== 'FAILED';
   return (
     <section id={id} className={`panel ${className}`} aria-labelledby={`${id}-title`} tabIndex={-1}>
       <div className="panel-heading">
         <div>
-          {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h2 id={`${id}-title`}>{title}</h2>
+          {eyebrow && <p className="eyebrow">{t(eyebrow)}</p>}
+          <h2 id={`${id}-title`}>{t(title)}</h2>
         </div>
         <StateBadge status={section.status} />
       </div>
-      {help && <p className="section-help">{help}</p>}
+      {help && <p className="section-help">{t(help)}</p>}
       {section.status === 'AVAILABLE' && section.reason && (
-        <p className="scope-note">{section.reason}</p>
+        <p className="scope-note">{translate(section.reason)}</p>
       )}
       {section.status !== 'AVAILABLE' && (
         <div className={`empty-state ${section.status.toLowerCase()}`} role="status">
@@ -88,16 +111,18 @@ export function Section<T>({
             {section.status === 'FAILED' ? '!' : '—'}
           </span>
           <div>
-            <strong>{labels[section.status]}</strong>
-            <p>{section.reason || 'No result has been recorded for this component.'}</p>
+            <strong>{t(labels[section.status])}</strong>
+            <p>{translate(section.reason || 'No result has been recorded for this component.')}</p>
           </div>
         </div>
       )}
       {displayData && children(section.data as T)}
       {(section.source || section.updated_at) && (
         <p className="provenance-line">
-          {section.source && <span>Source: {section.source}</span>}
-          {section.updated_at && <span>Recorded {date(section.updated_at, true)}</span>}
+          {section.source && <span>{t('Source: {source}', { source: section.source })}</span>}
+          {section.updated_at && (
+            <span>{t('Recorded {date}', { date: date(section.updated_at, true) })}</span>
+          )}
         </p>
       )}
     </section>
@@ -105,17 +130,19 @@ export function Section<T>({
 }
 
 export function Metric({ label, value }: { label: string; value: ReactNode }) {
+  const { t, translate } = useI18n();
   return (
     <div className="metric">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dt>{t(label)}</dt>
+      <dd>{typeof value === 'string' ? translate(value) : value}</dd>
     </div>
   );
 }
 
 export function Tags({ items, empty = 'None recorded' }: { items?: string[]; empty?: string }) {
+  const { t } = useI18n();
   return !items?.length ? (
-    <span className="muted">{empty}</span>
+    <span className="muted">{t(empty)}</span>
   ) : (
     <ul className="tag-list">
       {items.map((item, index) => (
@@ -126,11 +153,12 @@ export function Tags({ items, empty = 'None recorded' }: { items?: string[]; emp
 }
 
 function Value({ value, depth }: { value: unknown; depth: number }) {
-  if (value == null) return <span className="muted">Not recorded</span>;
-  if (typeof value === 'boolean') return <span>{value ? 'Yes' : 'No'}</span>;
+  const { t, translate } = useI18n();
+  if (value == null) return <span className="muted">{t('Not recorded')}</span>;
+  if (typeof value === 'boolean') return <span>{t(value ? 'Yes' : 'No')}</span>;
   if (typeof value === 'number') return <span>{decimal(value, 4)}</span>;
-  if (typeof value === 'string') return <span className="fact-value">{value}</span>;
-  if (depth > 5) return <span className="muted">See source record for further detail</span>;
+  if (typeof value === 'string') return <span className="fact-value">{translate(value)}</span>;
+  if (depth > 5) return <span className="muted">{t('See source record for further detail')}</span>;
   if (Array.isArray(value)) {
     return value.length ? (
       <ul className="fact-list">
@@ -141,15 +169,16 @@ function Value({ value, depth }: { value: unknown; depth: number }) {
         ))}
       </ul>
     ) : (
-      <span className="muted">None recorded</span>
+      <span className="muted">{t('None recorded')}</span>
     );
   }
   if (typeof value === 'object') return <FactList facts={value as Facts} depth={depth + 1} />;
-  return <span className="muted">Not recorded</span>;
+  return <span className="muted">{t('Not recorded')}</span>;
 }
 
 /** Structured display only: no scoring, inference or domain decisions occur here. */
 export function FactList({ facts, depth = 0 }: { facts: Facts; depth?: number }) {
+  useI18n();
   return (
     <dl className="facts">
       {Object.entries(facts).map(([key, value]) => (
@@ -169,10 +198,17 @@ export function anchor(id: string): string {
 }
 
 export function EvidenceLinks({ ids, onOpen }: { ids: string[]; onOpen: (id: string) => void }) {
+  const { t } = useI18n();
   return (
     <span className="evidence-links">
       {ids.map((id) => (
-        <button type="button" className="evidence-link" key={id} onClick={() => onOpen(id)}>
+        <button
+          type="button"
+          className="evidence-link"
+          key={id}
+          onClick={() => onOpen(id)}
+          aria-label={t('Open evidence {id}', { id })}
+        >
           <span aria-hidden="true">↗</span> {id}
         </button>
       ))}

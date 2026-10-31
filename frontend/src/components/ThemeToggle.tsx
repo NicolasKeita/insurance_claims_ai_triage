@@ -1,10 +1,13 @@
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { applyTheme, currentTheme } from '../theme';
 
 export function ThemeToggle() {
+  const { t } = useI18n();
+
   const [theme, setTheme] = useState(currentTheme);
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
-  const label = `Use ${nextTheme} mode`;
+  const label = t(nextTheme === 'light' ? 'Use light mode' : 'Use dark mode');
 
   function toggle() {
     applyTheme(nextTheme);
@@ -37,7 +40,7 @@ export function ThemeToggle() {
           <path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" />
         )}
       </svg>
-      <span>{nextTheme === 'light' ? 'Light mode' : 'Dark mode'}</span>
+      <span>{t(nextTheme === 'light' ? 'Light mode' : 'Dark mode')}</span>
     </button>
   );
 }

@@ -4,6 +4,12 @@ import './styles.css';
 import './review-layout.css';
 import './demo-flow.css';
 import { initializeTheme } from './theme';
+import { I18nProvider, initializeI18n } from './i18n';
 
 initializeTheme();
-createRoot(document.getElementById('root')!).render(<App />);
+initializeI18n();
+createRoot(document.getElementById('root')!).render(
+  <I18nProvider>
+    <App />
+  </I18nProvider>,
+);

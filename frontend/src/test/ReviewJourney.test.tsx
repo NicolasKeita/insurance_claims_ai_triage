@@ -7,10 +7,10 @@ import { fullReview, partialReview } from './fixtures';
 
 describe('Progressive claim review', () => {
   it.each([
-    { origin: 'ai_generated', caption: 'AI-generated demo image' },
-    { origin: null, caption: 'Prepared demo photo' },
+    { origin: 'ai_generated', caption: 'Demo image' },
+    { origin: null, caption: 'Demo image' },
   ])(
-    'labels a source as $caption from provenance and reports an image failure',
+    'preserves the source image with origin $origin and reports an image failure',
     ({ origin, caption }) => {
       const view = partialReview();
       view.claim.images = ['ai_generated_source.png'];
@@ -25,6 +25,7 @@ describe('Progressive claim review', () => {
         reason: 'Vision was not executed.',
         data: { images: [image] },
       };
+      const originalVision = JSON.stringify(view.vision);
       render(<CaseOverview view={view} onOpenDetails={vi.fn()} />);
       const preview = screen.getByRole('img', { name: 'Source claim photograph preview' });
       expect(preview).toHaveAttribute('src', image.image_url);
@@ -39,6 +40,7 @@ describe('Progressive claim review', () => {
       expect(
         screen.queryByRole('img', { name: 'Source claim photograph preview' }),
       ).not.toBeInTheDocument();
+      expect(JSON.stringify(view.vision)).toBe(originalVision);
     },
   );
 

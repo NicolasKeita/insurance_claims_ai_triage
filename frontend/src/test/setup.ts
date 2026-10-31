@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
+import { setLocale } from '../i18n';
 
-afterEach(() => cleanup());
+beforeEach(() => setLocale('en', false));
+afterEach(() => {
+  cleanup();
+  setLocale('en', false);
+});

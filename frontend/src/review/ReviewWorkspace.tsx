@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 import { Documents, DocumentConsistency } from '../components/Documents';
 import { CaseOverview } from '../components/CaseOverview';
@@ -72,6 +73,8 @@ export function ReviewConsole({
   scenarioTitle?: string;
   onBack?: () => void;
 }) {
+  const { t } = useI18n();
+
   const [activeTab, setActiveTab] = useState<ViewTab>('overview');
   const [activeGroup, setActiveGroup] = useState<GroupId | null>(null);
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
@@ -154,17 +157,17 @@ export function ReviewConsole({
           <button
             type="button"
             className="case-breadcrumb"
-            aria-label="Explore other cases"
+            aria-label={t('Explore other cases')}
             onClick={onBack}
           >
-            Explore other cases
+            {t('Explore other cases')}
           </button>
         )}
         <div className="case-title-row">
           <h1 id="review-case-title" tabIndex={-1}>
-            {scenarioTitle || humanize(claim.claim_type)}
+            {scenarioTitle ? t(scenarioTitle) : humanize(claim.claim_type)}
           </h1>
-          {view.mode === 'demo' && <Badge tone="demo">Demo case</Badge>}
+          {view.mode === 'demo' && <Badge tone="demo">{t('Demo case')}</Badge>}
         </div>
         <p className="case-description">
           {claim.claim_id} · {humanize(claim.status)}
@@ -184,23 +187,23 @@ export function ReviewConsole({
           />
         </dl>
         <div className="case-priority-inline">
-          <span>Review priority</span>
+          <span>{t('Review priority')}</span>
           <Badge tone={investigation?.review_priority || 'unavailable'}>
             {investigation?.review_priority || 'Not available'}
           </Badge>
-          {investigation?.partial && <Badge tone="human">Partial assessment</Badge>}
+          {investigation?.partial && <Badge tone="human">{t('Partial assessment')}</Badge>}
           <span className="priority-explainer">
-            Review prioritization — not a fraud probability.
+            {t('Review prioritization — not a fraud probability.')}
           </span>
         </div>
       </header>
       <div className="human-banner">
         <span aria-hidden="true">◇</span>
-        <strong>HUMAN REVIEW REQUIRED</strong>
-        <span>AI-assisted guidance. Final decisions remain human.</span>
+        <strong>{t('HUMAN REVIEW REQUIRED')}</strong>
+        <span>{t('AI-assisted guidance. Final decisions remain human.')}</span>
       </div>
       <DemoFlow />
-      <div className="case-navigation" role="tablist" aria-label="Claim review views">
+      <div className="case-navigation" role="tablist" aria-label={t('Claim review views')}>
         {tabs.map((tab, index) => (
           <button
             type="button"
@@ -224,7 +227,7 @@ export function ReviewConsole({
               document.getElementById(`review-tab-${tabs[next].id}`)?.focus();
             }}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>
@@ -242,21 +245,21 @@ export function ReviewConsole({
         {activeTab === 'evidence' && (
           <div className="details-browser">
             <p className="section-help">
-              Open one area to inspect its evidence. Full results remain available here.
+              {t('Open one area to inspect its evidence. Full results remain available here.')}
             </p>
             {groups.map((group) => (
               <div className="evidence-group" key={group.id}>
                 <button
                   type="button"
                   className="evidence-group-toggle"
-                  aria-label={group.label}
+                  aria-label={t(group.label)}
                   aria-expanded={activeGroup === group.id}
                   aria-controls={`evidence-group-${group.id}`}
                   onClick={() => setActiveGroup(activeGroup === group.id ? null : group.id)}
                 >
                   <span>
-                    <strong className="evidence-group-label">{group.label}</strong>
-                    <span className="evidence-group-description">{group.description}</span>
+                    <strong className="evidence-group-label">{t(group.label)}</strong>
+                    <span className="evidence-group-description">{t(group.description)}</span>
                   </span>
                   <span aria-hidden="true">{activeGroup === group.id ? '−' : '+'}</span>
                 </button>
@@ -271,14 +274,16 @@ export function ReviewConsole({
         )}
         {activeTab === 'technical' && (
           <div className="technical-review">
-            <p className="section-help">Optional: model outputs, versions and the audit trail.</p>
+            <p className="section-help">
+              {t('Optional: model outputs, versions and the audit trail.')}
+            </p>
             <section
               className="panel"
               id="case-details"
               aria-labelledby="case-details-title"
               tabIndex={-1}
             >
-              <h2 id="case-details-title">Case details</h2>
+              <h2 id="case-details-title">{t('Case details')}</h2>
               <FactList
                 facts={{
                   claim_id: claim.claim_id,
@@ -295,7 +300,7 @@ export function ReviewConsole({
             </section>
             <Section
               id="priority-details"
-              title="Review prioritization"
+              title={t('Review prioritization')}
               section={view.investigation}
             >
               {(assessment) => (

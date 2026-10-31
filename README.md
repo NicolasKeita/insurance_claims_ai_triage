@@ -11,25 +11,34 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![Default photo case and its recorded findings](docs/images/step33-generated-workflow-overview.jpg)
+![French claim review with the localized workflow](docs/images/step33-bilingual-fr.jpg)
+
+The console starts in **French**, with a visible **FR / EN** selector. Language
+and theme preferences are saved independently in the browser. Interface labels,
+errors, dates, amounts and the prepared demo narratives follow the selected
+language; changing language does not reload the claim or run an assessment.
+[English capture](docs/images/step33-bilingual-en.jpg).
 
 Visitors land directly on a prepared case; no initial choice or claim ID is
 required. When present, the photo case is the default. Its source image appears
 in the middle of the first view, with the recorded next step and review signals
-beside it. A generated workflow illustration follows the case:
-**PDFs & photos → Document AI + vision → LLM + policy evidence → human review**.
+beside it. A compact generated workflow illustration appears above the tabs:
+**Claim file (PDFs & photos) → Document AI + vision → LLM + policy evidence → human review**.
 It can be opened at full size and has a complete text alternative. Opening the
 console reads previously generated results.
 
-Illustration: [PNG](frontend/src/assets/review-workflow-v1.png),
-[generation prompt](frontend/src/assets/review-workflow-v1.prompt.md).
+Illustrations and prompts: [French PNG](frontend/src/assets/review-workflow-fr-v2.png),
+[French prompt](frontend/src/assets/review-workflow-fr-v2.prompt.md),
+[English PNG](frontend/src/assets/review-workflow-en-v2.png),
+[English prompt](frontend/src/assets/review-workflow-en-v2.prompt.md).
 
 **Explore other cases** and the collapsed **Try another case** selector are
 optional. **Evidence** opens one source area at a time; **Technical details**
 contains model outputs, versions and the audit trail. A URL with `?claim=...`
 always takes priority over the default. If the visual case is not in the
 catalogue, the first available case opens; photos are never borrowed from another
-claim. Generated imagery is labelled from its recorded provenance.
+claim. The photo caption reads **Image de démonstration / Demo image**; its
+recorded provenance remains unchanged.
 
 The console starts in dark mode. The top-right **Light mode / Dark mode** button
 switches the theme and remembers the choice in this browser. The initial page
@@ -40,6 +49,20 @@ Additional captures: [generated workflow in the console](docs/images/step33-gene
 [investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
+
+Translations live in [fr.toml](frontend/locales/fr.toml) and
+[en.toml](frontend/locales/en.toml). Both use a `[messages]` table with matching
+keys and interpolation placeholders. The Vite/Vitest plugin parses TOML with
+the project's Python 3.12+ `.venv` and standard-library `tomllib` during build,
+development and tests; no TOML parser or translation service runs in the browser.
+The build rejects missing keys, duplicate TOML entries and mismatched placeholders.
+
+The four prepared demos have curated French translations of their saved
+summaries, signals, uncertainties and source excerpts. Original recommendation
+and source text remains available in collapsed details. Unrecognized source
+narratives keep their original text; adding another dataset may require new
+catalogue entries. IDs, model versions, filenames, evidence references and API
+payloads are preserved.
 
 ### Minimal demo
 

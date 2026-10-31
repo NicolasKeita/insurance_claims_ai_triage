@@ -11,60 +11,81 @@ import {
   money,
 } from '../presentation';
 import type { Evidence, ReviewView } from '../types';
+import { useI18n } from '../i18n';
 
 export function KnowledgeEvidence({ view }: { view: ReviewView }) {
+  const { locale, t, translate } = useI18n();
   return (
     <Section
       id="knowledge"
-      title="Policy & Procedure Evidence"
-      eyebrow="06 / Grounded knowledge"
+      title={t('Policy & Procedure Evidence')}
+      eyebrow={t('06 / Grounded knowledge')}
       section={view.knowledge}
-      help="Policy clauses and internal procedures are distinct sources. An internal procedure is not a contractual clause."
+      help={t(
+        'Policy clauses and internal procedures are distinct sources. An internal procedure is not a contractual clause.',
+      )}
     >
       {(knowledge) => (
         <>
           {knowledge.insufficient_evidence && (
             <p className="notice">
-              Insufficient evidence — the recorded sources do not fully support an answer.
+              {t('Insufficient evidence — the recorded sources do not fully support an answer.')}
             </p>
           )}
           {knowledge.answer && (
             <div className="knowledge-answer">
-              <h3>Recorded answer</h3>
-              <p>{knowledge.answer}</p>
+              <h3>{t('Recorded answer')}</h3>
+              <p>{translate(knowledge.answer)}</p>
+              {locale === 'fr' && translate(knowledge.answer) !== knowledge.answer && (
+                <details>
+                  <summary>{t('Original answer text')}</summary>
+                  <p lang="en">{knowledge.answer}</p>
+                </details>
+              )}
             </div>
           )}
           <div className="knowledge-sources">
-            {knowledge.sources.map((source) => (
-              <article
-                className="knowledge-source"
-                id={anchor(`knowledge:${source.chunk_id}`)}
-                key={source.chunk_id}
-                tabIndex={-1}
-              >
-                <div className="source-heading">
-                  <Badge tone={source.source_type}>{source.source_type}</Badge>
-                  <span>
-                    {source.source_type === 'PROCEDURE'
-                      ? 'Internal guidance'
-                      : source.source_type === 'POLICY'
-                        ? 'Contractual source'
-                        : 'Source type not recorded'}
-                  </span>
-                </div>
-                <h3>{source.title}</h3>
-                <p className="source-section">{source.section}</p>
-                {source.text && <blockquote>{source.text}</blockquote>}
-                <div className="source-footer">
-                  <code>{source.chunk_id}</code>
-                  <span>Similarity {decimal(source.similarity_score)}</span>
-                  {source.source_version && <span>v{source.source_version}</span>}
-                </div>
-              </article>
-            ))}
+            {knowledge.sources.map((source) => {
+              const excerpt = source.text ? translate(source.text) : null;
+              return (
+                <article
+                  className="knowledge-source"
+                  id={anchor(`knowledge:${source.chunk_id}`)}
+                  key={source.chunk_id}
+                  tabIndex={-1}
+                >
+                  <div className="source-heading">
+                    <Badge tone={source.source_type}>{t(source.source_type)}</Badge>
+                    <span>
+                      {source.source_type === 'PROCEDURE'
+                        ? t('Internal guidance')
+                        : source.source_type === 'POLICY'
+                          ? t('Contractual source')
+                          : t('Source type not recorded')}
+                    </span>
+                  </div>
+                  <h3>{translate(source.title)}</h3>
+                  <p className="source-section">{translate(source.section)}</p>
+                  {excerpt && <blockquote>{excerpt}</blockquote>}
+                  {locale === 'fr' && source.text && excerpt !== source.text && (
+                    <details>
+                      <summary>{t('Original source text')}</summary>
+                      <blockquote lang="en">{source.text}</blockquote>
+                    </details>
+                  )}
+                  <div className="source-footer">
+                    <code>{source.chunk_id}</code>
+                    <span>
+                      {t('Similarity')} {decimal(source.similarity_score)}
+                    </span>
+                    {source.source_version && <span>v{source.source_version}</span>}
+                  </div>
+                </article>
+              );
+            })}
           </div>
           {!knowledge.sources.length && (
-            <p className="muted">No source chunks were retained in this result.</p>
+            <p className="muted">{t('No source chunks were retained in this result.')}</p>
           )}
         </>
       )}
@@ -73,26 +94,29 @@ export function KnowledgeEvidence({ view }: { view: ReviewView }) {
 }
 
 export function SimilarClaims({ view }: { view: ReviewView }) {
+  const { t } = useI18n();
   return (
     <Section
       id="similar_claims"
-      title="Similar Claims"
+      title={t('Similar Claims')}
       section={view.similar_claims}
-      help="Similarity is a retrieval metric for context. A similar claim does not establish wrongdoing."
+      help={t(
+        'Similarity is a retrieval metric for context. A similar claim does not establish wrongdoing.',
+      )}
     >
       {(similar) =>
         !similar.results.length ? (
-          <p className="muted">No similar claims were returned in the recorded search.</p>
+          <p className="muted">{t('No similar claims were returned in the recorded search.')}</p>
         ) : (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Claim</th>
-                  <th scope="col">Incident date</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Repair amount</th>
-                  <th scope="col">Similarity</th>
+                  <th scope="col">{t('Claim')}</th>
+                  <th scope="col">{t('Incident date')}</th>
+                  <th scope="col">{t('Type')}</th>
+                  <th scope="col">{t('Repair amount')}</th>
+                  <th scope="col">{t('Similarity')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,11 +145,19 @@ export function AgentRecommendation({
   view: ReviewView;
   onEvidence: (id: string) => void;
 }) {
+  const { locale, t, translate } = useI18n();
+  const recommendation = view.agent.data?.recommendation;
+  const hasOriginalTranslation =
+    locale === 'fr' &&
+    recommendation &&
+    (translate(recommendation.case_summary) !== recommendation.case_summary ||
+      recommendation.rationale.some((item) => translate(item.statement) !== item.statement) ||
+      recommendation.uncertainties.some((item) => translate(item) !== item));
   return (
     <Section
       id="agent"
-      title="Agent Recommendation"
-      eyebrow="07 / Advisory next step"
+      title={t('Agent Recommendation')}
+      eyebrow={t('07 / Advisory next step')}
       section={view.agent}
       className="agent-panel"
     >
@@ -137,59 +169,86 @@ export function AgentRecommendation({
                 ↗
               </span>
               <div>
-                <p className="eyebrow">Recommended next action</p>
+                <p className="eyebrow">{t('Recommended next action')}</p>
                 <h3>{humanize(agent.recommendation.recommended_next_action)}</h3>
               </div>
-              <Badge tone="human">HUMAN REVIEW REQUIRED</Badge>
+              <Badge tone="human">{t('HUMAN REVIEW REQUIRED')}</Badge>
             </div>
-            <p className="case-summary">{agent.recommendation.case_summary}</p>
+            <p className="case-summary">{translate(agent.recommendation.case_summary)}</p>
             <div className="agent-columns">
               <div>
-                <h3>Evidence-grounded rationale</h3>
+                <h3>{t('Evidence-grounded rationale')}</h3>
                 <ol className="rationale">
                   {agent.recommendation.rationale.map((item, index) => (
                     <li key={index}>
-                      <p>{item.statement}</p>
+                      <p>{translate(item.statement)}</p>
                       <EvidenceLinks ids={item.evidence_ids} onOpen={onEvidence} />
                     </li>
                   ))}
                 </ol>
               </div>
               <div className="uncertainties">
-                <h3>Uncertainties</h3>
+                <h3>{t('Uncertainties')}</h3>
                 {agent.recommendation.uncertainties.length ? (
                   <ul>
                     {agent.recommendation.uncertainties.map((item, index) => (
-                      <li key={index}>{item}</li>
+                      <li key={index}>{translate(item)}</li>
                     ))}
                   </ul>
                 ) : (
-                  <p>No uncertainties recorded by this run.</p>
+                  <p>{t('No uncertainties recorded by this run.')}</p>
                 )}
-                <h3>Tools used</h3>
+                <h3>{t('Tools used')}</h3>
                 <ul className="tool-list">
                   {agent.tools_used.map((tool) => (
                     <li key={tool}>{humanize(tool)}</li>
                   ))}
                 </ul>
                 <p className="human-field">
-                  Human review required:{' '}
+                  {t('Human review required:')}{' '}
                   <strong>
-                    {agent.recommendation.human_review_required ? 'Yes' : 'Not recorded'}
+                    {agent.recommendation.human_review_required ? t('Yes') : t('Not recorded')}
                   </strong>
                 </p>
               </div>
             </div>
             <div className="fact-block">
-              <h3>Evidence references</h3>
+              <h3>{t('Evidence references')}</h3>
               <EvidenceLinks ids={agent.recommendation.evidence_ids} onOpen={onEvidence} />
             </div>
+            {hasOriginalTranslation && (
+              <details>
+                <summary>{t('Original recommendation text')}</summary>
+                <h3>{t('Case summary')}</h3>
+                <p lang="en">{agent.recommendation.case_summary}</p>
+                <h3>{t('Evidence-grounded rationale')}</h3>
+                <ul>
+                  {agent.recommendation.rationale.map((item, index) => (
+                    <li key={index} lang="en">
+                      {item.statement}
+                    </li>
+                  ))}
+                </ul>
+                <h3>{t('Uncertainties')}</h3>
+                <ul>
+                  {agent.recommendation.uncertainties.map((item, index) => (
+                    <li key={index} lang="en">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
             <p className="model-note">
-              Agent {agent.agent_version} · Prompt {agent.prompt_version} · Run {agent.run_id}
+              {t('Agent {agent} · Prompt {prompt} · Run {run}', {
+                agent: agent.agent_version,
+                prompt: agent.prompt_version,
+                run: agent.run_id,
+              })}
             </p>
           </>
         ) : (
-          <p className="muted">No recommendation was recorded for this run.</p>
+          <p className="muted">{t('No recommendation was recorded for this run.')}</p>
         )
       }
     </Section>
@@ -203,49 +262,51 @@ export function Audit({
   view: ReviewView;
   onEvidence: (id: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <section id="audit" className="panel audit-panel" aria-labelledby="audit-title" tabIndex={-1}>
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">08 / Traceability</p>
-          <h2 id="audit-title">Audit / Provenance</h2>
+          <p className="eyebrow">{t('08 / Traceability')}</p>
+          <h2 id="audit-title">{t('Audit / Provenance')}</h2>
         </div>
-        <span className="muted">Read-only record</span>
+        <span className="muted">{t('Read-only record')}</span>
       </div>
       <details>
-        <summary>Technical details</summary>
+        <summary>{t('Technical details')}</summary>
         <div className="audit-grid">
           <div>
-            <h3>Model versions</h3>
+            <h3>{t('Model versions')}</h3>
             <FactList facts={view.audit.model_versions} />
           </div>
           <div>
-            <h3>Policy & prompt versions</h3>
+            <h3>{t('Policy & prompt versions')}</h3>
             <FactList facts={view.audit.policy_versions} />
           </div>
           <div>
-            <h3>Recorded timestamps</h3>
+            <h3>{t('Recorded timestamps')}</h3>
             <FactList facts={view.audit.timestamps} />
           </div>
           <div>
-            <h3>Execution statuses</h3>
+            <h3>{t('Execution statuses')}</h3>
             <FactList facts={view.audit.execution_statuses} />
           </div>
         </div>
-        <h3>Source documents</h3>
+        <h3>{t('Source documents')}</h3>
         <ul className="source-document-list">
           {view.audit.source_documents.map((source) => (
             <li key={source}>{source}</li>
           ))}
         </ul>
         {!view.audit.source_documents.length && (
-          <p className="muted">No source documents recorded.</p>
+          <p className="muted">{t('No source documents recorded.')}</p>
         )}
-        <h3>Evidence IDs</h3>
+        <h3>{t('Evidence IDs')}</h3>
         <EvidenceLinks ids={view.audit.evidence_ids} onOpen={onEvidence} />
         <p className="section-help">
-          Assembled {date(view.generated_at, true)}. Recommendations retain their evidence
-          references.
+          {t('Assembled {date}. Recommendations retain their evidence references.', {
+            date: date(view.generated_at, true),
+          })}
         </p>
       </details>
     </section>
@@ -261,6 +322,7 @@ export function EvidenceDrawer({
   id: string;
   onClose: () => void;
 }) {
+  const { t, translate } = useI18n();
   const closeButton = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -299,35 +361,40 @@ export function EvidenceDrawer({
         }}
       >
         <div className="drawer-top">
-          <span className="eyebrow">Evidence source</span>
+          <span className="eyebrow">{t('Evidence source')}</span>
           <button
             className="icon-button"
             ref={closeButton}
             onClick={onClose}
-            aria-label="Close evidence source"
+            aria-label={t('Close evidence source')}
           >
             ×
           </button>
         </div>
-        <h2 id="evidence-title">{evidence?.title || 'Evidence reference'}</h2>
+        <h2 id="evidence-title">
+          {evidence?.title ? translate(evidence.title) : t('Evidence reference')}
+        </h2>
         <code className="drawer-id">{id}</code>
         {evidence ? (
           <>
-            <p className="section-help">{evidence.source || 'Retained in the review record'}</p>
+            <p className="section-help">{evidence.source || t('Retained in the review record')}</p>
             <Badge>{humanize(evidence.section)}</Badge>
             {evidence.data ? (
               <FactList facts={evidence.data} />
             ) : (
               <p className="muted">
-                This reference identifies its source; no further structured fields were retained.
+                {t(
+                  'This reference identifies its source; no further structured fields were retained.',
+                )}
               </p>
             )}
           </>
         ) : (
           <div className="empty-state">
             <p>
-              The source details for this reference are not available in this stored review. The
-              reference is retained for traceability.
+              {t(
+                'The source details for this reference are not available in this stored review. The reference is retained for traceability.',
+              )}
             </p>
           </div>
         )}

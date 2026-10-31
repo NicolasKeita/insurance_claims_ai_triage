@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { Badge, StateBadge, humanize } from '../presentation';
 import type { ReviewView, VisionImage } from '../types';
@@ -15,6 +16,8 @@ function PhotoFeature({
   mode: ReviewView['mode'];
   onOpen: () => void;
 }) {
+  const { t, translate } = useI18n();
+
   const [failed, setFailed] = useState<string[]>([]);
   const photographs = images.filter(
     (image) => image.image_url?.startsWith('/v1/') && !failed.includes(image.image_url),
@@ -33,37 +36,42 @@ function PhotoFeature({
         <div className="overview-photo-stage">
           <img
             src={photograph.image_url}
-            alt="Source claim photograph preview"
+            alt={t('Source claim photograph preview')}
             onError={() => setFailed((current) => [...current, photograph.image_url!])}
           />
         </div>
       ) : (
         <div className="overview-photo-fallback" role="status">
           <span aria-hidden="true">▧</span>
-          <h2>{listedCount || images.length ? 'Photos unavailable' : 'No photographs listed'}</h2>
-          <p>{unavailableReason}</p>
-          <p>Open the photograph details to inspect the recorded availability.</p>
+          <h2>
+            {t(listedCount || images.length ? 'Photos unavailable' : 'No photographs listed')}
+          </h2>
+          <p>{translate(unavailableReason)}</p>
+          <p>{t('Open the photograph details to inspect the recorded availability.')}</p>
         </div>
       )}
       <figcaption>
         <div>
           <strong>
-            {photograph
-              ? mode === 'demo'
-                ? 'Demo image'
-                : 'Source claim photograph'
-              : 'Photographs'}
+            {t(
+              photograph
+                ? mode === 'demo'
+                  ? 'Demo image'
+                  : 'Source claim photograph'
+                : 'Photographs',
+            )}
           </strong>
           <p>
             {status === 'AVAILABLE'
-              ? 'Recorded vision results available.'
+              ? t('Recorded vision results available.')
               : status === 'NO_EVIDENCE'
-                ? 'No supported observations recorded.'
-                : `Vision ${humanize(status).toLowerCase()}.`}
+                ? t('No supported observations recorded.')
+                : t('Vision {status}.', { status: humanize(status).toLowerCase() })}
           </p>
         </div>
         <button type="button" className="overview-link" onClick={onOpen}>
-          View photographs <span aria-hidden="true">↗</span>
+          {t('View photographs')}
+          <span aria-hidden="true">↗</span>
         </button>
       </figcaption>
     </figure>
@@ -77,6 +85,8 @@ export function CaseOverview({
   view: ReviewView;
   onOpenDetails: (section: string) => void;
 }) {
+  const { t, translate } = useI18n();
+
   const agent =
     view.agent.status === 'AVAILABLE' && view.agent.data?.status === 'COMPLETED'
       ? view.agent.data
@@ -102,19 +112,21 @@ export function CaseOverview({
         />
         <div className="overview-review-summary">
           <section className="overview-next-step" aria-labelledby="overview-next-step-title">
-            <p className="eyebrow">Suggested next step</p>
+            <p className="eyebrow">{t('Suggested next step')}</p>
             <h2 id="overview-next-step-title">
               {recommendation
                 ? humanize(recommendation.recommended_next_action)
-                : 'No saved recommendation'}
+                : t('No saved recommendation')}
             </h2>
             <p>
-              {recommendation
-                ? 'Previously recorded agent guidance.'
-                : view.agent.reason ||
-                  (view.agent.status === 'FAILED'
-                    ? 'The agent run failed. Its recorded status is available in the details.'
-                    : 'An agent recommendation has not been recorded for this review.')}
+              {translate(
+                recommendation
+                  ? 'Previously recorded agent guidance.'
+                  : view.agent.reason ||
+                      (view.agent.status === 'FAILED'
+                        ? 'The agent run failed. Its recorded status is available in the details.'
+                        : 'An agent recommendation has not been recorded for this review.'),
+              )}
             </p>
             {recommendation ? (
               <button
@@ -122,7 +134,8 @@ export function CaseOverview({
                 className="overview-link"
                 onClick={() => onOpenDetails('agent')}
               >
-                Read full recommendation <span aria-hidden="true">↗</span>
+                {t('Read full recommendation')}
+                <span aria-hidden="true">↗</span>
               </button>
             ) : (
               <StateBadge
@@ -132,10 +145,13 @@ export function CaseOverview({
           </section>
           <section className="overview-attention" aria-labelledby="overview-attention-title">
             <div className="overview-card-heading">
-              <h2 id="overview-attention-title">What needs attention</h2>
+              <h2 id="overview-attention-title">{t('What needs attention')}</h2>
               {investigation ? (
                 <span className="overview-count">
-                  {signals.length} recorded {signals.length === 1 ? 'signal' : 'signals'}
+                  {t(
+                    signals.length === 1 ? '{count} recorded signal' : '{count} recorded signals',
+                    { count: signals.length },
+                  )}
                 </span>
               ) : (
                 <StateBadge status={view.investigation.status} />
@@ -148,32 +164,39 @@ export function CaseOverview({
                     {signals.slice(0, 3).map((signal) => (
                       <li key={signal.code}>
                         <div>
-                          <h3>{signal.title || humanize(signal.code)}</h3>
+                          <h3>{signal.title ? translate(signal.title) : humanize(signal.code)}</h3>
                           <Badge tone={signal.severity}>{humanize(signal.severity)}</Badge>
                         </div>
-                        <p>{signal.explanation}</p>
+                        <p>{translate(signal.explanation)}</p>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="overview-empty">No review signals in this saved assessment.</p>
+                  <p className="overview-empty">
+                    {t('No review signals in this saved assessment.')}
+                  </p>
                 )}
                 {investigation.partial && (
                   <p className="overview-scope">
-                    <strong>Partial assessment. </strong>
-                    {view.investigation.reason ||
-                      (investigation.unavailable_inputs?.length
-                        ? `Checks not run: ${investigation.unavailable_inputs.map(humanize).join(', ')}.`
-                        : 'This saved assessment covers a limited set of checks.')}
+                    <strong>{t('Partial assessment.')}</strong>{' '}
+                    {view.investigation.reason
+                      ? translate(view.investigation.reason)
+                      : investigation.unavailable_inputs?.length
+                        ? t('Checks not run: {checks}.', {
+                            checks: investigation.unavailable_inputs.map(humanize).join(', '),
+                          })
+                        : t('This saved assessment covers a limited set of checks.')}
                   </p>
                 )}
               </>
             ) : (
               <p className="overview-empty">
-                {view.investigation.reason ||
-                  (view.investigation.status === 'FAILED'
-                    ? 'The investigation assessment failed.'
-                    : 'No investigation assessment is available. Missing results do not mean there are no review signals.')}
+                {translate(
+                  view.investigation.reason ||
+                    (view.investigation.status === 'FAILED'
+                      ? 'The investigation assessment failed.'
+                      : 'No investigation assessment is available. Missing results do not mean there are no review signals.'),
+                )}
               </p>
             )}
             <button
@@ -181,20 +204,25 @@ export function CaseOverview({
               className="overview-link overview-signals-link"
               onClick={() => onOpenDetails('investigation')}
             >
-              {signals.length > 3 ? `View all ${signals.length} signals` : 'View all signals'}{' '}
+              {signals.length > 3
+                ? t('View all {count} signals', { count: signals.length })
+                : t('View all signals')}{' '}
               <span aria-hidden="true">↗</span>
             </button>
           </section>
         </div>
       </div>
       <div className="overview-secondary">
-        <section className="overview-evidence-summary" aria-label="Available case evidence">
+        <section className="overview-evidence-summary" aria-label={t('Available case evidence')}>
           <div>
-            <h2>Documents</h2>
+            <h2>{t('Documents')}</h2>
             <p>
               {documents.length
-                ? `${availableDocuments} available · ${missingDocuments} missing`
-                : 'No documents listed'}
+                ? t('{available} available · {missing} missing', {
+                    available: availableDocuments,
+                    missing: missingDocuments,
+                  })
+                : t('No documents listed')}
             </p>
           </div>
           <button
@@ -202,7 +230,8 @@ export function CaseOverview({
             className="overview-link"
             onClick={() => onOpenDetails('documents')}
           >
-            Review documents <span aria-hidden="true">↗</span>
+            {t('Review documents')}
+            <span aria-hidden="true">↗</span>
           </button>
         </section>
         {!!uncertainties.length && (
@@ -211,15 +240,19 @@ export function CaseOverview({
             aria-labelledby="overview-uncertainties-title"
           >
             <div>
-              <h2 id="overview-uncertainties-title">Limits of this recommendation</h2>
+              <h2 id="overview-uncertainties-title">{t('Limits of this recommendation')}</h2>
               <p>
-                {uncertainties.length} recorded{' '}
-                {uncertainties.length === 1 ? 'uncertainty' : 'uncertainties'}. Review{' '}
-                {uncertainties.length === 1 ? 'it' : 'them'} before making a decision.
+                {t(
+                  uncertainties.length === 1
+                    ? '{count} recorded uncertainty. Review it before making a decision.'
+                    : '{count} recorded uncertainties. Review them before making a decision.',
+                  { count: uncertainties.length },
+                )}
               </p>
             </div>
             <button type="button" className="overview-link" onClick={() => onOpenDetails('agent')}>
-              View uncertainties <span aria-hidden="true">↗</span>
+              {t('View uncertainties')}
+              <span aria-hidden="true">↗</span>
             </button>
           </section>
         )}

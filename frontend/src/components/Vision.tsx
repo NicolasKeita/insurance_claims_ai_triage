@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Badge, Metric, Section, Tags, anchor, humanize, percent } from '../presentation';
 import type { Polygon, ReviewView, VisionImage } from '../types';
+import { useI18n } from '../i18n';
 
 function polygonPath(polygon: Polygon): string {
   const ring = (points: Polygon['points']) =>
@@ -13,19 +14,21 @@ function polygonPath(polygon: Polygon): string {
 }
 
 function EvidenceImage({ image }: { image: VisionImage }) {
+  const { t, translate } = useI18n();
   const [failed, setFailed] = useState(false);
-  const filename = image.filename || image.damage_assessment?.filename || 'Claim photograph';
+  const filename = image.filename || image.damage_assessment?.filename || t('Claim photograph');
   const safeUrl = image.image_url?.startsWith('/v1/') ? image.image_url : null;
   if (!safeUrl || failed)
     return (
       <div className="photo-unavailable">
         <span aria-hidden="true">▧</span>
-        <strong>Image unavailable</strong>
+        <strong>{t('Image unavailable')}</strong>
         <p>
           {failed
-            ? 'The image file could not be loaded.'
-            : image.image_unavailable_reason ||
-              'The source photograph is not available through the configured claim assets.'}
+            ? t('The image file could not be loaded.')
+            : image.image_unavailable_reason
+              ? translate(image.image_unavailable_reason)
+              : t('The source photograph is not available through the configured claim assets.')}
         </p>
         <small>{filename}</small>
       </div>
@@ -33,14 +36,18 @@ function EvidenceImage({ image }: { image: VisionImage }) {
   return (
     <figure className="evidence-image">
       <div className="photo-stage">
-        <img src={safeUrl} alt={`Claim photograph: ${filename}`} onError={() => setFailed(true)} />
+        <img
+          src={safeUrl}
+          alt={t('Claim photograph: {filename}', { filename })}
+          onError={() => setFailed(true)}
+        />
         {!!image.damage_assessment?.detections.length && (
           <svg
             className="damage-overlay"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             role="img"
-            aria-label="Recorded damage masks and bounding boxes"
+            aria-label={t('Recorded damage masks and bounding boxes')}
           >
             {image.damage_assessment.detections.map((detection, index) => {
               const box = detection.bounding_box;
@@ -67,8 +74,8 @@ function EvidenceImage({ image }: { image: VisionImage }) {
         <span>{filename}</span>
         <span>
           {image.damage_assessment?.detections.length
-            ? 'Recorded evidence overlay'
-            : 'Source photograph · no recorded overlay'}
+            ? t('Recorded evidence overlay')
+            : t('Source photograph · no recorded overlay')}
         </span>
       </figcaption>
     </figure>
@@ -76,25 +83,30 @@ function EvidenceImage({ image }: { image: VisionImage }) {
 }
 
 export function VisualEvidence({ view }: { view: ReviewView }) {
+  const { t } = useI18n();
   return (
     <Section
       id="vision"
-      title="Visual Evidence"
-      eyebrow="05 / Observed image evidence"
+      title={t('Visual Evidence')}
+      eyebrow={t('05 / Observed image evidence')}
       section={view.vision}
-      help="Photographs and recorded detector observations. Opening this review does not run a vision model."
+      help={t(
+        'Photographs and recorded detector observations. Opening this review does not run a vision model.',
+      )}
     >
       {(vision) => (
         <div className="visual-images">
           {vision.images.map((image, imageIndex) => {
             const filename =
-              image.filename || image.damage_assessment?.filename || `Image ${imageIndex + 1}`;
+              image.filename ||
+              image.damage_assessment?.filename ||
+              t('Image {index}', { index: imageIndex + 1 });
             return (
               <article className="visual-image" key={filename}>
                 <EvidenceImage image={image} />
                 <div className="visual-observations">
                   {!image.evidence.length && (
-                    <p className="muted">No stored observations for this image.</p>
+                    <p className="muted">{t('No stored observations for this image.')}</p>
                   )}
                   {image.evidence.map((observation, index) => (
                     <article
@@ -114,23 +126,23 @@ export function VisualEvidence({ view }: { view: ReviewView }) {
                       </div>
                       <dl className="metrics observation-metrics">
                         <Metric
-                          label="Vehicle part"
+                          label={t('Vehicle part')}
                           value={
                             observation.vehicle_part
                               ? humanize(observation.vehicle_part)
-                              : 'Not associated'
+                              : t('Not associated')
                           }
                         />
                         <Metric
-                          label="Damage confidence"
+                          label={t('Damage confidence')}
                           value={percent(observation.damage_confidence)}
                         />
                         <Metric
-                          label="Part confidence"
+                          label={t('Part confidence')}
                           value={percent(observation.part_confidence)}
                         />
                         <Metric
-                          label="Containment"
+                          label={t('Containment')}
                           value={percent(observation.containment_ratio)}
                         />
                       </dl>
@@ -144,7 +156,7 @@ export function VisualEvidence({ view }: { view: ReviewView }) {
             );
           })}
           {!vision.images.length && (
-            <p className="muted">No source images are listed in this snapshot.</p>
+            <p className="muted">{t('No source images are listed in this snapshot.')}</p>
           )}
         </div>
       )}
@@ -153,41 +165,48 @@ export function VisualEvidence({ view }: { view: ReviewView }) {
 }
 
 export function VisualConsistency({ view }: { view: ReviewView }) {
+  const { t } = useI18n();
   return (
     <Section
       id="visual_consistency"
-      title="Visual Consistency"
+      title={t('Visual Consistency')}
       section={view.visual_consistency}
-      help="Not visually confirmed does not mean the declared damage is absent."
+      help={t('Not visually confirmed does not mean the declared damage is absent.')}
     >
       {(consistency) => (
         <div className="visual-consistency-list">
           <div>
-            <h3>Visually supported declared damage</h3>
+            <h3>{t('Visually supported declared damage')}</h3>
             <Tags items={consistency.visually_supported_declared_damage} />
           </div>
           <div>
-            <h3>Visually supported quote damage</h3>
+            <h3>{t('Visually supported quote damage')}</h3>
             <Tags items={consistency.visually_supported_quote_damage} />
           </div>
           <div>
-            <h3>Additional visual damage</h3>
+            <h3>{t('Additional visual damage')}</h3>
             <Tags items={consistency.additional_visual_damage} />
           </div>
           <div>
-            <h3>Declared damage not visually confirmed</h3>
+            <h3>{t('Declared damage not visually confirmed')}</h3>
             <Tags
               items={consistency.declared_damage_not_visually_confirmed}
-              empty="None recorded in this assessment"
+              empty={t('None recorded in this assessment')}
             />
           </div>
           <div>
-            <h3>Unmapped visual damage</h3>
-            <Tags
-              items={consistency.visual_damage_unmapped.map(
-                (item) => `${humanize(item.visual_damage_type)} · ${item.filename}`,
-              )}
-            />
+            <h3>{t('Unmapped visual damage')}</h3>
+            {consistency.visual_damage_unmapped.length ? (
+              <ul className="tag-list">
+                {consistency.visual_damage_unmapped.map((item, index) => (
+                  <li key={`${item.filename}-${index}`}>
+                    {humanize(item.visual_damage_type)} · <code>{item.filename}</code>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Tags items={[]} />
+            )}
           </div>
         </div>
       )}
