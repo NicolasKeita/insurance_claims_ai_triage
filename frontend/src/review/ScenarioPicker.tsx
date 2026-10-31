@@ -16,7 +16,7 @@ export function ScenarioPicker({
 }) {
   return (
     <div className={compact ? 'scenario-picker-compact' : 'scenario-grid'}>
-      {claims.map((claim, index) => {
+      {claims.map((claim) => {
         const copy = scenarioCopy(claim);
         return (
           <button
@@ -28,9 +28,7 @@ export function ScenarioPicker({
             aria-current={selectedId === claim.claim_id ? 'page' : undefined}
             onClick={() => onSelect(claim.claim_id)}
           >
-            {!compact && (
-              <span className="scenario-kicker">{index === 0 ? 'Start here' : copy.focus}</span>
-            )}
+            {!compact && <span className="scenario-kicker">{copy.focus}</span>}
             <strong>{copy.title}</strong>
             {!compact && <span className="scenario-description">{copy.description}</span>}
             {!compact && (

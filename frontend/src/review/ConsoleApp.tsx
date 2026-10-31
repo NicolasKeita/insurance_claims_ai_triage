@@ -64,8 +64,9 @@ export default function App() {
       setLoading(false);
       setError(null);
       let catalogError: RequestFailure | null = null;
+      let claims: DemoClaim[] = [];
       try {
-        const claims = await fetchJson<DemoClaim[]>('/v1/review/demo-claims', {
+        claims = await fetchJson<DemoClaim[]>('/v1/review/demo-claims', {
           signal: controller.signal,
           resource: 'catalog',
         });
@@ -85,7 +86,10 @@ export default function App() {
       }
       if (controller.signal.aborted) return;
       setInitializing(false);
-      if (selectedId.trim()) await loadClaim(selectedId);
+      const defaultClaim =
+        claims.find((claim) => claim.claim_id === 'E2E-VISUAL-0001') || claims[0];
+      const nextId = selectedId.trim() || defaultClaim?.claim_id;
+      if (nextId) await loadClaim(nextId);
       else {
         setView(null);
         setError(catalogError);
@@ -152,14 +156,23 @@ export default function App() {
         </div>
         {(view || error) && demoClaims.length > 0 ? (
           <>
-            <div className="sidebar-heading">PREPARED CASES</div>
-            <ScenarioPicker
-              claims={demoClaims}
-              compact
-              selectedId={view?.claim.claim_id}
-              disabled={busy}
-              onSelect={(id) => void loadClaim(id)}
-            />
+            {selectedScenario && (
+              <div className="sidebar-current-case">
+                <div className="sidebar-heading">CURRENT DEMO</div>
+                <strong>{scenarioCopy(selectedScenario).title}</strong>
+                <p>A prepared claim, ready to explore.</p>
+              </div>
+            )}
+            <details className="sidebar-case-options">
+              <summary>Try another case</summary>
+              <ScenarioPicker
+                claims={demoClaims}
+                compact
+                selectedId={view?.claim.claim_id}
+                disabled={busy}
+                onSelect={(id) => void loadClaim(id)}
+              />
+            </details>
           </>
         ) : (
           <p className="sidebar-home-note">
@@ -204,10 +217,10 @@ export default function App() {
                 <button
                   className="case-breadcrumb"
                   type="button"
-                  aria-label="Back to demo cases"
+                  aria-label="Explore other cases"
                   onClick={backToCases}
                 >
-                  ← Back to demo cases
+                  Explore other cases
                 </button>
               )}
             </>

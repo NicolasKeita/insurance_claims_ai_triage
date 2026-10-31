@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Documents, DocumentConsistency } from '../components/Documents';
 import { CaseOverview } from '../components/CaseOverview';
+import { DemoFlow } from './DemoFlow';
 import {
   AgentRecommendation,
   Audit,
@@ -153,10 +154,10 @@ export function ReviewConsole({
           <button
             type="button"
             className="case-breadcrumb"
-            aria-label="Back to demo cases"
+            aria-label="Explore other cases"
             onClick={onBack}
           >
-            ← Back to demo cases
+            Explore other cases
           </button>
         )}
         <div className="case-title-row">
@@ -232,7 +233,12 @@ export function ReviewConsole({
         aria-labelledby={`review-tab-${activeTab}`}
         tabIndex={0}
       >
-        {activeTab === 'overview' && <CaseOverview view={view} onOpenDetails={reveal} />}
+        {activeTab === 'overview' && (
+          <>
+            <DemoFlow />
+            <CaseOverview view={view} onOpenDetails={reveal} />
+          </>
+        )}
         {activeTab === 'evidence' && (
           <div className="details-browser">
             <p className="section-help">

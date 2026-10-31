@@ -1,10 +1,80 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ReviewConsole } from '../App';
+import { CaseOverview } from '../components/CaseOverview';
 import { fullReview, partialReview } from './fixtures';
 
 describe('Progressive claim review', () => {
+  it.each([
+    { origin: 'ai_generated', caption: 'AI-generated demo image' },
+    { origin: null, caption: 'Prepared demo photo' },
+  ])(
+    'labels a source as $caption from provenance and reports an image failure',
+    ({ origin, caption }) => {
+      const view = partialReview();
+      view.claim.images = ['ai_generated_source.png'];
+      const image = {
+        filename: 'ai_generated_source.png',
+        image_url: '/v1/claims/DEMO-COHERENT/review/images/ai_generated_source.png',
+        evidence: [],
+      };
+      if (origin) Object.assign(image, { provenance: { origin } });
+      view.vision = {
+        status: 'NOT_EXECUTED',
+        reason: 'Vision was not executed.',
+        data: { images: [image] },
+      };
+      render(<CaseOverview view={view} onOpenDetails={vi.fn()} />);
+      const preview = screen.getByRole('img', { name: 'Source claim photograph preview' });
+      expect(preview).toHaveAttribute('src', image.image_url);
+      expect(screen.getByText(caption)).toBeVisible();
+      expect(screen.getByText('Vision not executed.')).toBeVisible();
+      expect(screen.queryByText('Recorded vision results available.')).not.toBeInTheDocument();
+      fireEvent.error(preview);
+      expect(screen.getByRole('heading', { name: 'Photos unavailable' })).toBeVisible();
+      expect(
+        screen.getByText('The registered source photographs could not be loaded.'),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('img', { name: 'Source claim photograph preview' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    {
+      images: [],
+      listed: [],
+      heading: 'No photographs listed',
+      reason: 'This claim does not list any source photographs.',
+    },
+    {
+      images: [
+        {
+          filename: 'missing.png',
+          image_url: null,
+          image_unavailable_reason: 'Original source was not retained.',
+          evidence: [],
+        },
+      ],
+      listed: ['missing.png'],
+      heading: 'Photos unavailable',
+      reason: 'Original source was not retained.',
+    },
+  ])(
+    'shows $heading without substituting an invented photograph',
+    ({ images, listed, heading, reason }) => {
+      const view = partialReview();
+      view.claim.images = listed;
+      view.vision = { status: 'UNAVAILABLE', reason: 'Vision unavailable.', data: { images } };
+      render(<CaseOverview view={view} onOpenDetails={vi.fn()} />);
+      expect(screen.getByRole('heading', { name: heading })).toBeVisible();
+      expect(screen.getByText(reason)).toBeVisible();
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    },
+  );
+
   it('starts with an overview without mounting source or model detail panels', () => {
     const view = fullReview();
     const hash = 'sha256:3aecc5e7c06968a7310d48436739032ee471c0024bdb011a8e3b4d6838843707';
@@ -60,13 +130,13 @@ describe('Progressive claim review', () => {
     expect(screen.queryByRole('region', { name: 'ML Triage' })).not.toBeInTheDocument();
   });
 
-  it('offers a return to case selection when the parent supplies navigation', async () => {
+  it('offers optional case exploration when the parent supplies navigation', async () => {
     const onBack = vi.fn();
     render(
       <ReviewConsole view={partialReview()} scenarioTitle="Coherent documents" onBack={onBack} />,
     );
     expect(screen.getByText('Coherent documents')).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: /back to (demo )?cases/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Explore other cases' }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 

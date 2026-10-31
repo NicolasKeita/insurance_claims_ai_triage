@@ -142,6 +142,7 @@ export interface VisualObservation {
 
 export interface VisionImage {
   filename: string;
+  provenance?: { origin?: string | null; provenance?: string | null; sha256?: string | null };
   image_url?: string | null;
   image_unavailable_reason?: string | null;
   damage_assessment?: {

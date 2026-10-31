@@ -11,22 +11,28 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![Choose a prepared claim review](docs/images/step33-guided-home.jpg)
+![Default photo case with the evidence-to-review workflow](docs/images/step33-default-photo-demo.jpg)
 
-Visitors start with a choice of cases; no claim ID or technical knowledge is
-needed. Each case opens on **Overview**: a short next step, recorded review
-signals and available evidence. **Evidence** opens one source area at a time;
-**Technical details** contains model outputs, versions and the audit trail.
-Use **Back to demo cases** to explore another scenario. A URL with `?claim=...`
-still opens that claim directly, starting on its overview.
+Visitors land directly on a prepared case; no initial choice or claim ID is
+required. When present, the photo case is the default. Its source image appears
+in the middle of the first view, below a compact arrow diagram:
+**PDFs & photos → Document AI + vision → LLM agent + policy evidence → review guidance**.
+The recorded next step and review signals sit beside the image. This diagram
+explains the platform; opening the page reads previously generated results.
+
+**Explore other cases** and the collapsed **Try another case** selector are
+optional. **Evidence** opens one source area at a time; **Technical details**
+contains model outputs, versions and the audit trail. A URL with `?claim=...`
+always takes priority over the default. If the visual case is not in the
+catalogue, the first available case opens; photos are never borrowed from another
+claim. Generated imagery is labelled from its recorded provenance.
 
 The console starts in dark mode. The top-right **Light mode / Dark mode** button
 switches the theme and remembers the choice in this browser. The initial page
 canvas is dark before the application loads; photographs and their recorded
 overlays retain their original colours in either theme.
 
-Additional captures: [focused case overview](docs/images/step33-guided-overview.jpg),
-[investigation signals](docs/images/step33-investigation-signals.jpg),
+Additional captures: [investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
 
@@ -55,10 +61,11 @@ prerequisites, waits for the API catalogue and prints the console URL. It refuse
 occupied ports without stopping other processes. It does not install packages,
 prepare snapshots, start Docker or run models.
 
-Open [Claim Review](http://127.0.0.1:5173). Choose a case card: matching documents,
-an extra repair in the quote, or a missing document. Inspect its overview, then
-open only the evidence that interests you. Claim-ID entry remains available in
-the collapsed **Open a claim by ID** area.
+Open [Claim Review](http://127.0.0.1:5173). The minimal catalogue opens its first
+document case automatically. This CPU-only preparation has no photographs or
+saved agent run; use the richer prepared set below for the default photo case.
+Inspect the overview, then open only the evidence that interests you. Other cases
+and claim-ID entry remain optional.
 The source is `data/evaluation/e2e_v2/scenarios.json`, transformed centrally by
 the existing fixture builder; the console maintains no duplicate claim JSON.
 Preparation writes snapshots under ignored `artifacts/review_demo/`. Refreshing
@@ -133,6 +140,13 @@ This workspace's richer four-case set is in
 `artifacts/review_demo_step33_saved`; pass that directory to `--demo-dir` to
 explore the saved recommendations and photo evidence without new inference.
 These ignored local artifacts must be prepared separately on another machine.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/review_demo_step33_saved
+```
+
+Open the root console URL to start on the photo case. A previously copied URL
+containing another `?claim=...` deliberately opens that other claim.
 
 ### Full-stack demo
 

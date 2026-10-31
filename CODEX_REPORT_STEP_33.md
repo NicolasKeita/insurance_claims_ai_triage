@@ -436,3 +436,48 @@ Tests E2E non exécutés faute de demande explicite ; aucune inférence GPU.
 
 Version **0.1.43 → 0.1.44**, source unique `pyproject.toml`. Aucune dépendance
 modifiée, aucun tag, push ou déploiement.
+
+## Update — 31 octobre 2026 : cas photo par défaut et schéma explicatif
+
+L'accueil ouvre automatiquement `E2E-VISUAL-0001` lorsqu'il figure dans le
+catalogue, sinon le premier cas disponible. Un lien `?claim=...` reste
+prioritaire, y compris pour un claim hors catalogue ou introuvable ; aucune
+erreur n'est masquée par un repli silencieux. Un catalogue vide conserve la
+saisie d'identifiant. Retry recharge le catalogue et ouvre le défaut lorsque
+aucun dossier n'avait encore été demandé.
+
+La première vue présente un schéma HTML/CSS compact à flèches : **PDFs & photos
+→ Document AI + vision → LLM agent + policy evidence → review guidance**.
+Il décrit le parcours conceptuel ; la mention des résultats précédemment
+générés reste visible. Le LLM exploite les faits structurés et les preuves
+enregistrées, et n'analyse pas directement les pixels dans cette démo.
+
+Une grande photo du dossier apparaît au milieu de la page, sous ce schéma,
+avec la prochaine action et les signaux à droite. L'image entière est conservée
+en `object-fit: contain`, sans filtre ni modification des observations. La
+légende **AI-generated demo image** dépend de `provenance.origin`, jamais du nom
+de fichier. Les absences ou erreurs de chargement affichent leur raison ; aucune
+photo d'un autre claim n'est substituée. Les documents et les incertitudes
+restent accessibles dans une ligne secondaire compacte.
+
+**Explore other cases** ouvre facultativement le catalogue ; **Try another
+case** est replié dans la navigation. Les onglets Evidence et Technical details,
+les liens de sources, le focus de navigation, les raisons d'indisponibilité,
+le périmètre partiel et l'avertissement humain sont préservés. Le choix des
+autres cas n'est plus une étape obligatoire avant de voir le résultat.
+
+Capture : `docs/images/step33-default-photo-demo.jpg`. Vérification réelle de
+l'accueil sans paramètre : cas visuel sélectionné, photo chargée à 250px de haut,
+largeur du contenu égale à celle du viewport (1265px), sans débordement
+horizontal. Schéma, photo entière et résultats principaux visibles ensemble.
+Accès aux preuves photo, choix facultatif d'un autre cas et cas sans photo
+également contrôlés. Les serveurs déjà actifs ont été réutilisés.
+
+Validation : **57 tests frontend réussis** (dont défaut visuel, priorité URL,
+repli, retries, navigation, provenance explicite et erreur de photographie),
+ESLint, Prettier et build TypeScript/Vite réussis. Aucun changement backend,
+aucune dépendance ni nouvelle inférence. Tests E2E non exécutés faute de demande
+explicite. README et capture principale mis à jour.
+
+Version **0.1.44 → 0.1.45**, source unique `pyproject.toml`. Aucun tag, push ou
+déploiement.

@@ -1,0 +1,120 @@
+.demo-flow {
+  margin-bottom: 16px;
+}
+
+#review-case-title:focus,
+#journey-title:focus {
+  outline: none;
+}
+
+.demo-flow-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 10px;
+}
+
+.demo-flow-caption h2 {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.demo-flow-caption > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.demo-flow ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.demo-flow li {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 10px 13px;
+}
+
+.demo-flow li:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--teal);
+  font-size: 16px;
+}
+
+.demo-flow li strong,
+.demo-flow li span {
+  display: block;
+}
+
+.demo-flow li strong {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.demo-flow li span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+  margin-top: 3px;
+}
+
+.sidebar-current-case {
+  margin: 0 10px 20px;
+}
+
+.sidebar-current-case .sidebar-heading {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.sidebar-current-case > strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.sidebar-current-case > p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+.sidebar-case-options > summary {
+  color: var(--teal);
+  font-size: 12px;
+  padding: 10px;
+}
+
+.sidebar-case-options[open] > summary {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 700px) {
+  .demo-flow ol {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .demo-flow li:not(:last-child)::after {
+    content: '↓';
+    right: 50%;
+    top: auto;
+    bottom: -19px;
+    transform: translateX(50%);
+  }
+}
