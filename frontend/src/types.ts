@@ -89,6 +89,8 @@ export interface Investigation {
   review_recommended: boolean;
   policy_version: string;
   signals: Signal[];
+  partial?: boolean;
+  unavailable_inputs?: string[];
 }
 
 export interface History {

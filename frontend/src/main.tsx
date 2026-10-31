@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './styles.css';
+import './review-layout.css';
 import { initializeTheme } from './theme';
 
 initializeTheme();

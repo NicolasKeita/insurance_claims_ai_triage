@@ -374,3 +374,65 @@ du navigateur réel a été vérifié. Capture : `docs/images/step33-dark-mode.j
 
 Version **0.1.42 → 0.1.43** dans `pyproject.toml`. Aucune dépendance modifiée.
 Tests E2E non exécutés faute de demande explicite ; aucune inférence GPU.
+
+## Update — 31 octobre 2026 : parcours autonome et lancement commun
+
+L'accueil propose les cas réellement présents dans le catalogue, avec des titres
+et descriptions courts. Aucun identifiant n'est requis pour les explorer ; le
+premier cas n'est plus ouvert automatiquement. Les liens `?claim=...` continuent
+d'ouvrir directement le dossier demandé. La saisie manuelle d'un ID reste dans
+une zone repliée, ouverte lorsque le catalogue est vide.
+
+Chaque dossier commence sur **Overview** : prochaine action enregistrée,
+trois signaux au maximum, documents/photos disponibles et accès aux incertitudes.
+**Evidence** ouvre un seul groupe de preuves à la fois ; **Technical details**
+conserve les métadonnées complètes, scores, versions et audit. Les liens de
+preuves révèlent leur groupe avant d'ouvrir le drawer, avec restitution du focus.
+L'ouverture et le retour au catalogue placent le focus sur le titre et ramènent
+en haut de page. Les flèches, Home et End permettent de parcourir les onglets.
+
+Les résultats restent ceux de l'API : aucun score recalculé, aucune recommandation
+inventée. Une recommandation absente reste absente ; le périmètre d'une évaluation
+partielle reste lisible intégralement. L'avertissement humain et la distinction
+entre priorité et probabilité de fraude restent visibles. Le mode sombre par
+défaut et le choix de thème persistant sont conservés.
+
+Captures du navigateur réel à 1265 × 713 :
+`docs/images/step33-guided-home.jpg` et
+`docs/images/step33-guided-overview.jpg`. La synthèse du cas visuel montre le
+signal et la photo entière dans la première vue. Vérifications manuelles :
+catalogue, synthèse, recommandation complète, drawer de preuve, sortie Escape,
+accès direct aux photos, dossier incomplet, retour aux cas et thème clair/sombre.
+
+Le lanceur stdlib `scripts/start_review_console.py` démarre FastAPI en mode
+snapshots préparés puis Vite dans le même terminal. Les prérequis, le manifeste
+et les ports sont vérifiés ; un catalogue HTTP 200 et la page Vite confirment le
+démarrage. Aucun appel à `/health`, installation, préparation, Docker ou inférence
+automatique. Les erreurs sont explicites et les processus du lanceur sont
+nettoyés en cas d'échec ou de Ctrl+C, avec arrêt des descendants Windows si requis.
+
+Commande validée pour les quatre dossiers déjà préparés dans ce workspace :
+
+```powershell
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/review_demo_step33_saved
+```
+
+Sans `--demo-dir`, le lanceur utilise `CLAIMS_REVIEW_DEMO_DIR` si défini, sinon
+`artifacts/review_demo`. README complété pour la préparation initiale, le lancement
+commun, les cas stockés et le mode PostgreSQL distinct.
+
+Validation : **48 tests frontend** et **20 tests unitaires du lanceur** réussis ;
+ESLint, Prettier, build TypeScript/Vite et `nk-python check` des neuf fichiers
+Python du lanceur/tests réussis sans avertissement de style. Le premier pytest
+a rencontré un refus de création de répertoire temporaire du sandbox ; la
+relance avec `--basetemp artifacts/pytest_launcher_20261031_unit` passe entièrement.
+Le runtime Node conserve son avertissement expérimental Web Storage dans un
+worker ; les tests de thème et la vérification dans le navigateur passent.
+
+Smoke réel du lanceur : port 8000 occupé refusé sans arrêter le serveur existant,
+démarrage API/Vite puis lectures catalogue/dossier/photo HTTP 200, et Ctrl+C.
+Après arrêt : aucun listener 8000/5173 ni processus enfant du lanceur restant.
+Tests E2E non exécutés faute de demande explicite ; aucune inférence GPU.
+
+Version **0.1.43 → 0.1.44**, source unique `pyproject.toml`. Aucune dépendance
+modifiée, aucun tag, push ou déploiement.

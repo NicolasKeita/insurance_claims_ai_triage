@@ -11,14 +11,22 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![Claim Review console in dark mode](docs/images/step33-dark-mode.jpg)
+![Choose a prepared claim review](docs/images/step33-guided-home.jpg)
+
+Visitors start with a choice of cases; no claim ID or technical knowledge is
+needed. Each case opens on **Overview**: a short next step, recorded review
+signals and available evidence. **Evidence** opens one source area at a time;
+**Technical details** contains model outputs, versions and the audit trail.
+Use **Back to demo cases** to explore another scenario. A URL with `?claim=...`
+still opens that claim directly, starting on its overview.
 
 The console starts in dark mode. The top-right **Light mode / Dark mode** button
 switches the theme and remembers the choice in this browser. The initial page
 canvas is dark before the application loads; photographs and their recorded
 overlays retain their original colours in either theme.
 
-Additional captures: [investigation signals](docs/images/step33-investigation-signals.jpg),
+Additional captures: [focused case overview](docs/images/step33-guided-overview.jpg),
+[investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
 
@@ -27,26 +35,30 @@ Additional captures: [investigation signals](docs/images/step33-investigation-si
 Prerequisites: the project's Python 3.12 `.venv` with application dependencies
 installed (see [installation](docs/INSTALLATION.md)), and Node.js 22.12+ with npm.
 No GPU, PostgreSQL, Ollama, Qdrant or downloaded model is needed for this mode.
-Run from the repository root in PowerShell:
+One-time setup, from the repository root in PowerShell:
 
 ```powershell
 # Explicit preparation: canonical controlled fixtures, real document parsers,
 # consistency comparison and deterministic document/completeness signals only.
 .\.venv\Scripts\python.exe scripts/prepare_review_demo.py
-$env:CLAIMS_REVIEW_DEMO = '1'
-.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+npm --prefix frontend ci
 ```
 
-In a second PowerShell window, from the repository root:
+Then start **both backend and frontend with one command**:
 
 ```powershell
-Set-Location frontend
-npm ci
-npm run dev
+.\.venv\Scripts\python.exe scripts/start_review_console.py
 ```
 
-Open [Claim Review](http://127.0.0.1:5173). Choose a controlled claim in the
-selector: coherent documents, additional quote damage, or missing documents.
+Keep that terminal open; **Ctrl+C** stops both processes. The launcher checks
+prerequisites, waits for the API catalogue and prints the console URL. It refuses
+occupied ports without stopping other processes. It does not install packages,
+prepare snapshots, start Docker or run models.
+
+Open [Claim Review](http://127.0.0.1:5173). Choose a case card: matching documents,
+an extra repair in the quote, or a missing document. Inspect its overview, then
+open only the evidence that interests you. Claim-ID entry remains available in
+the collapsed **Open a claim by ID** area.
 The source is `data/evaluation/e2e_v2/scenarios.json`, transformed centrally by
 the existing fixture builder; the console maintains no duplicate claim JSON.
 Preparation writes snapshots under ignored `artifacts/review_demo/`. Refreshing
@@ -73,12 +85,13 @@ $env:CLAIMS_REVIEW_DEMO = '1'
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Keep that terminal running, then use **Try again** in the console. Retry reloads
+Keep that terminal running, then use **Retry connection** in the console. Retry reloads
 the demo catalogue as well as the selected claim. Python does not automatically
 load `.env`; set these variables in the same terminal that starts the backend.
 For a different prepared snapshot directory, also set `CLAIMS_REVIEW_DEMO_DIR`
-before starting FastAPI. Run the preparation command only when its manifest is
-absent; existing nonempty output directories are preserved.
+before starting FastAPI, or use the launcher's `--demo-dir` option. Run the
+preparation command only when its manifest is absent; existing nonempty output
+directories are preserved.
 
 **Claim not found** means the API responded with 404 for that claim ID.
 **Review service unavailable** means the backend responded but its configuration,
@@ -110,6 +123,17 @@ saved result exists. Original images must be available and have provenance;
 otherwise their unavailability is explained. Saved results are historical
 snapshots, not new measurements. The repository redistributes no CarDD photos.
 
+For an already prepared directory, the same launcher starts both services:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/review_demo_saved
+```
+
+This workspace's richer four-case set is in
+`artifacts/review_demo_step33_saved`; pass that directory to `--demo-dir` to
+explore the saved recommendations and photo evidence without new inference.
+These ignored local artifacts must be prepared separately on another machine.
+
 ### Full-stack demo
 
 This mode reads the actual PostgreSQL repositories, including stored assessment
@@ -132,8 +156,10 @@ $env:PART_MODEL_PATH = (Join-Path $PWD 'artifacts/vision/vehicle_parts_v1/train/
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Use the same frontend command, then enter `CLAIM-2026-00001` (or a stored claim
-ID). Configure database credentials/ports to match your local Compose overrides.
+In a second terminal, run `npm --prefix frontend run dev`, then expand **Open a
+claim by ID** and enter `CLAIM-2026-00001` (or a stored claim ID). The combined
+launcher above uses prepared snapshot mode. Configure database credentials/ports
+to match your local Compose overrides.
 Ollama must be served separately with the chosen model already installed when
 explicit generation is needed. Knowledge/similar collections and local vision
 checkpoints are optional; see their existing setup sections below. No model is
@@ -155,7 +181,7 @@ RAG answer or retrieval similarity is left unavailable when it was not saved.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests -m unit --ignore=tests/e2e
-.\.venv\Scripts\nk-python.exe check src/claims/review src/api/main.py src/api/review.py src/api/version.py tests/api/review scripts/prepare_review_demo.py
+.\.venv\Scripts\nk-python.exe check src/claims/review src/api/main.py src/api/review.py src/api/version.py tests/api/review scripts/prepare_review_demo.py scripts/start_review_console.py scripts/review_console
 Set-Location frontend
 npm test
 npm run lint

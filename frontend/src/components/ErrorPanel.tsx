@@ -15,7 +15,9 @@ export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry:
   return (
     <section className="panel request-error" role="alert" aria-labelledby="request-error-title">
       <p className="eyebrow">{offline ? 'Backend connection' : 'Review unavailable'}</p>
-      <h1 id="request-error-title">{heading}</h1>
+      <h1 id="request-error-title" tabIndex={-1}>
+        {heading}
+      </h1>
       {offline ? (
         <>
           <p>

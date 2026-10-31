@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ReviewConsole } from '../App';
@@ -6,19 +6,27 @@ import { anchor } from '../presentation';
 import { available, fullReview, partialReview, unavailable } from './fixtures';
 import type { ReviewStatus } from '../types';
 
+async function openEvidenceGroup(name: string) {
+  await userEvent.click(screen.getByRole('tab', { name: 'Evidence' }));
+  const group = screen.getByRole('button', { name });
+  if (group.getAttribute('aria-expanded') !== 'true') await userEvent.click(group);
+}
+
 describe('Claim Review', () => {
-  it('shows assessment scope even when a partial result is available', () => {
+  it('shows assessment scope even when a partial result is available', async () => {
     const view = fullReview();
     view.investigation.reason =
       'Partial prioritization from document and completeness evidence only; anomaly, history and vision not executed.';
     render(<ReviewConsole view={view} />);
+    await openEvidenceGroup('Recommendation & signals');
     expect(screen.getByText(view.investigation.reason)).toBeVisible();
   });
   it('renders claim identity, source documents and extracted fields', async () => {
     render(<ReviewConsole view={partialReview()} />);
-    expect(screen.getByRole('heading', { level: 1, name: 'DEMO-COHERENT' })).toBeInTheDocument();
-    expect(screen.getByText('Peugeot 208')).toBeInTheDocument();
-    expect(screen.getByText('Lyon')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Auto collision' })).toBeInTheDocument();
+    expect(screen.getByText(/DEMO-COHERENT/)).toBeVisible();
+    expect(screen.getByText(/Peugeot 208/)).toBeInTheDocument();
+    await openEvidenceGroup('Documents');
     expect(screen.getAllByText('claim_form.pdf').length).toBeGreaterThan(0);
     await userEvent.click(screen.getByText('Extracted fields'));
     expect(screen.getByText('Vehicle make')).toBeVisible();
@@ -32,10 +40,11 @@ describe('Claim Review', () => {
     'FAILED',
     'NO_EVIDENCE',
     'INSUFFICIENT_EVIDENCE',
-  ])('preserves %s as an explicit state rather than a negative assessment', (status) => {
+  ])('preserves %s as an explicit state rather than a negative assessment', async (status) => {
     const view = partialReview();
     view.anomaly = unavailable(status);
     render(<ReviewConsole view={view} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Technical details' }));
     const section = screen.getByRole('region', { name: 'Anomaly Assessment' });
     expect(within(section).getByRole('status')).toHaveTextContent(
       'No stored assessment is available.',
@@ -47,12 +56,15 @@ describe('Claim Review', () => {
 
   it('renders investigation facts, workflow and anomaly as separate assessments', async () => {
     render(<ReviewConsole view={fullReview()} />);
+    await openEvidenceGroup('Recommendation & signals');
     expect(screen.getByText('ELEVATED priority')).toBeInTheDocument();
     expect(screen.getByText('ADDITIONAL_QUOTE_DAMAGE')).toBeInTheDocument();
     expect(screen.getByText('MEDIUM')).toBeInTheDocument();
     expect(screen.getByText(/quote includes a hood replacement/)).toBeInTheDocument();
     await userEvent.click(screen.getByText('Supporting evidence'));
     expect(screen.getAllByText('HOOD').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('region', { name: 'ML Triage' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Technical details' }));
     expect(screen.getByText('84% confidence')).toBeInTheDocument();
     expect(screen.getByText('Unusually high repair estimate')).toBeInTheDocument();
     expect(
@@ -67,21 +79,32 @@ describe('Claim Review', () => {
 
   it('opens the exact retained agent evidence and supports keyboard dismissal', async () => {
     render(<ReviewConsole view={fullReview()} />);
+    await openEvidenceGroup('Recommendation & signals');
     const agent = screen.getByRole('region', { name: 'Agent Recommendation' });
     const evidence = within(agent).getAllByRole('button', { name: /knowledge:chunk-123/ });
     await userEvent.click(evidence[0]);
-    const dialog = screen.getByRole('dialog', { name: 'Motor claim handling procedure' });
+    const dialog = await screen.findByRole('dialog', { name: 'Motor claim handling procedure' });
     expect(within(dialog).getByText('auto_claim_handling_v1')).toBeVisible();
-    expect(document.getElementById(anchor('knowledge:chunk-123'))).toHaveClass(
-      'evidence-highlight',
+    expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: 'Policy & procedure' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.queryByRole('region', { name: 'Agent Recommendation' })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.getElementById(anchor('knowledge:chunk-123'))).toHaveClass(
+        'evidence-highlight',
+      ),
     );
     expect(within(dialog).getByRole('button', { name: 'Close evidence source' })).toHaveFocus();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.getElementById(anchor('knowledge:chunk-123'))).toHaveFocus();
   });
 
-  it('retains non-detection uncertainty and explains unavailable photographs', () => {
+  it('retains non-detection uncertainty and explains unavailable photographs', async () => {
     render(<ReviewConsole view={fullReview()} />);
+    await openEvidenceGroup('Photos');
     expect(
       screen.getByText('Not visually confirmed does not mean the declared damage is absent.'),
     ).toBeVisible();
@@ -90,7 +113,7 @@ describe('Claim Review', () => {
     expect(screen.getByText('No stored observations for this image.')).toBeVisible();
   });
 
-  it('labels an unassessed source photograph without implying a recorded overlay', () => {
+  it('labels an unassessed source photograph without implying a recorded overlay', async () => {
     const view = partialReview();
     view.vision = {
       status: 'NOT_EXECUTED',
@@ -106,6 +129,7 @@ describe('Claim Review', () => {
       },
     };
     render(<ReviewConsole view={view} />);
+    await openEvidenceGroup('Photos');
     expect(screen.getByRole('img', { name: 'Claim photograph: source.jpg' })).toBeVisible();
     expect(screen.getByText('Vision has not been executed for this image.')).toBeVisible();
     expect(screen.getByText('Source photograph · no recorded overlay')).toBeVisible();
@@ -115,7 +139,7 @@ describe('Claim Review', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows actual stored image geometry and reports a failed image load', () => {
+  it('shows actual stored image geometry and reports a failed image load', async () => {
     const view = fullReview();
     view.vision = available({
       images: [
@@ -139,6 +163,7 @@ describe('Claim Review', () => {
       ],
     });
     render(<ReviewConsole view={view} />);
+    await openEvidenceGroup('Photos');
     const photo = screen.getByRole('img', { name: 'Claim photograph: photo.jpg' });
     expect(photo).toHaveAttribute('src', '/v1/claims/DEMO-COHERENT/images/photo.jpg');
     expect(
@@ -150,17 +175,20 @@ describe('Claim Review', () => {
     expect(screen.getByText('The image file could not be loaded.')).toBeInTheDocument();
   });
 
-  it('distinguishes procedures from policies and uses Similarity for retrieved claims', () => {
+  it('distinguishes procedures from policies and uses Similarity for retrieved claims', async () => {
     render(<ReviewConsole view={fullReview()} />);
+    await openEvidenceGroup('Policy & procedure');
     expect(screen.getByText('PROCEDURE')).toBeInTheDocument();
     expect(screen.getByText('Internal guidance')).toBeInTheDocument();
+    await openEvidenceGroup('History & similar claims');
     expect(screen.getByRole('columnheader', { name: 'Similarity' })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Probability' })).not.toBeInTheDocument();
   });
 
-  it('makes human oversight explicit without automatic decisions or unsupported conclusions', () => {
+  it('makes human oversight explicit without automatic decisions or unsupported conclusions', async () => {
     const { container } = render(<ReviewConsole view={fullReview()} />);
-    expect(screen.getAllByText('HUMAN REVIEW REQUIRED').length).toBe(2);
+    expect(screen.getAllByText('HUMAN REVIEW REQUIRED').length).toBeGreaterThan(0);
+    await openEvidenceGroup('Recommendation & signals');
     expect(screen.getByText('Human review required:')).toBeInTheDocument();
     expect(container).not.toHaveTextContent(
       /fraud detected|fraud score|automatically detects fraud|confirmed fraud/i,

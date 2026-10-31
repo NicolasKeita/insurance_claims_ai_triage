@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { partialReview } from './fixtures';
 
-beforeEach(() => window.history.replaceState(null, '', '/'));
+beforeEach(() => {
+  window.history.replaceState(null, '', '/');
+  vi.stubGlobal('scrollTo', vi.fn());
+});
 
 function response(data: unknown, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => data };
@@ -19,7 +22,7 @@ const demoClaims = [
 ];
 
 describe('Review API integration', () => {
-  it('loads a demo review using read-only requests and refreshes stored data explicitly', async () => {
+  it('lets a visitor choose a case before loading it and refreshes only on request', async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce({
@@ -36,13 +39,22 @@ describe('Review API integration', () => {
     vi.stubGlobal('fetch', fetcher);
     render(<App />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading claim review');
-    await screen.findByRole('heading', { level: 1, name: 'DEMO-COHERENT' });
+    await screen.findByRole('heading', { level: 1, name: 'Explore a claim review' });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('textbox', { name: 'Open claim' })).not.toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Open Coherent claim' }));
+    await screen.findByRole('heading', { level: 1, name: 'Coherent claim' });
+    expect(screen.getByRole('heading', { level: 1, name: 'Coherent claim' })).toHaveFocus();
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'instant' });
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls[1][0]).toBe('/v1/claims/DEMO-COHERENT/review');
     for (const call of fetcher.mock.calls) expect(call[1].method).toBeUndefined();
+    await userEvent.click(screen.getByText('Open a claim by ID'));
     await userEvent.click(screen.getByRole('button', { name: 'Refresh stored results' }));
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
-    expect(fetcher.mock.calls.every(([url]) => !/assess|agent\/review/.test(url))).toBe(true);
+    expect(fetcher.mock.calls.every(([url]) => !/assess|agent\/review|\/health/.test(url))).toBe(
+      true,
+    );
   });
 
   it('shows a useful missing-claim state and allows retry', async () => {
@@ -54,7 +66,8 @@ describe('Review API integration', () => {
         .mockResolvedValue(response({ detail: 'Claim not found' }, 404)),
     );
     render(<App />);
-    await screen.findByRole('heading', { name: /Every claim has a story/ });
+    await screen.findByRole('heading', { name: 'Explore a claim review' });
+    expect(screen.getByText('Open a stored claim using its claim ID.')).toBeVisible();
     await userEvent.type(screen.getByRole('textbox', { name: 'Open claim' }), 'UNKNOWN');
     await userEvent.click(screen.getByRole('button', { name: 'Open review' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('This claim was not found.');
@@ -74,11 +87,9 @@ describe('Review API integration', () => {
     expect(alert).toHaveTextContent('PostgreSQL and Qdrant are not needed for the prepared demo.');
     expect(alert).toHaveTextContent('it does not start FastAPI');
     expect(
-      screen.queryByRole('heading', { name: /Every claim has a story/ }),
+      screen.queryByRole('heading', { name: 'Explore a claim review' }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText('Demo list unavailable. You can open a claim by ID.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Start FastAPI to load the prepared cases.')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Open claim' })).toBeEnabled();
   });
 
@@ -115,7 +126,7 @@ describe('Review API integration', () => {
           .mockResolvedValue(response({ detail: 'Controlled API error' }, status as number)),
       );
       render(<App />);
-      await screen.findByRole('heading', { name: /Every claim has a story/ });
+      await screen.findByRole('heading', { name: 'Explore a claim review' });
       await userEvent.type(screen.getByRole('textbox', { name: 'Open claim' }), 'UNKNOWN');
       await userEvent.click(screen.getByRole('button', { name: 'Open review' }));
       await screen.findByRole('heading', { level: 1, name: heading as string });
@@ -134,10 +145,14 @@ describe('Review API integration', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The demo list could not be loaded (HTTP 404)',
     );
+    expect(screen.queryByText('Start FastAPI to load the prepared cases.')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('The case list could not be loaded. Check the connection details.'),
+    ).toBeVisible();
     expect(screen.queryByText('This claim was not found.')).not.toBeInTheDocument();
   });
 
-  it('recovers the demo list and opens a demo claim after the backend starts', async () => {
+  it('recovers case selection after the backend starts and waits for a visitor to choose', async () => {
     const fetcher = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
@@ -147,7 +162,10 @@ describe('Review API integration', () => {
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Backend unavailable' });
     await userEvent.click(screen.getByRole('button', { name: 'Retry connection' }));
-    await screen.findByRole('heading', { level: 1, name: 'DEMO-COHERENT' });
+    await screen.findByRole('heading', { level: 1, name: 'Explore a claim review' });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    await userEvent.click(screen.getByRole('button', { name: 'Open Coherent claim' }));
+    await screen.findByRole('heading', { level: 1, name: 'Coherent claim' });
     expect(screen.getByRole('button', { name: /Coherent claim/ })).toBeEnabled();
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/v1/review/demo-claims',
@@ -169,12 +187,31 @@ describe('Review API integration', () => {
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Review service unavailable' });
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await screen.findByRole('heading', { level: 1, name: 'DEMO-COHERENT' });
+    await screen.findByRole('heading', { level: 1, name: 'Coherent claim' });
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/v1/review/demo-claims',
       '/v1/claims/DEMO-COHERENT/review',
       '/v1/review/demo-claims',
       '/v1/claims/DEMO-COHERENT/review',
     ]);
+  });
+
+  it('returns to the case cards without fetching or exposing technical details', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response(demoClaims))
+      .mockResolvedValue(response(partialReview()));
+    vi.stubGlobal('fetch', fetcher);
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Explore a claim review' });
+    await userEvent.click(screen.getByRole('button', { name: 'Open Coherent claim' }));
+    await screen.findByRole('heading', { name: 'Coherent claim' });
+    expect(window.location.search).toContain('claim=DEMO-COHERENT');
+    await userEvent.click(screen.getByRole('button', { name: 'Back to demo cases' }));
+    expect(screen.getByRole('heading', { name: 'Explore a claim review' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Explore a claim review' })).toHaveFocus();
+    expect(window.location.search).not.toContain('claim=');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 });
