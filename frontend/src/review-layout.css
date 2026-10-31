@@ -1,7 +1,7 @@
 /* Guided entry and progressive disclosure share the existing light/dark palette. */
 .guided-content {
   max-width: 1440px;
-  padding: 28px 38px 36px;
+  padding: 22px 38px 36px;
 }
 
 .guided-sidebar .brand {
@@ -231,7 +231,7 @@
 
 .review-case-heading {
   display: block;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .case-description {
@@ -239,7 +239,7 @@
   color: var(--muted);
   font-size: 11px;
   line-height: 1.6;
-  margin-top: 6px;
+  margin-top: 3px;
   overflow-wrap: anywhere;
 }
 
@@ -262,7 +262,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 22px;
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 0;
   list-style: none;
   color: var(--text-secondary);
@@ -306,7 +306,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 11px 1px;
+  padding: 8px 1px;
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
@@ -412,7 +412,7 @@
   margin-bottom: 4px;
 }
 .overview-next-step h2 {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -421,6 +421,19 @@
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.65;
+}
+.overview-next-step .overview-action-label {
+  margin-top: 12px;
+}
+.overview-next-step h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.overview-result-cta {
+  margin-top: 13px;
+  text-align: left;
+  line-height: 1.5;
 }
 .overview-next-step > .overview-link,
 .overview-next-step > .badge {

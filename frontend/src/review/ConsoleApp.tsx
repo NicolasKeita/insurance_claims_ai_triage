@@ -168,7 +168,7 @@ export default function App() {
               <div className="sidebar-current-case">
                 <div className="sidebar-heading">{t('CURRENT DEMO')}</div>
                 <strong>{t(scenarioCopy(selectedScenario).title)}</strong>
-                <p>{t('A prepared claim, ready to explore.')}</p>
+                <p>{t('Read the result, then follow its sources.')}</p>
               </div>
             )}
             <details className="sidebar-case-options">

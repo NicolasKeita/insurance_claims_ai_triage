@@ -35,13 +35,13 @@ describe('Review API integration', () => {
     vi.stubGlobal('fetch', fetcher);
     render(<App />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading claim review');
-    await screen.findByRole('heading', { level: 1, name: 'Photo evidence' });
+    await screen.findByRole('heading', { level: 1, name: 'Front collision' });
     expect(
       screen.queryByRole('heading', { name: 'Explore a claim review' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Open claim' })).not.toBeVisible();
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Photo evidence' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { level: 1, name: 'Front collision' })).toHaveFocus(),
     );
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'instant' });
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -98,7 +98,7 @@ describe('Review API integration', () => {
     vi.stubGlobal('fetch', fetcher);
     render(<App />);
     await screen.findByRole('heading', { name: 'Claim not found' });
-    expect(screen.queryByRole('heading', { name: 'Photo evidence' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Front collision' })).not.toBeInTheDocument();
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/v1/review/demo-claims',
       '/v1/claims/UNKNOWN/review',
@@ -229,9 +229,9 @@ describe('Review API integration', () => {
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Backend unavailable' });
     await userEvent.click(screen.getByRole('button', { name: 'Retry connection' }));
-    await screen.findByRole('heading', { level: 1, name: 'Photo evidence' });
+    await screen.findByRole('heading', { level: 1, name: 'Front collision' });
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Photo evidence' })).toHaveFocus(),
+      expect(screen.getByRole('heading', { name: 'Front collision' })).toHaveFocus(),
     );
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/v1/review/demo-claims',
@@ -270,7 +270,7 @@ describe('Review API integration', () => {
       .mockResolvedValueOnce(response(reviewFor('E2E-COHERENT-0001')));
     vi.stubGlobal('fetch', fetcher);
     render(<App />);
-    await screen.findByRole('heading', { name: 'Photo evidence' });
+    await screen.findByRole('heading', { name: 'Front collision' });
     await userEvent.click(screen.getByRole('tab', { name: 'Technical details' }));
     expect(screen.getByRole('region', { name: 'Case details' })).toBeVisible();
     expect(window.location.search).toContain('claim=E2E-VISUAL-0001');
@@ -287,7 +287,10 @@ describe('Review API integration', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Matching documents' })).toHaveFocus(),
     );
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(screen.queryByRole('region', { name: 'Case details' })).not.toBeInTheDocument();
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/v1/review/demo-claims',

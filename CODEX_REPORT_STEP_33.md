@@ -585,3 +585,39 @@ Tests E2E non exécutés faute de demande explicite. Aucun benchmark ni modèle
 d'analyse de sinistre exécuté. Version de la localisation **0.1.47 → 0.1.48** ;
 version totale de la tâche **0.1.46 → 0.1.48**, source unique `pyproject.toml`.
 Aucun changement de dépendance, tag, push ou déploiement.
+
+## Update — 31 octobre 2026 : rendre le résultat et le parcours explicites
+
+Le cas par défaut s'intitule maintenant **Collision à l’avant du véhicule /
+Front collision**, dans le titre comme dans le sélecteur. Le schéma précède
+désormais ce titre. Les onglets numérotés **Résultats du système → Pièces et
+sources / System results → Evidence** et la courte indication dans la barre
+latérale rendent le parcours visible.
+
+La carte à côté de la photo montre directement **Ce que le système a relevé** :
+l'explication complète du premier signal enregistré, sans dupliquer ce signal
+dans une seconde carte. Pour le cas de collision avant, il s'agit du dommage au
+capot absent des pièces déclarées endommagées. La prochaine action reste celle
+de la recommandation sauvegardée. Le bouton principal **Comprendre la
+recommandation / Understand the recommendation** ouvre et focalise la
+recommandation complète. **Vérifier les constats sur la photo / Check the photo
+evidence** ouvre et focalise les observations visuelles et leurs annotations.
+
+En l'absence de signal, la synthèse d'une recommandation disponible et terminée
+sert de résultat. Les autres signaux, évaluations partielles, indisponibilités et
+incertitudes restent accessibles. Aucun constat n'est inventé et aucun payload,
+snapshot ou modèle n'a été modifié. Les six nouvelles clés des catalogues FR/EN
+portent leur total à **491**, avec réutilisation de la clé de collision avant.
+
+Validation : **71 tests frontend** passent, dont six cas supplémentaires pour le
+résultat initial, sa synthèse de secours, le focus des deux boutons, l'ordre du
+schéma et les recommandations incomplètes. ESLint, Prettier et le build
+TypeScript/Vite passent. Vérification manuelle FR/EN : résultat visible à côté de
+la photo, action principale visible à l'arrivée, accès à la justification et aux
+observations visuelles. Captures : `docs/images/step33-guided-results-fr.jpg` et
+`docs/images/step33-guided-results-en.jpg`. Le backend local existant a été
+réutilisé ; aucune nouvelle analyse de sinistre n'a été lancée.
+
+Les tests E2E n'ont pas été exécutés faute de demande explicite. Version
+**0.1.48 → 0.1.49**, source unique `pyproject.toml`. Aucun changement de
+dépendance, push, tag ou déploiement.

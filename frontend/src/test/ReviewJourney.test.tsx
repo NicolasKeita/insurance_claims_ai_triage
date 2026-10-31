@@ -87,7 +87,10 @@ describe('Progressive claim review', () => {
     view.audit.evidence_ids = [`knowledge:${sourceId}`];
     view.knowledge.data!.sources[0].chunk_id = sourceId;
     const { container } = render(<ReviewConsole view={view} />);
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(screen.getAllByText('HUMAN REVIEW REQUIRED').length).toBeGreaterThan(0);
     expect(container).not.toHaveTextContent(hash);
     expect(container).not.toHaveTextContent(sourceId);
@@ -97,6 +100,85 @@ describe('Progressive claim review', () => {
     expect(screen.queryByRole('region', { name: 'Anomaly Assessment' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Audit / Provenance' })).not.toBeInTheDocument();
   });
+
+  it('shows the saved conclusion immediately and opens its focused recommendation from the main action', async () => {
+    const view = fullReview();
+    const original = JSON.stringify(view);
+    render(<ReviewConsole view={view} scenarioTitle="Front collision" />);
+    expect(screen.getByRole('heading', { name: 'What the system found' })).toBeVisible();
+    expect(screen.getByText(view.investigation.data!.signals[0].explanation)).toBeVisible();
+    expect(
+      screen.queryByText(view.agent.data!.recommendation!.case_summary),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Request clarification' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Agent Recommendation' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Understand the recommendation' }));
+    expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: 'Recommendation & signals' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    const recommendation = screen.getByRole('region', { name: 'Agent Recommendation' });
+    expect(recommendation).toBeVisible();
+    expect(recommendation).toHaveFocus();
+    expect(recommendation).toHaveTextContent(view.agent.data!.recommendation!.case_summary);
+    expect(screen.queryByRole('region', { name: 'Visual Evidence' })).not.toBeInTheDocument();
+    expect(JSON.stringify(view)).toBe(original);
+  });
+
+  it('uses a completed recommendation summary when there is no investigation signal', () => {
+    const view = fullReview();
+    view.investigation.data!.signals = [];
+    const original = JSON.stringify(view);
+    render(<ReviewConsole view={view} />);
+    expect(screen.getByRole('heading', { name: 'What the system found' })).toBeVisible();
+    expect(screen.getByText(view.agent.data!.recommendation!.case_summary)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Understand the recommendation' })).toBeVisible();
+    expect(JSON.stringify(view)).toBe(original);
+  });
+
+  it('opens and focuses the photo results from the overview photo action', async () => {
+    render(<ReviewConsole view={fullReview()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Check the photo evidence' }));
+    expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: 'Photos' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('region', { name: 'Visual Evidence' })).toHaveFocus();
+    expect(screen.getByRole('region', { name: 'Visual Consistency' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Agent Recommendation' })).not.toBeInTheDocument();
+  });
+
+  it('introduces the workflow before the case title', () => {
+    render(<ReviewConsole view={fullReview()} scenarioTitle="Front collision" />);
+    const workflow = screen.getByRole('figure', { name: 'Illustrated review workflow' });
+    const title = screen.getByRole('heading', { level: 1, name: 'Front collision' });
+    expect(workflow.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each([
+    { sectionStatus: 'FAILED' as const, runStatus: 'COMPLETED' },
+    { sectionStatus: 'AVAILABLE' as const, runStatus: 'RUNNING' },
+  ])(
+    'does not present a conclusion from a $sectionStatus / $runStatus agent as a completed result',
+    ({ sectionStatus, runStatus }) => {
+      const view = fullReview();
+      view.agent.status = sectionStatus;
+      view.agent.data!.status = runStatus;
+      const original = JSON.stringify(view);
+      render(<ReviewConsole view={view} />);
+      expect(screen.getByRole('heading', { name: 'No saved recommendation' })).toBeVisible();
+      expect(
+        screen.queryByText(view.agent.data!.recommendation!.case_summary),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Request clarification' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Understand the recommendation' }),
+      ).not.toBeInTheDocument();
+      expect(JSON.stringify(view)).toBe(original);
+    },
+  );
 
   it('opens one evidence group at a time and leaves other details unmounted', async () => {
     render(<ReviewConsole view={fullReview()} />);
@@ -114,13 +196,13 @@ describe('Progressive claim review', () => {
       'false',
     );
     expect(screen.queryByRole('region', { name: 'Documents' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'System results' }));
     expect(screen.queryByRole('region', { name: 'Visual Evidence' })).not.toBeInTheDocument();
   });
 
   it('supports keyboard navigation between the optional detail tabs', async () => {
     render(<ReviewConsole view={fullReview()} />);
-    screen.getByRole('tab', { name: 'Overview' }).focus();
+    screen.getByRole('tab', { name: 'System results' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveFocus();
     expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveAttribute('aria-selected', 'true');
@@ -128,7 +210,7 @@ describe('Progressive claim review', () => {
     expect(screen.getByRole('tab', { name: 'Technical details' })).toHaveFocus();
     expect(screen.getByRole('region', { name: 'ML Triage' })).toBeVisible();
     await userEvent.keyboard('{Home}');
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'System results' })).toHaveFocus();
     expect(screen.queryByRole('region', { name: 'ML Triage' })).not.toBeInTheDocument();
   });
 

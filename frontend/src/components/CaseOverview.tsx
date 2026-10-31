@@ -70,7 +70,7 @@ function PhotoFeature({
           </p>
         </div>
         <button type="button" className="overview-link" onClick={onOpen}>
-          {t('View photographs')}
+          {t('Check the photo evidence')}
           <span aria-hidden="true">↗</span>
         </button>
       </figcaption>
@@ -94,6 +94,8 @@ export function CaseOverview({
   const recommendation = agent?.recommendation;
   const investigation = view.investigation.status === 'AVAILABLE' ? view.investigation.data : null;
   const signals = investigation?.signals || [];
+  const mainSignal = signals[0];
+  const otherSignals = signals.slice(1);
   const documents = view.documents.data?.items || view.claim.documents;
   const availableDocuments = documents.filter((document) => document.available).length;
   const missingDocuments = documents.filter((document) => !document.available).length;
@@ -111,30 +113,36 @@ export function CaseOverview({
           onOpen={() => onOpenDetails('vision')}
         />
         <div className="overview-review-summary">
-          <section className="overview-next-step" aria-labelledby="overview-next-step-title">
-            <p className="eyebrow">{t('Suggested next step')}</p>
-            <h2 id="overview-next-step-title">
+          <section className="overview-next-step" aria-labelledby="overview-result-title">
+            <h2 id="overview-result-title">{t('What the system found')}</h2>
+            {mainSignal ? (
+              <p className="overview-result-text">{translate(mainSignal.explanation)}</p>
+            ) : recommendation?.case_summary ? (
+              <p className="overview-result-text">{translate(recommendation.case_summary)}</p>
+            ) : null}
+            <p className="eyebrow overview-action-label">{t('Recommended next step')}</p>
+            <h3 id="overview-next-step-title">
               {recommendation
                 ? humanize(recommendation.recommended_next_action)
                 : t('No saved recommendation')}
-            </h2>
-            <p>
-              {translate(
-                recommendation
-                  ? 'Previously recorded agent guidance.'
-                  : view.agent.reason ||
-                      (view.agent.status === 'FAILED'
-                        ? 'The agent run failed. Its recorded status is available in the details.'
-                        : 'An agent recommendation has not been recorded for this review.'),
-              )}
-            </p>
+            </h3>
+            {!recommendation && (
+              <p>
+                {translate(
+                  view.agent.reason ||
+                    (view.agent.status === 'FAILED'
+                      ? 'The agent run failed. Its recorded status is available in the details.'
+                      : 'An agent recommendation has not been recorded for this review.'),
+                )}
+              </p>
+            )}
             {recommendation ? (
               <button
                 type="button"
-                className="overview-link"
+                className="primary-button overview-result-cta"
                 onClick={() => onOpenDetails('agent')}
               >
-                {t('Read full recommendation')}
+                {t('Understand the recommendation')}
                 <span aria-hidden="true">↗</span>
               </button>
             ) : (
@@ -143,73 +151,80 @@ export function CaseOverview({
               />
             )}
           </section>
-          <section className="overview-attention" aria-labelledby="overview-attention-title">
-            <div className="overview-card-heading">
-              <h2 id="overview-attention-title">{t('What needs attention')}</h2>
-              {investigation ? (
-                <span className="overview-count">
-                  {t(
-                    signals.length === 1 ? '{count} recorded signal' : '{count} recorded signals',
-                    { count: signals.length },
-                  )}
-                </span>
-              ) : (
-                <StateBadge status={view.investigation.status} />
-              )}
-            </div>
-            {investigation ? (
-              <>
-                {signals.length ? (
-                  <ul className="overview-signal-list">
-                    {signals.slice(0, 3).map((signal) => (
-                      <li key={signal.code}>
-                        <div>
-                          <h3>{signal.title ? translate(signal.title) : humanize(signal.code)}</h3>
-                          <Badge tone={signal.severity}>{humanize(signal.severity)}</Badge>
-                        </div>
-                        <p>{translate(signal.explanation)}</p>
-                      </li>
-                    ))}
-                  </ul>
+          {(!investigation ||
+            !signals.length ||
+            otherSignals.length > 0 ||
+            investigation.partial) && (
+            <section className="overview-attention" aria-labelledby="overview-attention-title">
+              <div className="overview-card-heading">
+                <h2 id="overview-attention-title">{t('What needs attention')}</h2>
+                {investigation ? (
+                  <span className="overview-count">
+                    {t(
+                      signals.length === 1 ? '{count} recorded signal' : '{count} recorded signals',
+                      { count: signals.length },
+                    )}
+                  </span>
                 ) : (
-                  <p className="overview-empty">
-                    {t('No review signals in this saved assessment.')}
-                  </p>
+                  <StateBadge status={view.investigation.status} />
                 )}
-                {investigation.partial && (
-                  <p className="overview-scope">
-                    <strong>{t('Partial assessment.')}</strong>{' '}
-                    {view.investigation.reason
-                      ? translate(view.investigation.reason)
-                      : investigation.unavailable_inputs?.length
-                        ? t('Checks not run: {checks}.', {
-                            checks: investigation.unavailable_inputs.map(humanize).join(', '),
-                          })
-                        : t('This saved assessment covers a limited set of checks.')}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="overview-empty">
-                {translate(
-                  view.investigation.reason ||
-                    (view.investigation.status === 'FAILED'
-                      ? 'The investigation assessment failed.'
-                      : 'No investigation assessment is available. Missing results do not mean there are no review signals.'),
-                )}
-              </p>
-            )}
-            <button
-              type="button"
-              className="overview-link overview-signals-link"
-              onClick={() => onOpenDetails('investigation')}
-            >
-              {signals.length > 3
-                ? t('View all {count} signals', { count: signals.length })
-                : t('View all signals')}{' '}
-              <span aria-hidden="true">↗</span>
-            </button>
-          </section>
+              </div>
+              {investigation ? (
+                <>
+                  {otherSignals.length ? (
+                    <ul className="overview-signal-list">
+                      {otherSignals.slice(0, 2).map((signal) => (
+                        <li key={signal.code}>
+                          <div>
+                            <h3>
+                              {signal.title ? translate(signal.title) : humanize(signal.code)}
+                            </h3>
+                            <Badge tone={signal.severity}>{humanize(signal.severity)}</Badge>
+                          </div>
+                          <p>{translate(signal.explanation)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : !signals.length ? (
+                    <p className="overview-empty">
+                      {t('No review signals in this saved assessment.')}
+                    </p>
+                  ) : null}
+                  {investigation.partial && (
+                    <p className="overview-scope">
+                      <strong>{t('Partial assessment.')}</strong>{' '}
+                      {view.investigation.reason
+                        ? translate(view.investigation.reason)
+                        : investigation.unavailable_inputs?.length
+                          ? t('Checks not run: {checks}.', {
+                              checks: investigation.unavailable_inputs.map(humanize).join(', '),
+                            })
+                          : t('This saved assessment covers a limited set of checks.')}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="overview-empty">
+                  {translate(
+                    view.investigation.reason ||
+                      (view.investigation.status === 'FAILED'
+                        ? 'The investigation assessment failed.'
+                        : 'No investigation assessment is available. Missing results do not mean there are no review signals.'),
+                  )}
+                </p>
+              )}
+              <button
+                type="button"
+                className="overview-link overview-signals-link"
+                onClick={() => onOpenDetails('investigation')}
+              >
+                {signals.length > 3
+                  ? t('View all {count} signals', { count: signals.length })
+                  : t('View all signals')}{' '}
+                <span aria-hidden="true">↗</span>
+              </button>
+            </section>
+          )}
         </div>
       </div>
       <div className="overview-secondary">

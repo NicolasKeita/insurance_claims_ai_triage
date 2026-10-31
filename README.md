@@ -11,18 +11,23 @@ clickable references to the documents, observations and knowledge excerpts used.
 The **Claim Review** console separates workflow triage, statistical anomaly and
 investigation priority. It has no approval, denial, payment or misconduct action.
 
-![French claim review with the localized workflow](docs/images/step33-bilingual-fr.jpg)
+![French system results with the claim workflow and recommendation action](docs/images/step33-guided-results-fr.jpg)
 
 The console starts in **French**, with a visible **FR / EN** selector. Language
 and theme preferences are saved independently in the browser. Interface labels,
 errors, dates, amounts and the prepared demo narratives follow the selected
 language; changing language does not reload the claim or run an assessment.
-[English capture](docs/images/step33-bilingual-en.jpg).
+[English capture](docs/images/step33-guided-results-en.jpg).
 
 Visitors land directly on a prepared case; no initial choice or claim ID is
-required. When present, the photo case is the default. Its source image appears
-in the middle of the first view, with the recorded next step and review signals
-beside it. A compact generated workflow illustration appears above the tabs:
+required. When present, the front collision case is the default. The numbered
+**System results → Evidence** tabs guide exploration. Beside the source photo,
+**What the system found** shows the first recorded review signal and the
+recommended next step; **Understand the recommendation** opens its full rationale
+and uncertainties. **Check the photo evidence** opens the recorded visual
+observations and overlays. When no review signal is recorded, an available,
+completed recommendation supplies the result summary. Unavailable results stay
+explicit. A compact generated workflow illustration appears before the case title:
 **Claim file (PDFs & photos) → Document AI + vision → LLM + policy evidence → human review**.
 It can be opened at full size and has a complete text alternative. Opening the
 console reads previously generated results.

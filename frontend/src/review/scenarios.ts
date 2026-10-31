@@ -18,7 +18,7 @@ const descriptions: Record<string, { title: string; description: string; focus: 
     focus: 'Partial evidence',
   },
   'E2E-VISUAL-0001': {
-    title: 'Photo evidence',
+    title: 'Front collision',
     description: 'Inspect recorded damage observations and trace them back to the original photo.',
     focus: 'Computer vision',
   },

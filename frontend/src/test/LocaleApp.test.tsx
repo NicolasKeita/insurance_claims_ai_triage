@@ -43,7 +43,11 @@ describe('Bilingual prepared review', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => review });
     vi.stubGlobal('fetch', fetcher);
     const { container } = render(<App />);
-    await screen.findByRole('heading', { level: 1, name: 'Analyse photo' });
+    await screen.findByRole('heading', { level: 1, name: 'Collision à l’avant du véhicule' });
+    expect(screen.getByRole('tab', { name: 'Résultats du système' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(document.documentElement).toHaveAttribute('lang', 'fr');
     expect(screen.getByRole('button', { name: 'Français' })).toHaveAttribute(
       'aria-pressed',
@@ -60,7 +64,11 @@ describe('Bilingual prepared review', () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
 
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
-    await screen.findByRole('heading', { level: 1, name: 'Photo evidence' });
+    await screen.findByRole('heading', { level: 1, name: 'Front collision' });
+    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(document.documentElement).toHaveAttribute('lang', 'en');
     expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
@@ -70,7 +78,7 @@ describe('Bilingual prepared review', () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
 
     await userEvent.click(screen.getByRole('button', { name: 'Français' }));
-    await screen.findByRole('heading', { level: 1, name: 'Analyse photo' });
+    await screen.findByRole('heading', { level: 1, name: 'Collision à l’avant du véhicule' });
     expect(document.documentElement).toHaveAttribute('lang', 'fr');
     expect(workflow()).toHaveAttribute('src', expect.stringContaining('review-workflow-fr-v2.png'));
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([

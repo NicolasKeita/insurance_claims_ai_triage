@@ -18,7 +18,7 @@ import type { ReviewView } from '../types';
 type ViewTab = 'overview' | 'evidence' | 'technical';
 type GroupId = 'documents' | 'photos' | 'policy' | 'history' | 'recommendation';
 const tabs: { id: ViewTab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
+  { id: 'overview', label: 'System results' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'technical', label: 'Technical details' },
 ];
@@ -152,6 +152,7 @@ export function ReviewConsole({
 
   return (
     <>
+      <DemoFlow />
       <header id="overview" className="review-case-heading" tabIndex={-1}>
         {onBack && (
           <button
@@ -202,7 +203,6 @@ export function ReviewConsole({
         <strong>{t('HUMAN REVIEW REQUIRED')}</strong>
         <span>{t('AI-assisted guidance. Final decisions remain human.')}</span>
       </div>
-      <DemoFlow />
       <div className="case-navigation" role="tablist" aria-label={t('Claim review views')}>
         {tabs.map((tab, index) => (
           <button
@@ -227,6 +227,11 @@ export function ReviewConsole({
               document.getElementById(`review-tab-${tabs[next].id}`)?.focus();
             }}
           >
+            {index < 2 && (
+              <span className="case-tab-step" aria-hidden="true">
+                {index + 1}
+              </span>
+            )}
             {t(tab.label)}
           </button>
         ))}
