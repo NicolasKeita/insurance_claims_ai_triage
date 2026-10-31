@@ -15,6 +15,12 @@ export function Documents({ view }: { view: ReviewView }) {
         <div className="document-list">
           {documents.items.map((document, index) => {
             const extraction = document.extracted_data || documents.extractions?.[document.type];
+            const documentUrl =
+              document.available &&
+              document.filename?.toLowerCase().endsWith('.pdf') &&
+              document.document_url?.startsWith('/v1/')
+                ? document.document_url
+                : null;
             return (
               <article className="document" key={`${document.type}-${index}`}>
                 <div className="document-row">
@@ -30,6 +36,23 @@ export function Documents({ view }: { view: ReviewView }) {
                   </Badge>
                 </div>
                 <div className="document-meta">
+                  {documentUrl ? (
+                    <a
+                      className="overview-link"
+                      href={documentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={t('Open PDF: {filename}', { filename: document.filename! })}
+                    >
+                      {t('Open PDF')}
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : document.document_unavailable_reason ? (
+                    <span>
+                      {t('Original PDF unavailable.')}{' '}
+                      {translate(document.document_unavailable_reason)}
+                    </span>
+                  ) : null}
                   <span>
                     {t('Extraction')}{' '}
                     <strong>

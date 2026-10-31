@@ -1,4 +1,10 @@
 [messages]
+"The original PDF is not available under the configured claim asset root." = "The original PDF is not available under the configured claim asset root."
+"The original PDF is not included in this archive." = "The original PDF is not included in this archive."
+"The original photograph is not included in this archive." = "The original photograph is not included in this archive."
+"Open PDF" = "Open PDF"
+"Open PDF: {filename}" = "Open PDF: {filename}"
+"Original PDF unavailable." = "Original PDF unavailable."
 "Front collision" = "Front collision"
 "System results" = "System results"
 "What the system found" = "What the system found"

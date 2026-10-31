@@ -170,6 +170,18 @@ The generated bundles are ignored by Git. See
 selection options. Copy or zip an analysis directory to transport its report and
 source files together; no backend is required for the exported HTML report.
 
+The interactive console can read the same individual bundle or the collection:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir analysis_results
+```
+
+An explicit `/?claim=<id>&analysis=<analysis-id>` opens the frozen analysis. Its
+photo and PDF URLs retain that analysis identity. **Open PDF** opens the copied
+original document; missing files stay explicit. Without an analysis selection,
+the console shows the last exported analysis for that claim. Legacy snapshots
+and live database reviews refuse an archive identity they cannot resolve.
+
 ### Previously generated results
 
 To show richer evidence without running inference, import an **existing real**

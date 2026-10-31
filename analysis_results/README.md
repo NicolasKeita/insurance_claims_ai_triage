@@ -50,3 +50,14 @@ Copier ou compresser le sous-dossier d'une analyse permet de le transporter avec
 toutes les pièces disponibles. Les sommes SHA256 et tailles sont enregistrées
 dans son manifeste. Les exports générés restent locaux et sont ignorés par Git ;
 ce README conserve le dossier et ses instructions dans le dépôt.
+
+La console peut aussi charger ce même dossier ou toute la collection :
+
+```powershell
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir analysis_results
+```
+
+Un lien `/?claim=CLAIM-0001&analysis=ANALYSIS-…` désigne une analyse figée précise.
+Sans identifiant d'analyse, la collection utilise le dernier export de ce dossier.
+Les boutons **Ouvrir le PDF** accèdent aux copies de l'archive ; les photos
+et documents restent associés à l'analyse choisie même après un nouvel export.

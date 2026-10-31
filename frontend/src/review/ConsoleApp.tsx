@@ -31,6 +31,16 @@ export default function App() {
   const loadClaim = useCallback(async (id: string) => {
     const trimmed = id.trim();
     if (!trimmed) return;
+    const selection = new URL(window.location.href);
+    const analysis =
+      selection.searchParams.get('claim') === trimmed
+        ? selection.searchParams.get('analysis')
+        : null;
+    if (!analysis && selection.searchParams.has('analysis')) {
+      selection.searchParams.delete('analysis');
+      window.history.replaceState(null, '', selection);
+    }
+    const analysisQuery = analysis ? `?analysis=${encodeURIComponent(analysis)}` : '';
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
@@ -39,7 +49,7 @@ export default function App() {
     setLoading(true);
     try {
       const result = await fetchJson<ReviewView>(
-        `/v1/claims/${encodeURIComponent(trimmed)}/review`,
+        `/v1/claims/${encodeURIComponent(trimmed)}/review${analysisQuery}`,
         {
           signal: request.signal,
           resource: 'claim',
@@ -49,6 +59,8 @@ export default function App() {
         setView(result);
         const url = new URL(window.location.href);
         url.searchParams.set('claim', trimmed);
+        if (analysis) url.searchParams.set('analysis', analysis);
+        else url.searchParams.delete('analysis');
         url.hash = '';
         window.history.replaceState(null, '', url);
       }
@@ -122,6 +134,7 @@ export default function App() {
     setLoading(false);
     const url = new URL(window.location.href);
     url.searchParams.delete('claim');
+    url.searchParams.delete('analysis');
     url.hash = '';
     window.history.replaceState(null, '', url);
   }

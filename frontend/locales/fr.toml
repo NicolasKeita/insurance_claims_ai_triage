@@ -1,4 +1,10 @@
 [messages]
+"The original PDF is not available under the configured claim asset root." = "Le PDF original est indisponible dans le répertoire configuré pour les pièces du dossier."
+"The original PDF is not included in this archive." = "Le PDF original n’est pas inclus dans cette archive."
+"The original photograph is not included in this archive." = "La photographie originale n’est pas incluse dans cette archive."
+"Open PDF" = "Ouvrir le PDF"
+"Open PDF: {filename}" = "Ouvrir le PDF : {filename}"
+"Original PDF unavailable." = "PDF original indisponible."
 "Front collision" = "Collision à l’avant du véhicule"
 "System results" = "Résultats du système"
 "What the system found" = "Ce que le système a relevé"

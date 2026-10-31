@@ -16,17 +16,36 @@ def install_review_routes(app, *, service_loader=None):
         return _read_service(request, service_loader, "list_demo_claims")
 
     @app.get("/v1/claims/{claim_id}/review", response_model=ClaimReview)
-    def review(claim_id: str, request: Request):
-        return _read_service(request, service_loader, "get_review", claim_id)
+    def review(claim_id: str, request: Request, analysis: str | None = None):
+        return _read_service(request, service_loader, "get_review", claim_id, *([analysis] if analysis else []))
 
     @app.get("/v1/claims/{claim_id}/review/images/{filename}", response_class=FileResponse)
-    def image(claim_id: str, filename: str, request: Request):
+    def image(claim_id: str, filename: str, request: Request, analysis: str | None = None):
         if filename in {".", ".."} or any(char in filename for char in "/\\:"):
             raise HTTPException(404, "The original claim photograph is unavailable")
-        path = _read_service(request, service_loader, "image_path", claim_id, filename)
+        path = _read_service(
+            request, service_loader, "image_path", claim_id, filename, *([analysis] if analysis else [])
+        )
         if path is None:
             raise HTTPException(404, "The original claim photograph is unavailable")
         return FileResponse(path, headers={"Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff"})
+
+    @app.get("/v1/claims/{claim_id}/review/documents/{filename}", response_class=FileResponse)
+    def document(claim_id: str, filename: str, request: Request, analysis: str | None = None):
+        if filename in {".", ".."} or any(char in filename for char in "/\\:") or not filename.lower().endswith(".pdf"):
+            raise HTTPException(404, "The original claim PDF is unavailable")
+        path = _read_service(
+            request, service_loader, "document_path", claim_id, filename, *([analysis] if analysis else [])
+        )
+        if path is None:
+            raise HTTPException(404, "The original claim PDF is unavailable")
+        return FileResponse(
+            path,
+            media_type="application/pdf",
+            filename=filename,
+            content_disposition_type="inline",
+            headers={"Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff"},
+        )
 
 
 def _read_service(request, loader, method, *args):

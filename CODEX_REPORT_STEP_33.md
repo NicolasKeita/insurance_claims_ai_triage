@@ -663,3 +663,44 @@ visuelle hors ligne ni contournement de cette restriction n'a été effectué.
 Tests E2E non exécutés faute de demande explicite. Version de l'export
 **0.1.49 → 0.1.50**, source unique `pyproject.toml`. Pas de nouvelle dépendance,
 de changement de modèle, de push ou de déploiement.
+
+## Update — 31 octobre 2026 : lire les mêmes archives dans la console
+
+`DemoReviewService` accepte maintenant un export autonome individuel ou le
+manifeste de collection `analysis_results/`. Il délègue à un lecteur d'archives
+qui conserve chaque identité `claim_id + analysis_id`. La console transmet la
+sélection `?claim=…&analysis=…` aux lectures API, la conserve au rafraîchissement
+et au changement de langue et l'efface lors d'un changement de dossier. Les
+anciennes démos et les lectures de derniers résultats PostgreSQL refusent une
+analyse d'archive qu'elles ne peuvent pas résoudre.
+
+Les photographies et PDF disposent d'URLs associées à cette même analyse. La
+nouvelle route PDF ne sert que les documents enregistrés et autorisés, avec
+type `application/pdf`, disposition inline et protection `nosniff`. Le lecteur
+vérifie tailles et SHA256 des pièces avant de les servir ; un fichier modifié
+ou absent n'est pas présenté comme l'original. Les revues PostgreSQL disposent
+aussi de liens PDF lorsque leur répertoire de pièces est configuré. Le frontend
+affiche **Ouvrir le PDF / Open PDF** et les raisons d'absence localisées, sans
+modifier l'inventaire métier. Les nouvelles URLs n'entraînent aucune écriture
+ni exécution de modèle.
+
+Validation finale : **115 tests Python ciblés réussis, 2 ignorés** uniquement
+pour la création de liens symboliques sous Windows ; **88 tests frontend**
+réussis. Les contrôles `nk-python`, ESLint, Prettier et le build TypeScript/Vite
+passent. Les tests couvrent également les lectures HTTP de PDF/photos, le
+maintien d'une ancienne analyse après un nouvel export, les fichiers altérés,
+les erreurs CLI, les sources originales et la langue sans nouvelle lecture de
+dossier. Les avertissements proviennent de Starlette/AnyIO (dépréciation) et du
+Web Storage expérimental du runtime Node ; aucun échec n'est laissé en attente.
+
+Les quatre cas existants sont exportés localement dans `analysis_results/`, avec
+titres compréhensibles dans son index, **15 PDF et une photo originale**. Le
+document non fourni reste explicitement absent. Les annotations enregistrées
+sont embarquées dans le rapport HTML, sans créer une nouvelle photographie
+annotée ni relancer l'inférence. L'accès au `file:` reste une limite de la
+prévisualisation du navigateur de validation ; la portabilité des chemins,
+les copies et les références du HTML ont été contrôlées automatiquement.
+
+Tests E2E non exécutés faute de demande explicite. Version de cette intégration
+**0.1.50 → 0.1.51** ; version totale de la tâche **0.1.49 → 0.1.51**, source unique
+`pyproject.toml`. Aucun changement de dépendance, modèle, tag, push ou déploiement.

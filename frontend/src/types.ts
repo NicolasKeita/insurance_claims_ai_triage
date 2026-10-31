@@ -32,6 +32,8 @@ export interface DocumentItem {
   extraction_method?: string | null;
   source?: string | null;
   extracted_data?: Facts | null;
+  document_url?: string | null;
+  document_unavailable_reason?: string | null;
 }
 
 export interface Documents {

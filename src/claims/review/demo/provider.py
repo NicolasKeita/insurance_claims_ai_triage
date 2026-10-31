@@ -21,17 +21,30 @@ class DemoReviewService:
         if not manifest_path.is_file():
             raise FileNotFoundError("Demo snapshots are unavailable. Run scripts/prepare_review_demo.py first.")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.archive = None
+        if manifest.get("format") in {"claim_analysis_archive_v1", "claim_analysis_collection_v1"}:
+            from claims.review.archive.provider import ArchiveReviewService
+
+            self.archive = ArchiveReviewService(self.root)
+            self.entries = self.archive.entries
+            return
         if manifest.get("format") != DEMO_FORMAT:
             raise ValueError("Unsupported review demo snapshot format")
         self.entries = {item["claim_id"]: item for item in manifest["claims"]}
 
     def list_demo_claims(self) -> list[DemoClaim]:
+        if self.archive is not None:
+            return self.archive.list_demo_claims()
         return [
             DemoClaim(claim_id=item["claim_id"], title=item["title"], description=item["description"])
             for item in self.entries.values()
         ]
 
-    def get_review(self, claim_id: str) -> ClaimReview:
+    def get_review(self, claim_id: str, analysis_id=None) -> ClaimReview:
+        if self.archive is not None:
+            return self.archive.get_review(claim_id, analysis_id)
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
         entry = self._entry(claim_id)
         snapshot = self._contained(entry["snapshot"])
         review = ClaimReview.model_validate_json(snapshot.read_text(encoding="utf-8"))
@@ -39,7 +52,11 @@ class DemoReviewService:
             raise ValueError("Prepared snapshot identity differs from its manifest entry")
         return review
 
-    def image_path(self, claim_id: str, filename: str) -> Path | None:
+    def image_path(self, claim_id: str, filename: str, analysis_id=None) -> Path | None:
+        if self.archive is not None:
+            return self.archive.image_path(claim_id, filename, analysis_id)
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
         entry = self._entry(claim_id)
         relative = entry.get("images", {}).get(filename)
         if relative is None:
@@ -51,6 +68,14 @@ class DemoReviewService:
         if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"} or not path.is_file():
             return None
         return path
+
+    def document_path(self, claim_id, filename, analysis_id=None):
+        if self.archive is not None:
+            return self.archive.document_path(claim_id, filename, analysis_id)
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
+        self._entry(claim_id)
+        return None
 
     def _entry(self, claim_id):
         try:

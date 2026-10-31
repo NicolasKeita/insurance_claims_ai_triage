@@ -3,7 +3,7 @@
 from sqlalchemy.exc import SQLAlchemyError
 
 from claims.review.assembly import build_review
-from claims.review.media import ClaimImageStore
+from claims.review.media import ClaimDocumentStore, ClaimImageStore
 from claims.review.models import ReviewSection
 from claims.review.stored_context import context_from_agent
 from persistence.agent_runs import AgentRunRepository
@@ -18,8 +18,11 @@ class PersistedReviewService:
     def __init__(self, factory, *, asset_root=None):
         self.factory = factory
         self.images = ClaimImageStore(asset_root)
+        self.documents = ClaimDocumentStore(asset_root)
 
-    def get_review(self, claim_id):
+    def get_review(self, claim_id, analysis_id=None):
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
         claim = self._claim(claim_id)
         sections = {
             kind: self._read(
@@ -40,7 +43,10 @@ class PersistedReviewService:
         )
         self._visual_sections(claim, sections)
         sections.update(context_from_agent(claim, sections["agent"]))
-        return build_review(claim, sections)
+        review = build_review(claim, sections)
+        if isinstance(review.documents.data, dict):
+            self.documents.annotate(claim, review.documents.data.get("items", []))
+        return review
 
     def _claim(self, claim_id):
         with self.factory() as session:
@@ -95,8 +101,15 @@ class PersistedReviewService:
             section.data = {"images": images}
         self.images.annotate(claim, images)
 
-    def image_path(self, claim_id, filename):
+    def image_path(self, claim_id, filename, analysis_id=None):
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
         return self.images.path(self._claim(claim_id), filename)
+
+    def document_path(self, claim_id, filename, analysis_id=None):
+        if analysis_id is not None:
+            raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
+        return self.documents.path(self._claim(claim_id), filename)
 
     @staticmethod
     def list_demo_claims():
