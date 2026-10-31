@@ -513,3 +513,22 @@ et flèches, lien vers le PNG présent et description accessible. Captures :
 Aucun modèle d'analyse des claims ni benchmark exécuté. Tests E2E non exécutés
 faute de demande explicite. Version **0.1.45 → 0.1.46**, source unique
 `pyproject.toml`. Aucun tag, push ou déploiement.
+
+## Update — schéma compact et légende de démonstration
+
+Deux illustrations image_gen ont été préparées :
+`frontend/src/assets/review-workflow-en-v2.png` et
+`frontend/src/assets/review-workflow-fr-v2.png`, avec leurs prompts conservés.
+Le premier libellé devient **Claim file (PDFs & photos)** / **Dossier de sinistre
+(PDF et photos)**. Les compositions concentrent tous les objets et libellés dans
+une bande centrale ; la fenêtre CSS ne retire que les marges sombres du canevas.
+Le schéma est remonté avant les onglets de la console, avec ouverture du PNG
+complet accessible au clavier. La légende du véhicule devient **Demo image**.
+
+Étape visuelle validée par build TypeScript/Vite, lint ciblé et contrôle dans le
+navigateur : schéma avant Overview, voiture endommagée visible dès la première
+vue, flèches et libellés lisibles. La sélection de la variante FR fait partie de
+l'étape de localisation suivante. Aucun modèle du projet ni benchmark lancé.
+E2E non exécutés faute de demande explicite.
+
+Version de cette étape **0.1.46 → 0.1.47**, source `pyproject.toml`.

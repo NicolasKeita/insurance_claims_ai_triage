@@ -199,6 +199,7 @@ export function ReviewConsole({
         <strong>HUMAN REVIEW REQUIRED</strong>
         <span>AI-assisted guidance. Final decisions remain human.</span>
       </div>
+      <DemoFlow />
       <div className="case-navigation" role="tablist" aria-label="Claim review views">
         {tabs.map((tab, index) => (
           <button
@@ -236,7 +237,6 @@ export function ReviewConsole({
         {activeTab === 'overview' && (
           <>
             <CaseOverview view={view} onOpenDetails={reveal} />
-            <DemoFlow />
           </>
         )}
         {activeTab === 'evidence' && (

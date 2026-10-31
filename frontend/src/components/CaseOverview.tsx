@@ -20,7 +20,6 @@ function PhotoFeature({
     (image) => image.image_url?.startsWith('/v1/') && !failed.includes(image.image_url),
   );
   const photograph = photographs[0];
-  const generated = photograph?.provenance?.origin === 'ai_generated';
   const unavailableReason = failed.length
     ? 'The registered source photographs could not be loaded.'
     : images.find((image) => image.image_unavailable_reason)?.image_unavailable_reason ||
@@ -51,9 +50,7 @@ function PhotoFeature({
           <strong>
             {photograph
               ? mode === 'demo'
-                ? generated
-                  ? 'AI-generated demo image'
-                  : 'Prepared demo photo'
+                ? 'Demo image'
                 : 'Source claim photograph'
               : 'Photographs'}
           </strong>
