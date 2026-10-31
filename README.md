@@ -143,6 +143,33 @@ endpoint and never starts a service automatically.
 
 [Backend unavailable screen with startup instructions](docs/images/step33-backend-unavailable.jpg)
 
+### Autonomous analysis exports
+
+Already computed reviews can be exported under **`analysis_results/`**. Open its
+`index.html` to browse the exported analyses. Each subdirectory contains a
+standalone French `rapport.html`, frozen `resultats.json`, a provenance manifest,
+and physical copies of the available original PDFs and photos. Recorded visual
+annotations are embedded in the HTML; no model or service runs when it is opened.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/export_analysis_results.py --demo-dir artifacts/review_demo_step33_saved
+```
+
+Existing fixture PDFs are copied where present. Use `--case-dir <original-case>`
+to supply another original case directory containing its matching `claim.json`,
+`documents/` and `images/`; the option can be repeated. Missing originals remain
+explicit and are never regenerated from extracted text. To export stored
+application results, set `DATABASE_URL` and use `--claim-id <id> --asset-root data`.
+`--review-file <review.json>` accepts an already computed `ClaimReview` snapshot.
+
+Every export retains the exact component sources, timestamps and versions. It
+freezes the recorded results without claiming that independently dated
+assessments were one pipeline run. Existing analysis directories are preserved.
+The generated bundles are ignored by Git. See
+[analysis_results instructions](analysis_results/README.md) for source layout and
+selection options. Copy or zip an analysis directory to transport its report and
+source files together; no backend is required for the exported HTML report.
+
 ### Previously generated results
 
 To show richer evidence without running inference, import an **existing real**

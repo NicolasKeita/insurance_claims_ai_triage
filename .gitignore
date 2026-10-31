@@ -7,6 +7,8 @@ __pycache__/
 *.so
 
 artifacts/
+/analysis_results/*
+!/analysis_results/README.md
 data/external/
 data/external_prepared/
 .cache/huggingface/

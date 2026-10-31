@@ -621,3 +621,45 @@ réutilisé ; aucune nouvelle analyse de sinistre n'a été lancée.
 Les tests E2E n'ont pas été exécutés faute de demande explicite. Version
 **0.1.48 → 0.1.49**, source unique `pyproject.toml`. Aucun changement de
 dépendance, push, tag ou déploiement.
+
+## Update — 31 octobre 2026 : exports autonomes dans analysis_results
+
+La commande `scripts/export_analysis_results.py` exporte des revues déjà
+calculées depuis un répertoire préparé, un fichier `ClaimReview` ou les résultats
+stockés en PostgreSQL d'un dossier explicitement sélectionné. Elle ne lance ni
+modèle, ni agent, ni extraction, ni benchmark. La racine lisible
+`analysis_results/` contient un index HTML et un manifeste de collection ; chaque
+analyse a son sous-dossier `CLAIM-ID_ANALYSIS-ID/` avec `rapport.html`,
+`resultats.json`, `manifest.json`, `documents/` et `images/` selon les pièces
+présentes. Les fichiers générés sont ignorés par Git ; le README de cette racine
+est versionné.
+
+Les PDF et photos sont copiés physiquement, sans lien symbolique ni référence
+vers un fichier externe. Les sources sont explicitement sélectionnées et les
+faits d'un `claim.json` fourni doivent correspondre à la revue. Aucune pièce
+absente n'est recréée. Les noms dangereux, sorties de répertoire et liens
+symboliques sont refusés. Les empreintes SHA256 et tailles des copies sont
+conservées ; une empreinte d'image d'origine déjà connue doit correspondre.
+Un identifiant de contenu fixe chaque export et un dossier existant n'est
+jamais écrasé. Les identifiants, dates et versions des résultats d'origine
+restent distincts : l'export ne fabrique pas une exécution globale unique.
+
+Le rapport français sombre contient le résultat, la recommandation, les PDF,
+les photos originales, les annotations SVG enregistrées et la provenance. Il
+embarque son CSS et ne contient ni script, ni CDN, ni requête réseau. Tous ses
+liens sont relatifs et les textes sont échappés. Les traductions narratives
+existantes sont incorporées à la génération, sans service de traduction.
+
+Validation de cette étape : **41 tests unitaires réussis, 2 ignorés** parce que
+Windows ne permet pas la création effective de liens symboliques dans cet
+environnement. Les contrôles de style Python passent. Une copie déplacée reste
+lisible après suppression des originaux dans les tests. Un essai local avec les
+quatre cas existants a copié **15 PDF et une photo**, en conservant le document
+non fourni. Le HTML réel a été vérifié par parsing : ses ressources locales
+existent dans l'export et aucune ressource externe n'est nécessaire. Le
+navigateur de validation bloque le protocole `file:` ; aucune prévisualisation
+visuelle hors ligne ni contournement de cette restriction n'a été effectué.
+
+Tests E2E non exécutés faute de demande explicite. Version de l'export
+**0.1.49 → 0.1.50**, source unique `pyproject.toml`. Pas de nouvelle dépendance,
+de changement de modèle, de push ou de déploiement.
