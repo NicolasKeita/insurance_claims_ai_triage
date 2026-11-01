@@ -548,9 +548,6 @@
   grid-column: 1 / -1;
 }
 
-.overview-analysis-limits {
-  grid-column: 1 / -1;
-}
 .overview-secondary h2 {
   font-size: 12px;
   margin-bottom: 4px;
@@ -632,8 +629,7 @@
   margin-bottom: 17px;
 }
 
-.agent-uncertainties,
-.agent-analysis-limits {
+.agent-uncertainties {
   scroll-margin-top: 24px;
   border: 1px solid var(--line-accent);
   border-radius: 7px;
@@ -642,14 +638,17 @@
   background: var(--surface-accent);
 }
 
-.agent-analysis-limits {
-  border-color: var(--line);
-  background: var(--surface);
+.agent-analysis-details {
+  margin-bottom: 18px;
 }
 
-.agent-analysis-limits .analysis-limits-help {
-  margin-bottom: 12px;
-  color: var(--muted);
+.agent-analysis-details > summary {
+  font-size: 11px;
+}
+
+.agent-analysis-details > .agent-analysis-limits {
+  margin-top: 16px;
+  margin-bottom: 18px;
 }
 
 .agent-analysis-limits .uncertainty-list {

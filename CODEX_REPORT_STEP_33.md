@@ -837,3 +837,29 @@ Capture : `docs/images/step33-verification-limits-fr.jpg`.
 Tests E2E non exécutés faute de demande explicite. Aucun modèle ni benchmark
 lancé. Version **0.1.54 → 0.1.55**, source unique `pyproject.toml`. Aucun
 changement de version de dépendance, tag ou push.
+
+## Update — 1 novembre 2026 : détails d’exécution consultables à la demande
+
+Les limites d’exécution ne prennent plus de place sur l’accueil : leur carte,
+compteur et raccourci sont retirés. Le point à vérifier sur le capot reste
+visible, avec son compteur et son accès direct. La description de la rubrique
+de recommandation se concentre également sur les points à vérifier.
+
+Dans la recommandation, **Détails de l’analyse / Analysis details** est un volet
+natif replié par défaut qui regroupe les limites techniques, les outils utilisés
+et les textes source enregistrés. La confirmation de revue humaine reste hors
+du volet. Les recommandations, données sauvegardées et règles de classement ne
+changent pas ; les textes inconnus restent visibles dans les points à vérifier.
+
+Validation : **108 tests frontend réussis dans 14 fichiers**, ESLint, Prettier et
+build TypeScript/Vite réussis. Les tests couvrent la visibilité initiale, le
+maintien du focus sur le point métier, l’ouverture/fermeture des détails, les
+cas uniquement techniques et l’accès aux sources FR/EN. Vérification visuelle
+manuelle dans l’onglet existant : accueil simplifié et volet replié, ouverture
+et fermeture du volet avec Entrée. Capture conservée :
+`docs/images/step33-analysis-details-collapsed-fr.jpg`.
+
+Les services Docker `api` et `frontend_demo` sont actualisés et sains.
+Tests E2E non exécutés faute de demande explicite ; aucun modèle ni benchmark
+lancé. Version **0.1.55 → 0.1.56**, source unique `pyproject.toml`. Aucun
+changement de version de dépendance, tag ou push.

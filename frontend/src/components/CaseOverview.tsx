@@ -100,7 +100,7 @@ export function CaseOverview({
   const documents = view.documents.data?.items || view.claim.documents;
   const availableDocuments = documents.filter((document) => document.available).length;
   const missingDocuments = documents.filter((document) => !document.available).length;
-  const { points, limits } = recommendationConcerns(recommendation?.uncertainties || []);
+  const { points } = recommendationConcerns(recommendation?.uncertainties || []);
 
   return (
     <div className="case-overview">
@@ -272,32 +272,6 @@ export function CaseOverview({
               onClick={() => onOpenDetails('agent-uncertainties')}
             >
               {t('View points to verify')}
-              <span aria-hidden="true">↗</span>
-            </button>
-          </section>
-        )}
-        {!!limits.length && (
-          <section
-            className="overview-uncertainties overview-analysis-limits"
-            aria-labelledby="overview-limits-title"
-          >
-            <div>
-              <h2 id="overview-limits-title">{t('Analysis limits')}</h2>
-              <p>
-                {t(
-                  limits.length === 1
-                    ? '{count} analysis limit recorded.'
-                    : '{count} analysis limits recorded.',
-                  { count: limits.length },
-                )}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="overview-link"
-              onClick={() => onOpenDetails('agent-analysis-limits')}
-            >
-              {t('View analysis limits')}
               <span aria-hidden="true">↗</span>
             </button>
           </section>

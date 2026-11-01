@@ -24,7 +24,7 @@ required. When present, the front collision case is the default. The numbered
 **Analysis results → Evidence** tabs guide exploration. Beside the source photo,
 **Analysis results** shows the first recorded review signal and the
 recommended next step; **Understand the recommendation** opens its full rationale
-and uncertainties. **Check the photo evidence** opens the recorded visual
+and points to verify. **Check the photo evidence** opens the recorded visual
 observations and overlays. When no review signal is recorded, an available,
 completed recommendation supplies the result summary. Unavailable results stay
 explicit. A compact generated workflow illustration appears before the case title:
@@ -55,17 +55,17 @@ Additional captures: [generated workflow in the console](docs/images/step33-gene
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
 
-**Points to verify** lists claim questions, while **Analysis limits** separately
-explains execution and evidence-access limitations. Both have their own counts
-and direct-access buttons on the results page. In the front collision example,
-one point concerns the additional hood damage; two limits concern the agent's
-step budget and the truncated investigation data reported by the saved
-recommendation. Limits remain visible beside the verification points.
-**Recorded uncertainty text** preserves the complete source entries in either
-language. The presentation recognizes only exact, curated legacy messages;
-unknown narratives remain intact as verification points. Saved results and
-recommendations are unchanged.
-[Verification point and analysis limits](docs/images/step33-verification-limits-fr.jpg).
+**Points to verify** lists claim questions and has a direct-access button on
+the results page. In the front collision example, one point concerns the
+additional hood damage. Execution details have no overview card, count or
+shortcut. The recommendation keeps them inside **Analysis details**, collapsed
+by default, along with the tools used. This optional disclosure includes the
+agent's step budget and the truncated investigation data reported by the saved
+recommendation. **Recorded uncertainty text** preserves the complete source
+entries in either interface language. The presentation recognizes only exact,
+curated legacy messages; unknown narratives remain intact as verification
+points. Saved results and recommendations are unchanged.
+[Verification point with optional analysis details](docs/images/step33-analysis-details-collapsed-fr.jpg).
 
 Translations live in [fr.toml](frontend/locales/fr.toml) and
 [en.toml](frontend/locales/en.toml). Both use a `[messages]` table with matching

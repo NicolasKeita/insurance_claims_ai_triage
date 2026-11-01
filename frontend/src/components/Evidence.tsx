@@ -209,50 +209,44 @@ export function AgentRecommendation({
                     <p>{t('No claim verification points recorded in this recommendation.')}</p>
                   )}
                 </section>
-                {!!limits.length && (
-                  <section
-                    id="agent-analysis-limits"
-                    className="agent-analysis-limits"
-                    aria-labelledby="agent-analysis-limits-title"
-                    tabIndex={-1}
-                  >
-                    <div className="uncertainty-heading">
+                <details className="agent-analysis-details">
+                  <summary>{t('Analysis details')}</summary>
+                  {!!limits.length && (
+                    <section
+                      id="agent-analysis-limits"
+                      className="agent-analysis-limits"
+                      aria-labelledby="agent-analysis-limits-title"
+                    >
                       <h3 id="agent-analysis-limits-title">{t('Analysis limits')}</h3>
-                      <span className="overview-count">{limits.length}</span>
-                    </div>
-                    <p className="analysis-limits-help">
-                      {t(
-                        'These limits may affect the recommendation. Consider them during review.',
-                      )}
-                    </p>
-                    <ul className="uncertainty-list" aria-label={t('Analysis limits')}>
-                      {limits.map((item, index) => (
-                        <li key={index}>{translate(item)}</li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-                {!!agent.recommendation.uncertainties.length && (
-                  <details className="recorded-uncertainties">
-                    <summary>{t('Recorded uncertainty text')}</summary>
-                    <ul>
-                      {agent.recommendation.uncertainties.map((item, index) => (
-                        <li
-                          key={index}
-                          lang={locale === 'fr' && translate(item) !== item ? 'en' : undefined}
-                        >
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-                <h3>{t('Tools used')}</h3>
-                <ul className="tool-list">
-                  {agent.tools_used.map((tool) => (
-                    <li key={tool}>{humanize(tool)}</li>
-                  ))}
-                </ul>
+                      <ul className="uncertainty-list" aria-label={t('Analysis limits')}>
+                        {limits.map((item, index) => (
+                          <li key={index}>{translate(item)}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  <h3>{t('Tools used')}</h3>
+                  <ul className="tool-list">
+                    {agent.tools_used.map((tool) => (
+                      <li key={tool}>{humanize(tool)}</li>
+                    ))}
+                  </ul>
+                  {!!agent.recommendation.uncertainties.length && (
+                    <details className="recorded-uncertainties">
+                      <summary>{t('Recorded uncertainty text')}</summary>
+                      <ul>
+                        {agent.recommendation.uncertainties.map((item, index) => (
+                          <li
+                            key={index}
+                            lang={locale === 'fr' && translate(item) !== item ? 'en' : undefined}
+                          >
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </details>
                 <p className="human-field">
                   {t('Human review required:')}{' '}
                   <strong>
