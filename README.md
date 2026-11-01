@@ -136,6 +136,11 @@ original content in `data/CLAIM-2026-00001/document_sources.json`:
 The demo and OCR corpus share the same branded renderer. Logos, contact details
 and administrative text are fictional, visible and extractable; incident facts,
 repair amounts and deliberate inconsistencies remain unchanged.
+Each document has its own design: a teal insurer form with individual fields,
+a serif expert report with a compass seal, and a charcoal-and-orange workshop
+estimate with aligned amounts and a separate total. PDF metadata records the
+template version; exporting older professional copies upgrades their stationery
+without duplicating headers or changing business facts.
 
 ### Minimal demo
 

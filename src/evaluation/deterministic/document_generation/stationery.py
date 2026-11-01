@@ -7,7 +7,7 @@ Stationery is deliberately extractable noise, separate from business sections.
 from dataclasses import dataclass
 from textwrap import wrap
 
-STYLE_VERSION = "professional_stationery_v1"
+STYLE_VERSION = "professional_stationery_v2"
 BODY_FONT_SIZE = 11.5
 INK = (0.10, 0.17, 0.25)
 MUTED = (0.33, 0.40, 0.46)

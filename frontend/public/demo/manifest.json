@@ -1,6 +1,6 @@
 {
   "format": "claims_static_demo_v1",
-  "template_version": "professional_stationery_v1",
+  "template_version": "professional_stationery_v2",
   "scope": "Presentation-only; recorded analysis results were not recomputed.",
   "claims": [
     {
@@ -15,7 +15,7 @@
           "filename": "claim_form.pdf",
           "status": "COPIED",
           "original_sha256": "429f913fd154c05e60d8a70765689f8cfb6e77e4400f11d2a88217cd67503df9",
-          "presentation_sha256": "160d3f7f7d45a76c0dea1c1edd40cbb7eb6a58d77f954b9ef26a2cca9b55d0db",
+          "presentation_sha256": "2699198a103a9cc0f34dab052bf4ec470db13bdb374c35424e88f4fa6eb432da",
           "path": "documents/E2E-COHERENT-0001_ANALYSIS-419a5af4c528/claim_form.pdf"
         },
         {
@@ -23,7 +23,7 @@
           "filename": "accident_report.pdf",
           "status": "COPIED",
           "original_sha256": "a2e3677effc94038b9ee781ca41d5a6b314cf61a63c70c79ebff56ef6d5af5ad",
-          "presentation_sha256": "e4b62df911fc63e1d99f6476f14f688ce67bbde502e432376511fd1c9d1775f2",
+          "presentation_sha256": "8eb699bdd5161100111eda44fd730fb57e5e07215d5204df7e1c3c4dc7c65f17",
           "path": "documents/E2E-COHERENT-0001_ANALYSIS-419a5af4c528/accident_report.pdf"
         },
         {
@@ -31,7 +31,7 @@
           "filename": "garage_quote.pdf",
           "status": "COPIED",
           "original_sha256": "c58fef7c5ec90e5e0e6cdb8b5a3e1628b3163a6477f0a84394381a5f4426a445",
-          "presentation_sha256": "5e4f2ba9932942161d77a4941185450fd38d493b76700ee3de5b457ebad13d6f",
+          "presentation_sha256": "4a1c2c990eadbb64c4702e583b62ceddc253dcfa1f7b20b3cd4ea571abd804eb",
           "path": "documents/E2E-COHERENT-0001_ANALYSIS-419a5af4c528/garage_quote.pdf"
         },
         {
@@ -39,7 +39,7 @@
           "filename": "police_report.pdf",
           "status": "COPIED",
           "original_sha256": "1a11e960e4ed76ff5d1ba1841955a144d706de7c8578c3ee725c9263cf35a673",
-          "presentation_sha256": "2b26f34432b2697315803e59d8522e258b124b6e3a174658f217b1d83b6a851b",
+          "presentation_sha256": "04bead20c6e0e8e5c40634edff1013b484acb2b99a2544d00df0edc2ad034de1",
           "path": "documents/E2E-COHERENT-0001_ANALYSIS-419a5af4c528/police_report.pdf"
         }
       ]
@@ -56,7 +56,7 @@
           "filename": "claim_form.pdf",
           "status": "COPIED",
           "original_sha256": "1e7932c4aed0164797ac0f8e0039a0a67e2491dacee82f2cef2c81f4ae30481c",
-          "presentation_sha256": "df3794789b88183f0d8ac0540025693ca57efef7e6091d8c196dac2d4c594431",
+          "presentation_sha256": "0ca617f038ff62ae2c48c39fc8366f549a8d6c2789a6cdc70fac3de23ecfa5d8",
           "path": "documents/E2E-QUOTE-0001_ANALYSIS-de48e08a0b64/claim_form.pdf"
         },
         {
@@ -64,7 +64,7 @@
           "filename": "accident_report.pdf",
           "status": "COPIED",
           "original_sha256": "f8ff02a19493f4d188d884b64454fbe0f0832b3e9bb42fb8e1b80f0c779b796f",
-          "presentation_sha256": "d371b77fe1fc3becf519d47bda965009a8e5afd456df01c99b4d5bb56c9822ff",
+          "presentation_sha256": "5d183823992ee9ef19e5c1a607fdaedd48bfa513f7d68e1bfcd6fa945f8573b6",
           "path": "documents/E2E-QUOTE-0001_ANALYSIS-de48e08a0b64/accident_report.pdf"
         },
         {
@@ -72,7 +72,7 @@
           "filename": "garage_quote.pdf",
           "status": "COPIED",
           "original_sha256": "b5fb270c6804ddb6896c2804d8afc0ed0d397561d64d781a63510290b3bc3c83",
-          "presentation_sha256": "c3e90c8b84ad915327322216d53c39acb80a13c925ac73c492da7802b6905787",
+          "presentation_sha256": "61b54672e01f4a432f49cf0d5492ddeabcd7047642d55495f0c5c9837c1aa492",
           "path": "documents/E2E-QUOTE-0001_ANALYSIS-de48e08a0b64/garage_quote.pdf"
         },
         {
@@ -80,7 +80,7 @@
           "filename": "police_report.pdf",
           "status": "COPIED",
           "original_sha256": "93ed6f53ce2c57e2d4a95a510d259f77f3d523920d0939c057a781ea17de6674",
-          "presentation_sha256": "5100cb4cb21fa9f451a170b6c2bec461080fe4d64c59e0290a4adea3d99b8024",
+          "presentation_sha256": "163aa2081b6f486e42d782bb5fb994eb956c1006eff23be89f2af02688f559bf",
           "path": "documents/E2E-QUOTE-0001_ANALYSIS-de48e08a0b64/police_report.pdf"
         }
       ]
@@ -97,7 +97,7 @@
           "filename": "claim_form.pdf",
           "status": "COPIED",
           "original_sha256": "b93c584d51b8a1326e91262af7867885c8d03962ea9a1b4f30bcfbf34413fddd",
-          "presentation_sha256": "114fd3bca7282b10d8867344a2d0f24470e416ec9bebed629dc74b9158f2c104",
+          "presentation_sha256": "badc93ec2d0d73322e096602286457c09648866f81e4cb492651705f2d7479a2",
           "path": "documents/E2E-MISSING-0001_ANALYSIS-f0bea3807d94/claim_form.pdf"
         },
         {
@@ -105,7 +105,7 @@
           "filename": "accident_report.pdf",
           "status": "COPIED",
           "original_sha256": "6a8cbbac3bc387b8c6f6f5172f2b220f603e7a47aaa292d56c665afaaac0428d",
-          "presentation_sha256": "fadfcf547c9d25d5612bdb8159043d4306128809ee79e43eac37ccfd9976e2ac",
+          "presentation_sha256": "250f431f6fc28c10381d700cbcf38dd1ecf862823f221c43d682c5313112ed28",
           "path": "documents/E2E-MISSING-0001_ANALYSIS-f0bea3807d94/accident_report.pdf"
         },
         {
@@ -113,7 +113,7 @@
           "filename": "garage_quote.pdf",
           "status": "COPIED",
           "original_sha256": "742216d9ba01f7e2b4662236bcf4753f793c6e0d9373713f5e07f82eae751e7b",
-          "presentation_sha256": "f257c24f0c3bd4141ce711cae655812905b849c61342c588dd1e71acc4b521d4",
+          "presentation_sha256": "324fa25c00ce359a8cc365f4e592350c45bd75148d8a68dcdf9c258c84d0575e",
           "path": "documents/E2E-MISSING-0001_ANALYSIS-f0bea3807d94/garage_quote.pdf"
         },
         {
@@ -138,7 +138,7 @@
           "filename": "claim_form.pdf",
           "status": "COPIED",
           "original_sha256": "78016db10120f523d7ce6313a3cc27d3e1cd98e27dedcc0a83694b8cd76f5130",
-          "presentation_sha256": "a6128660c12c8b6c9f502989dc8cb624c9d94ee0a604a9d7cee842779e683a39",
+          "presentation_sha256": "ebf74fa9a498812ff94820d011c9727c00a191e57b41f109cecd3c9b9381c572",
           "path": "documents/E2E-VISUAL-0001_ANALYSIS-a0f4747edf8c/claim_form.pdf"
         },
         {
@@ -146,7 +146,7 @@
           "filename": "accident_report.pdf",
           "status": "COPIED",
           "original_sha256": "497ca9df02e5f55ba0fa1f4c44ab2ec901593e791f1d8683530a7489715014e9",
-          "presentation_sha256": "e9ef5ed946ee3694e0d243506829f433b4b1f24bb2752d094da81178764f6997",
+          "presentation_sha256": "72dc74e19880fa5278c70ca6ac9c42f98ed6cb99d0bbd679f71abd738ad12b60",
           "path": "documents/E2E-VISUAL-0001_ANALYSIS-a0f4747edf8c/accident_report.pdf"
         },
         {
@@ -154,7 +154,7 @@
           "filename": "garage_quote.pdf",
           "status": "COPIED",
           "original_sha256": "8df33b518b5149c366a2e181faa734f0f2b19fa4055171f4dd7dcab7dde294a5",
-          "presentation_sha256": "a40a9f4d55beb6632cf6f166d3d581261a9853cfbb06860836ed85728b6cc421",
+          "presentation_sha256": "0b9829a28be104db497e9f2d0622c2256bc6a42a2b920f14e147bed3e19bc547",
           "path": "documents/E2E-VISUAL-0001_ANALYSIS-a0f4747edf8c/garage_quote.pdf"
         },
         {
@@ -162,7 +162,7 @@
           "filename": "police_report.pdf",
           "status": "COPIED",
           "original_sha256": "bc450ed8f994c99cc7f924f00bfab4a8c6143e398704623009e9e65cb184a796",
-          "presentation_sha256": "c3f38e05691502929577055cdba17a9346626ad9459e4ea6fc8d5b2ab9423839",
+          "presentation_sha256": "dafa859cc23e87d9652439d75d133b33d24d185aecf51f94aca7ff6279dd785d",
           "path": "documents/E2E-VISUAL-0001_ANALYSIS-a0f4747edf8c/police_report.pdf"
         },
         {
