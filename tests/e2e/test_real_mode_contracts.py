@@ -44,13 +44,14 @@ def test_unavailable_real_dependencies_never_become_fake_predictions(
 
 
 def test_fake_visual_golden_labels_are_not_reused_as_real_image_ground_truth(tmp_path):
+    scenario = load_scenarios(scenario_ids=["visual_additional_damage"])[0].model_copy(update={"external_assets": []})
     config = RealEvaluationConfig(fixture_dir=tmp_path / "fixtures")
     pipeline = RealClaimsEvaluationPipeline(config, PreflightReport())
-    report = evaluate_scenarios(load_scenarios(scenario_ids=["visual_additional_damage"]), pipeline, mode="real")
+    report = evaluate_scenarios([scenario], pipeline, mode="real")
     observed = report.results[0].observation
     assert report.results[0].status == "SKIP"
     assert observed.components["vision"].status == "SKIP"
-    assert "no matching real image ground truth" in observed.components["vision"].reason
+    assert "No annotated visual reference images configured" in observed.components["vision"].reason
     assert observed.vision is None
     assert "VISUAL_ADDITIONAL_DAMAGE" not in observed.signals
 

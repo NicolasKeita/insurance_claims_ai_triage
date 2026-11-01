@@ -326,8 +326,8 @@ il faut disposer d'une vraie image et savoir quel dommage elle montre.
 
 **Situation :** un scénario de démonstration prévoit un dommage supplémentaire
 sur le capot alors que seul le pare-chocs avant est déclaré. Ce résultat a été
-défini pour des détecteurs simulés ; aucune image réelle de référence
-correspondante n'est fournie. On demande pourtant une évaluation réelle.
+défini pour des détecteurs simulés. Le test retire explicitement les images
+annotées de référence d'une copie du scénario, puis demande une évaluation réelle.
 
 **Résultat attendu :** l'analyse visuelle ne peut pas être exécutée et le
 scénario reste non vérifié complètement, avec une explication sur l'absence
@@ -341,12 +341,13 @@ la qualité de l'IA visuelle.
 <details>
 <summary>Détails techniques et limites</summary>
 
-Le scénario `visual_additional_damage` est exécuté en mode `real` avec un
-`PreflightReport()` vide injecté. Il décrit un dommage `HOOD` pour des
-détecteurs factices alors que seul `FRONT_BUMPER` est déclaré. Le test attend
-un scénario `SKIP`, un composant `vision=SKIP` avec un motif contenant
-`no matching real image ground truth`, `observation.vision=None` et l'absence
-du signal `VISUAL_ADDITIONAL_DAMAGE`.
+Une copie du scénario `visual_additional_damage` avec `external_assets=[]` est
+exécutée en mode `real` avec un `PreflightReport()` vide injecté. Le manifeste
+versionné conserve ses références visuelles annotées. La copie décrit un dommage
+`HOOD` pour des détecteurs factices alors que seul `FRONT_BUMPER` est déclaré.
+Le test attend un scénario `SKIP`, un composant `vision=SKIP` avec un motif contenant
+`No annotated visual reference images configured`, `observation.vision=None` et
+l'absence du signal `VISUAL_ADDITIONAL_DAMAGE`.
 
 Aucun détecteur réel n'est évalué et aucune qualité de détection n'est mesurée.
 
