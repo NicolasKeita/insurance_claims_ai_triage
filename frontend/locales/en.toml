@@ -1,4 +1,9 @@
 [messages]
+"The console cannot reach the API container. Start the Docker Compose demo, then retry the connection." = "The console cannot reach the API container. Start the Docker Compose demo, then retry the connection."
+"Start the Docker demo" = "Start the Docker demo"
+"Run these commands from the repository root with Docker Desktop running." = "Run these commands from the repository root with Docker Desktop running."
+"The analysis_results folder must contain exported analyses. Inspect the API logs if the container does not start." = "The analysis_results folder must contain exported analyses. Inspect the API logs if the container does not start."
+"The API container is responding, but its analysis archive is unavailable. Check analysis_results/manifest.json and the API logs." = "The API container is responding, but its analysis archive is unavailable. Check analysis_results/manifest.json and the API logs."
 "The original PDF is not available under the configured claim asset root." = "The original PDF is not available under the configured claim asset root."
 "The original PDF is not included in this archive." = "The original PDF is not included in this archive."
 "The original photograph is not included in this archive." = "The original photograph is not included in this archive."
@@ -324,7 +329,7 @@
 "Policy id" = "Policy id"
 "Policy version" = "Policy version"
 "Policy versions" = "Policy versions"
-"PostgreSQL and Qdrant are not needed for the prepared demo. Docker starts those services separately; it does not start FastAPI." = "PostgreSQL and Qdrant are not needed for the prepared demo. Docker starts those services separately; it does not start FastAPI."
+"PostgreSQL and Qdrant are not needed for the prepared demo. The Docker console starts FastAPI and the frontend together." = "PostgreSQL and Qdrant are not needed for the prepared demo. The Docker console starts FastAPI and the frontend together."
 "PowerShell commands to start the prepared demo backend" = "PowerShell commands to start the prepared demo backend"
 "Prepared evidence" = "Prepared evidence"
 "Previous claims" = "Previous claims"

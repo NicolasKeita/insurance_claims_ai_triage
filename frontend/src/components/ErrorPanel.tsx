@@ -3,10 +3,13 @@ import type { RequestFailure } from '../request';
 
 const backendCommand = String.raw`$env:CLAIMS_REVIEW_DEMO = '1'
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000`;
+const dockerCommand = `docker compose up --build -d frontend
+docker compose logs api`;
 
 export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry: () => void }) {
   const { t } = useI18n();
 
+  const docker = import.meta.env.VITE_REVIEW_RUNTIME === 'docker';
   const offline = error.kind === 'backend-unavailable';
   const heading = {
     'backend-unavailable': 'Backend unavailable',
@@ -24,46 +27,71 @@ export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry:
       {offline ? (
         <>
           <p>
-            {t('The console cannot reach FastAPI at')} <code>http://127.0.0.1:8000</code>
-            {t('. Start the backend, then retry the connection.')}
+            {docker ? (
+              t(
+                'The console cannot reach the API container. Start the Docker Compose demo, then retry the connection.',
+              )
+            ) : (
+              <>
+                {t('The console cannot reach FastAPI at')} <code>http://127.0.0.1:8000</code>
+                {t('. Start the backend, then retry the connection.')}
+              </>
+            )}
           </p>
-          <div className="backend-start-help">
-            <h2>{t('Start the prepared demo backend')}</h2>
-            <p>
-              {t(
-                'Run these commands in PowerShell from the repository root. Keep that window open while using the console.',
-              )}
-            </p>
-            <pre aria-label={t('PowerShell commands to start the prepared demo backend')}>
-              <code>{backendCommand}</code>
-            </pre>
-            <p>
-              {t(
-                'This reads your prepared demo snapshots; it does not run models or the benchmark.',
-              )}
-            </p>
-            <p className="docker-help">
-              {t(
-                'PostgreSQL and Qdrant are not needed for the prepared demo. Docker starts those services separately; it does not start FastAPI.',
-              )}
-            </p>
-          </div>
+          {docker ? (
+            <DockerStartHelp />
+          ) : (
+            <div className="backend-start-help">
+              <h2>{t('Start the prepared demo backend')}</h2>
+              <p>
+                {t(
+                  'Run these commands in PowerShell from the repository root. Keep that window open while using the console.',
+                )}
+              </p>
+              <pre aria-label={t('PowerShell commands to start the prepared demo backend')}>
+                <code>{backendCommand}</code>
+              </pre>
+              <p>
+                {t(
+                  'This reads your prepared demo snapshots; it does not run models or the benchmark.',
+                )}
+              </p>
+              <p className="docker-help">
+                {t(
+                  'PostgreSQL and Qdrant are not needed for the prepared demo. The Docker console starts FastAPI and the frontend together.',
+                )}
+              </p>
+            </div>
+          )}
         </>
       ) : error.kind === 'claim-not-found' ? (
         <p>{t('This claim was not found. Check the claim ID or choose an available demo case.')}</p>
       ) : error.kind === 'service-unavailable' ? (
-        <>
-          <p>
-            {t(
-              'FastAPI is responding, but a required service or configuration is unavailable. Check the backend terminal for details, then try again.',
-            )}
-          </p>
-          <p className="service-help">
-            {t(
-              'In database mode, check PostgreSQL and DATABASE_URL. In demo mode, check that the demo snapshots have been prepared.',
-            )}
-          </p>
-        </>
+        docker ? (
+          <>
+            <p>
+              {t(
+                'The API container is responding, but its analysis archive is unavailable. Check analysis_results/manifest.json and the API logs.',
+              )}
+            </p>
+            <pre>
+              <code>docker compose logs api</code>
+            </pre>
+          </>
+        ) : (
+          <>
+            <p>
+              {t(
+                'FastAPI is responding, but a required service or configuration is unavailable. Check the backend terminal for details, then try again.',
+              )}
+            </p>
+            <p className="service-help">
+              {t(
+                'In database mode, check PostgreSQL and DATABASE_URL. In demo mode, check that the demo snapshots have been prepared.',
+              )}
+            </p>
+          </>
+        )
       ) : (
         <p>
           {t(
@@ -82,5 +110,23 @@ export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry:
         {t('Retry refreshes the demo list and reopens the selected claim when available.')}
       </p>
     </section>
+  );
+}
+
+function DockerStartHelp() {
+  const { t } = useI18n();
+  return (
+    <div className="backend-start-help">
+      <h2>{t('Start the Docker demo')}</h2>
+      <p>{t('Run these commands from the repository root with Docker Desktop running.')}</p>
+      <pre aria-label={t('Start the Docker demo')}>
+        <code>{dockerCommand}</code>
+      </pre>
+      <p>
+        {t(
+          'The analysis_results folder must contain exported analyses. Inspect the API logs if the container does not start.',
+        )}
+      </p>
+    </div>
   );
 }

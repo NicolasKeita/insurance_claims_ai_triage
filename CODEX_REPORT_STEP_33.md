@@ -704,3 +704,49 @@ les copies et les références du HTML ont été contrôlées automatiquement.
 Tests E2E non exécutés faute de demande explicite. Version de cette intégration
 **0.1.50 → 0.1.51** ; version totale de la tâche **0.1.49 → 0.1.51**, source unique
 `pyproject.toml`. Aucun changement de dépendance, modèle, tag, push ou déploiement.
+
+## Update — 1 novembre 2026 : console Docker dans le Compose existant
+
+Le `compose.yaml` existant conserve ses services PostgreSQL/Qdrant, volumes et
+profil `test`. Le profil `console` ajoute `api` et `frontend`.
+`docker compose up --build -d frontend` démarre seulement ces deux services,
+avec la dépendance API saine. `docker compose --profile console up --build -d`
+démarre les quatre services hors tests. L'API de consultation reste indépendante
+des bases dans les deux cas. Les exports sont montés en lecture seule depuis
+`analysis_results/` ou `CLAIMS_ANALYSIS_DIR`, sans création d'un dossier source
+absent. Le frontend publie seulement `127.0.0.1:8080`, configurable par
+`CLAIMS_REVIEW_PORT` ; le port de l'API reste interne au réseau Docker.
+
+L'entrée `api.review_app:app` sert uniquement les lectures de revues, photos et
+PDF, ainsi que `/readyz`. Elle valide une collection non vide au démarrage et
+n'importe aucun module ML, RAG, GPU ou pilote PostgreSQL. Les imports de
+repositories et du service PostgreSQL sont différés, avec conservation de leurs
+interfaces existantes pour l'application complète. Les contraintes runtime sont
+sélectionnées depuis `pyproject.toml`, sans liste de versions indépendante ni
+installation des dépendances ML. Les métadonnées de packaging locales et les
+caches sont exclus du contexte Docker, comme les modèles, exports, données,
+secrets, Git et environnements virtuels.
+
+Le frontend est compilé dans l'image avec Node et Python 3.12, puis servi par
+Nginx. `CLAIMS_I18N_PYTHON` permet d'utiliser le Python de construction pour les
+catalogues TOML tout en gardant la `.venv` par défaut en développement. Le proxy
+conserve les chemins et paramètres d'analyse, résout le nom Docker de l'API et
+différencie panne de transport et erreur HTTP amont. Les instructions d'erreur
+FR/EN du build Docker indiquent les commandes du Compose commun. Les deux
+conteneurs s'exécutent sans root, avec fichiers en lecture seule et `/tmp`
+temporaire. Le montage des exports a été vérifié avec `read_only=true`.
+
+Validation : **158 tests Python unitaires réussis, 2 ignorés** uniquement pour
+la création de liens symboliques indisponible sous Windows ; **96 tests
+frontend réussis**. Les contrôles Python, ESLint, Prettier et le build
+TypeScript/Vite passent. Les deux images Docker sont construites, les deux
+services sont sains, le frontend répond HTTP 200 sur `/readyz` et le catalogue
+transmis par Nginx contient les quatre dossiers exportés. `pip check` dans
+l'image API ne signale aucune dépendance cassée. Les contrôles de lancement
+et de routage ne lancent ni analyse de sinistre, ni modèle, ni benchmark.
+
+Tests E2E non exécutés faute de demande explicite. Documentation dans
+`deploy/docker/README.md`, README principal et `analysis_results/README.md`.
+Version **0.1.51 → 0.1.52**, source unique `pyproject.toml`. Aucun changement de
+version de dépendance, de tag, de push ou de déploiement distant. Les deux
+services de console sont laissés actifs localement pour consultation.

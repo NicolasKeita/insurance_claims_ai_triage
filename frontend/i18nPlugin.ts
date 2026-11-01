@@ -11,11 +11,14 @@ export function reviewI18n(): Plugin {
   let cataloguesRoot = '';
   function compile(): unknown {
     const projectRoot = path.resolve(frontendRoot, '..');
-    const python = path.join(
-      projectRoot,
-      '.venv',
-      process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
-    );
+    const configuredPython = process.env.CLAIMS_I18N_PYTHON;
+    const python =
+      configuredPython ||
+      path.join(
+        projectRoot,
+        '.venv',
+        process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+      );
     const result = spawnSync(
       python,
       [path.join(frontendRoot, 'tooling/compile_locales.py'), cataloguesRoot],
@@ -28,10 +31,14 @@ export function reviewI18n(): Plugin {
       },
     );
     if (result.error || result.status !== 0) {
-      throw new Error(
+      const setup = configuredPython
+        ? `Check CLAIMS_I18N_PYTHON (${python}); Python 3.12+ is required.`
+        : "Use the project's Python 3.12+ .venv or set CLAIMS_I18N_PYTHON to its executable.";
+      const detail =
         result.stderr?.trim() ||
-          `Cannot parse translation TOML. Use the project's Python 3.12+ .venv. ${result.error?.message || ''}`,
-      );
+        result.error?.message ||
+        `Python exited with status ${result.status}.`;
+      throw new Error(`Cannot parse translation TOML. ${setup}\n${detail}`);
     }
     return JSON.parse(result.stdout);
   }

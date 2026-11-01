@@ -7,7 +7,6 @@ from fastapi.responses import FileResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from claims.review.models import ClaimReview, DemoClaim
-from claims.review.persisted import PersistedReviewService
 
 
 def install_review_routes(app, *, service_loader=None):
@@ -72,6 +71,8 @@ def _service(request, loader):
                         503, "Demo snapshots are unavailable; run scripts/prepare_review_demo.py first"
                     ) from error
             elif factory is not None:
+                from claims.review.persisted import PersistedReviewService
+
                 service = PersistedReviewService(factory)
             else:
                 raise HTTPException(503, "Claim review requires configured persistence or prepared demo snapshots")

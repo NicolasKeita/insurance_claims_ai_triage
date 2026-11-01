@@ -143,6 +143,24 @@ endpoint and never starts a service automatically.
 
 [Backend unavailable screen with startup instructions](docs/images/step33-backend-unavailable.jpg)
 
+### Docker console
+
+The existing `compose.yaml` includes an optional **console** profile alongside
+PostgreSQL and Qdrant. With Docker Desktop running and an existing exported
+`analysis_results/manifest.json`, start only the frontend and archive API:
+
+```powershell
+docker compose up --build -d frontend
+```
+
+Open [Claim Review](http://localhost:8080). This builds the frontend inside Docker
+and mounts exported analyses read-only; host Python/Node installations, a GPU,
+PostgreSQL and Qdrant are not required for archive consultation. To start the
+four services together, use `docker compose --profile console up --build -d`.
+The archive API remains read-only in either case. Existing database volumes and
+test profiles keep their configuration. See [Docker instructions](deploy/docker/README.md)
+for alternate archive directories/ports, logs and stopping only the console.
+
 ### Autonomous analysis exports
 
 Already computed reviews can be exported under **`analysis_results/`**. Open its

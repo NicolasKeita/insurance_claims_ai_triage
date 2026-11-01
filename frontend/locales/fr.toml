@@ -1,4 +1,9 @@
 [messages]
+"The console cannot reach the API container. Start the Docker Compose demo, then retry the connection." = "La console ne peut pas joindre le conteneur API. Démarrez la démo Docker Compose, puis réessayez la connexion."
+"Start the Docker demo" = "Démarrer la démo Docker"
+"Run these commands from the repository root with Docker Desktop running." = "Exécutez ces commandes à la racine du dépôt avec Docker Desktop démarré."
+"The analysis_results folder must contain exported analyses. Inspect the API logs if the container does not start." = "Le dossier analysis_results doit contenir des analyses exportées. Consultez les journaux de l’API si le conteneur ne démarre pas."
+"The API container is responding, but its analysis archive is unavailable. Check analysis_results/manifest.json and the API logs." = "Le conteneur API répond, mais son archive d’analyse est indisponible. Vérifiez analysis_results/manifest.json et les journaux de l’API."
 "The original PDF is not available under the configured claim asset root." = "Le PDF original est indisponible dans le répertoire configuré pour les pièces du dossier."
 "The original PDF is not included in this archive." = "Le PDF original n’est pas inclus dans cette archive."
 "The original photograph is not included in this archive." = "La photographie originale n’est pas incluse dans cette archive."
@@ -324,7 +329,7 @@
 "Policy id" = "Identifiant du contrat"
 "Policy version" = "Version de la politique"
 "Policy versions" = "Versions des règles"
-"PostgreSQL and Qdrant are not needed for the prepared demo. Docker starts those services separately; it does not start FastAPI." = "PostgreSQL et Qdrant ne sont pas nécessaires à cette démonstration préparée. Docker démarre ces services séparément ; il ne démarre pas FastAPI."
+"PostgreSQL and Qdrant are not needed for the prepared demo. The Docker console starts FastAPI and the frontend together." = "PostgreSQL et Qdrant ne sont pas nécessaires à cette démonstration préparée. Le mode console Docker démarre FastAPI et le frontend ensemble."
 "PowerShell commands to start the prepared demo backend" = "Commandes PowerShell pour démarrer le backend de démonstration"
 "Prepared evidence" = "Résultats préparés"
 "Previous claims" = "Sinistres antérieurs"

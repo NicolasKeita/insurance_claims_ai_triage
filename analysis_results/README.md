@@ -61,3 +61,8 @@ Un lien `/?claim=CLAIM-0001&analysis=ANALYSIS-…` désigne une analyse figée p
 Sans identifiant d'analyse, la collection utilise le dernier export de ce dossier.
 Les boutons **Ouvrir le PDF** accèdent aux copies de l'archive ; les photos
 et documents restent associés à l'analyse choisie même après un nouvel export.
+
+Avec Docker Desktop, la même collection se consulte sans Python ni Node sur
+l'hôte : `docker compose up --build -d frontend`, puis `http://localhost:8080`.
+Voir les [instructions Docker](../deploy/docker/README.md) pour démarrer également
+PostgreSQL et Qdrant avec le profil `console` du Compose commun.

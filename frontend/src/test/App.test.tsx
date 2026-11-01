@@ -152,7 +152,7 @@ describe('Review API integration', () => {
       String.raw`.\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000`,
     );
     expect(alert).toHaveTextContent('PostgreSQL and Qdrant are not needed for the prepared demo.');
-    expect(alert).toHaveTextContent('it does not start FastAPI');
+    expect(alert).toHaveTextContent('The Docker console starts FastAPI and the frontend together.');
     expect(
       screen.queryByRole('heading', { name: 'Explore a claim review' }),
     ).not.toBeInTheDocument();
