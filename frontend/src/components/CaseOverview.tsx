@@ -2,6 +2,7 @@ import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { Badge, StateBadge, humanize } from '../presentation';
 import type { ReviewView, VisionImage } from '../types';
+import { recommendationConcerns } from '../review/recommendationConcerns';
 
 function PhotoFeature({
   images,
@@ -99,7 +100,7 @@ export function CaseOverview({
   const documents = view.documents.data?.items || view.claim.documents;
   const availableDocuments = documents.filter((document) => document.available).length;
   const missingDocuments = documents.filter((document) => !document.available).length;
-  const uncertainties = recommendation?.uncertainties || [];
+  const { points, limits } = recommendationConcerns(recommendation?.uncertainties || []);
 
   return (
     <div className="case-overview">
@@ -249,19 +250,19 @@ export function CaseOverview({
             <span aria-hidden="true">↗</span>
           </button>
         </section>
-        {!!uncertainties.length && (
+        {!!points.length && (
           <section
             className="overview-uncertainties"
             aria-labelledby="overview-uncertainties-title"
           >
             <div>
-              <h2 id="overview-uncertainties-title">{t('Limits of this recommendation')}</h2>
+              <h2 id="overview-uncertainties-title">{t('Points to verify')}</h2>
               <p>
                 {t(
-                  uncertainties.length === 1
-                    ? '{count} recorded uncertainty. Review it before making a decision.'
-                    : '{count} recorded uncertainties. Review them before making a decision.',
-                  { count: uncertainties.length },
+                  points.length === 1
+                    ? '{count} point to verify before making a decision.'
+                    : '{count} points to verify before making a decision.',
+                  { count: points.length },
                 )}
               </p>
             </div>
@@ -270,7 +271,33 @@ export function CaseOverview({
               className="overview-link"
               onClick={() => onOpenDetails('agent-uncertainties')}
             >
-              {t('View uncertainties')}
+              {t('View points to verify')}
+              <span aria-hidden="true">↗</span>
+            </button>
+          </section>
+        )}
+        {!!limits.length && (
+          <section
+            className="overview-uncertainties overview-analysis-limits"
+            aria-labelledby="overview-limits-title"
+          >
+            <div>
+              <h2 id="overview-limits-title">{t('Analysis limits')}</h2>
+              <p>
+                {t(
+                  limits.length === 1
+                    ? '{count} analysis limit recorded.'
+                    : '{count} analysis limits recorded.',
+                  { count: limits.length },
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => onOpenDetails('agent-analysis-limits')}
+            >
+              {t('View analysis limits')}
               <span aria-hidden="true">↗</span>
             </button>
           </section>

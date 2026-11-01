@@ -55,7 +55,17 @@ Additional captures: [generated workflow in the console](docs/images/step33-gene
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
 
-[Direct access to the recorded uncertainties](docs/images/step33-uncertainties-focus-fr.jpg).
+**Points to verify** lists claim questions, while **Analysis limits** separately
+explains execution and evidence-access limitations. Both have their own counts
+and direct-access buttons on the results page. In the front collision example,
+one point concerns the additional hood damage; two limits concern the agent's
+step budget and the truncated investigation data reported by the saved
+recommendation. Limits remain visible beside the verification points.
+**Recorded uncertainty text** preserves the complete source entries in either
+language. The presentation recognizes only exact, curated legacy messages;
+unknown narratives remain intact as verification points. Saved results and
+recommendations are unchanged.
+[Verification point and analysis limits](docs/images/step33-verification-limits-fr.jpg).
 
 Translations live in [fr.toml](frontend/locales/fr.toml) and
 [en.toml](frontend/locales/en.toml). Both use a `[messages]` table with matching

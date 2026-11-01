@@ -46,7 +46,7 @@ const groups: { id: GroupId; label: string; description: string }[] = [
   {
     id: 'recommendation',
     label: 'Recommendation & signals',
-    description: 'The full recommendation, uncertainties and review signals',
+    description: 'The full recommendation, points to verify, analysis limits and review signals',
   },
 ];
 
@@ -57,7 +57,7 @@ function destination(section: string): { tab: ViewTab; group?: GroupId } {
     return { tab: 'evidence', group: 'photos' };
   if (section === 'knowledge') return { tab: 'evidence', group: 'policy' };
   if (['history', 'similar_claims'].includes(section)) return { tab: 'evidence', group: 'history' };
-  if (['agent', 'investigation', 'agent-uncertainties'].includes(section))
+  if (['agent', 'investigation', 'agent-uncertainties', 'agent-analysis-limits'].includes(section))
     return { tab: 'evidence', group: 'recommendation' };
   if (['triage', 'anomaly', 'audit', 'priority-details'].includes(section))
     return { tab: 'technical' };
@@ -105,7 +105,9 @@ export function ReviewConsole({
     if (target) {
       target.scrollIntoView?.({
         behavior: 'instant',
-        block: focusRequest.section === 'agent-uncertainties' ? 'start' : 'center',
+        block: ['agent-uncertainties', 'agent-analysis-limits'].includes(focusRequest.section)
+          ? 'start'
+          : 'center',
       });
       target.focus({ preventScroll: true });
       if (focusRequest.evidenceId) {

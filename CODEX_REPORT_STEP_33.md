@@ -799,3 +799,41 @@ Captures conservées : `docs/images/step33-analysis-copy-fr.jpg` et
 Tests E2E non exécutés faute de demande explicite. Aucun modèle ni benchmark
 lancé. Version **0.1.53 → 0.1.54**, source unique `pyproject.toml`. Aucun changement
 de dépendance, tag ou push.
+
+## Update — 1 novembre 2026 : points à vérifier et limites de l’analyse séparés
+
+La console distingue désormais les **Points à vérifier** sur le sinistre des
+**Limites de l’analyse**. Le cas visuel affiche un point sur la présence et
+l’étendue des dommages supplémentaires au capot, puis deux limites distinctes :
+le plafond d’étapes atteint par l’agent et les données d’investigation tronquées
+mentionnées dans la recommandation enregistrée. Le texte explique le plafond
+sans imposer une valeur numérique à tous les dossiers. Les limites restent
+visibles et précisent leur incidence possible sur la recommandation.
+
+L’accueil et le détail utilisent la même fonction de présentation, avec des
+compteurs séparés et des accès directs qui placent le focus et le défilement
+sur la section concernée. Un dossier ne contenant que des limites garde son
+accès direct. Les catalogues TOML FR/EN sont alignés. **Textes enregistrés**
+conserve les entrées source intégrales dans les deux langues de l’interface.
+
+La présentation ne reconnaît que des messages historiques exacts : plafond
+d’étapes, contexte raccourci, absence de sinistres similaires admissibles et
+paragraphe mixte du cas capot. Tout texte inconnu reste intégralement dans les
+points à vérifier ; aucune déduction par mots-clés. Les exports, réponses du
+backend, recommandations et paramètres d’exécution de l’agent sont inchangés.
+
+Validation : **108 tests frontend réussis dans 14 fichiers**, dont les cas de
+navigation/focus, les limites seules, la conservation des textes inconnus et
+des sources FR/EN, sans mutation ni requête supplémentaire. ESLint, Prettier et
+le build TypeScript/Vite dans Docker passent. Un premier lancement Vitest a
+rencontré un EPERM de renommage dans le Temp du sandbox, avant collection ; le
+lancement complet réussit avec TEMP/TMP dans le cache ignoré du frontend.
+
+Les services `api` et `frontend_demo` sont reconstruits, actifs et sains.
+Vérification visuelle manuelle dans l’onglet existant : compteurs 1 et 2 à
+l’accueil, point capot et limites simultanément visibles après le clic.
+Capture : `docs/images/step33-verification-limits-fr.jpg`.
+
+Tests E2E non exécutés faute de demande explicite. Aucun modèle ni benchmark
+lancé. Version **0.1.54 → 0.1.55**, source unique `pyproject.toml`. Aucun
+changement de version de dépendance, tag ou push.

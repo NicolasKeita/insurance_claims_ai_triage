@@ -12,6 +12,7 @@ import {
 } from '../presentation';
 import type { Evidence, ReviewView } from '../types';
 import { useI18n } from '../i18n';
+import { recommendationConcerns } from '../review/recommendationConcerns';
 
 export function KnowledgeEvidence({ view }: { view: ReviewView }) {
   const { locale, t, translate } = useI18n();
@@ -147,12 +148,12 @@ export function AgentRecommendation({
 }) {
   const { locale, t, translate } = useI18n();
   const recommendation = view.agent.data?.recommendation;
+  const { points, limits } = recommendationConcerns(recommendation?.uncertainties || []);
   const hasOriginalTranslation =
     locale === 'fr' &&
     recommendation &&
     (translate(recommendation.case_summary) !== recommendation.case_summary ||
-      recommendation.rationale.some((item) => translate(item.statement) !== item.statement) ||
-      recommendation.uncertainties.some((item) => translate(item) !== item));
+      recommendation.rationale.some((item) => translate(item.statement) !== item.statement));
   return (
     <Section
       id="agent"
@@ -195,21 +196,57 @@ export function AgentRecommendation({
                   tabIndex={-1}
                 >
                   <div className="uncertainty-heading">
-                    <h3 id="agent-uncertainties-title">{t('Uncertainties to review')}</h3>
-                    <span className="overview-count">
-                      {agent.recommendation.uncertainties.length}
-                    </span>
+                    <h3 id="agent-uncertainties-title">{t('Points to verify')}</h3>
+                    <span className="overview-count">{points.length}</span>
                   </div>
-                  {agent.recommendation.uncertainties.length ? (
-                    <ol className="uncertainty-list" aria-label={t('Recorded uncertainties')}>
-                      {agent.recommendation.uncertainties.map((item, index) => (
+                  {points.length ? (
+                    <ol className="uncertainty-list" aria-label={t('Points to verify')}>
+                      {points.map((item, index) => (
                         <li key={index}>{translate(item)}</li>
                       ))}
                     </ol>
                   ) : (
-                    <p>{t('No uncertainties recorded by this run.')}</p>
+                    <p>{t('No claim verification points recorded in this recommendation.')}</p>
                   )}
                 </section>
+                {!!limits.length && (
+                  <section
+                    id="agent-analysis-limits"
+                    className="agent-analysis-limits"
+                    aria-labelledby="agent-analysis-limits-title"
+                    tabIndex={-1}
+                  >
+                    <div className="uncertainty-heading">
+                      <h3 id="agent-analysis-limits-title">{t('Analysis limits')}</h3>
+                      <span className="overview-count">{limits.length}</span>
+                    </div>
+                    <p className="analysis-limits-help">
+                      {t(
+                        'These limits may affect the recommendation. Consider them during review.',
+                      )}
+                    </p>
+                    <ul className="uncertainty-list" aria-label={t('Analysis limits')}>
+                      {limits.map((item, index) => (
+                        <li key={index}>{translate(item)}</li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+                {!!agent.recommendation.uncertainties.length && (
+                  <details className="recorded-uncertainties">
+                    <summary>{t('Recorded uncertainty text')}</summary>
+                    <ul>
+                      {agent.recommendation.uncertainties.map((item, index) => (
+                        <li
+                          key={index}
+                          lang={locale === 'fr' && translate(item) !== item ? 'en' : undefined}
+                        >
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <h3>{t('Tools used')}</h3>
                 <ul className="tool-list">
                   {agent.tools_used.map((tool) => (
@@ -238,14 +275,6 @@ export function AgentRecommendation({
                   {agent.recommendation.rationale.map((item, index) => (
                     <li key={index} lang="en">
                       {item.statement}
-                    </li>
-                  ))}
-                </ul>
-                <h3>{t('Uncertainties')}</h3>
-                <ul>
-                  {agent.recommendation.uncertainties.map((item, index) => (
-                    <li key={index} lang="en">
-                      {item}
                     </li>
                   ))}
                 </ul>

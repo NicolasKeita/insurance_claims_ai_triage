@@ -547,6 +547,10 @@
 .overview-secondary > :only-child {
   grid-column: 1 / -1;
 }
+
+.overview-analysis-limits {
+  grid-column: 1 / -1;
+}
 .overview-secondary h2 {
   font-size: 12px;
   margin-bottom: 4px;
@@ -628,13 +632,38 @@
   margin-bottom: 17px;
 }
 
-.agent-uncertainties {
+.agent-uncertainties,
+.agent-analysis-limits {
   scroll-margin-top: 24px;
   border: 1px solid var(--line-accent);
   border-radius: 7px;
   padding: 16px;
   margin-bottom: 22px;
   background: var(--surface-accent);
+}
+
+.agent-analysis-limits {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.agent-analysis-limits .analysis-limits-help {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.agent-analysis-limits .uncertainty-list {
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+.recorded-uncertainties {
+  margin-bottom: 22px;
+}
+
+.recorded-uncertainties ul {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
 }
 
 .uncertainty-heading {
