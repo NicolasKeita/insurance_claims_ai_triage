@@ -3,7 +3,7 @@ import type { RequestFailure } from '../request';
 
 const backendCommand = String.raw`$env:CLAIMS_REVIEW_DEMO = '1'
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000`;
-const dockerCommand = `docker compose up --build -d frontend
+const dockerCommand = `docker compose up --build -d frontend_demo
 docker compose logs api`;
 
 export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry: () => void }) {

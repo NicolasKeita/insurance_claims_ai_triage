@@ -150,7 +150,7 @@ PostgreSQL and Qdrant. With Docker Desktop running and an existing exported
 `analysis_results/manifest.json`, start only the frontend and archive API:
 
 ```powershell
-docker compose up --build -d frontend
+docker compose up --build -d frontend_demo
 ```
 
 Open [Claim Review](http://localhost:8080). This builds the frontend inside Docker

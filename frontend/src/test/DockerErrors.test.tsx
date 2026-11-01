@@ -26,7 +26,7 @@ describe('Docker connection guidance', () => {
       );
       const alert = screen.getByRole('alert');
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeVisible();
-      expect(alert).toHaveTextContent('docker compose up --build -d frontend');
+      expect(alert).toHaveTextContent('docker compose up --build -d frontend_demo');
       expect(alert).toHaveTextContent('docker compose logs api');
       expect(alert).toHaveTextContent('analysis_results');
       expect(alert).not.toHaveTextContent('http://127.0.0.1:8000');

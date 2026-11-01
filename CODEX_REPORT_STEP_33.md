@@ -750,3 +750,22 @@ Tests E2E non exécutés faute de demande explicite. Documentation dans
 Version **0.1.51 → 0.1.52**, source unique `pyproject.toml`. Aucun changement de
 version de dépendance, de tag, de push ou de déploiement distant. Les deux
 services de console sont laissés actifs localement pour consultation.
+
+## Update — 1 novembre 2026 : nom explicite frontend_demo
+
+Le service Compose de la démo est renommé `frontend_demo`. La commande de
+démarrage devient `docker compose up --build -d frontend_demo`. Les commandes
+affichées dans la console, les tests existants et les trois README actifs sont
+alignés, y compris les commandes de journaux et d'arrêt. Le répertoire source
+`frontend/` et le fichier Docker associé conservent leurs chemins. Le nom `api`
+désigne le backend qui fournit les résultats et pièces enregistrés.
+
+Validation : les **4 tests de composants ciblés** des instructions Docker
+passent, ainsi qu'ESLint, Prettier, la configuration Compose et le build de la
+nouvelle image `frontend_demo`. L'ancien conteneur frontend est identifié par
+ses labels Compose avant remplacement, puis retiré après disponibilité du
+nouveau service. Seuls les conteneurs de console sont concernés ; les volumes
+de données sont conservés.
+
+Tests E2E non exécutés faute de demande explicite. Version **0.1.52 → 0.1.53**,
+source unique `pyproject.toml`. Aucun changement de dépendance, tag ou push.

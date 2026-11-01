@@ -1,6 +1,7 @@
 # Console Docker
 
-Le `compose.yaml` à la racine regroupe PostgreSQL, Qdrant, l'API et le frontend.
+Le `compose.yaml` à la racine regroupe PostgreSQL, Qdrant, le backend (`api`)
+et le frontend de démonstration (`frontend_demo`).
 Le profil `console` ajoute les deux derniers services. L'API Docker consulte les
 analyses exportées ; elle ne lance aucun modèle et ne se connecte pas aux bases.
 Le backend complet `api.main:app` reste disponible dans l'environnement Python.
@@ -17,7 +18,7 @@ Depuis la racine du projet :
 
 ```powershell
 # Console seule : frontend et API, sans démarrer PostgreSQL ni Qdrant.
-docker compose up --build -d frontend
+docker compose up --build -d frontend_demo
 ```
 
 Ouvrir **http://localhost:8080**. Nginx sert le frontend compilé et transmet les
@@ -41,7 +42,7 @@ aux bases et ne lance ni migration, ni import, ni nouvelle analyse. Les services
 ```powershell
 $env:CLAIMS_ANALYSIS_DIR = 'C:\chemin\vers\mes-analyses'
 $env:CLAIMS_REVIEW_PORT = '8081'
-docker compose up --build -d frontend
+docker compose up --build -d frontend_demo
 ```
 
 Le dossier choisi peut être une collection ou une seule analyse autonome. Il doit
@@ -58,11 +59,11 @@ Remove-Item Env:CLAIMS_REVIEW_PORT -ErrorAction SilentlyContinue
 
 ```powershell
 docker compose ps
-docker compose logs api frontend
+docker compose logs api frontend_demo
 # Recharger le catalogue après ajout d'un export :
 docker compose restart api
 # Arrêter uniquement la console, en laissant les bases telles quelles :
-docker compose stop frontend api
+docker compose stop frontend_demo api
 ```
 
 L'API utilise `/readyz` pour sa disponibilité, sans charger de modèle. Nginx attend
