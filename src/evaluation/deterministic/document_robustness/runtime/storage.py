@@ -35,6 +35,7 @@ def corpus_payload(scenarios):
                     "document_id": doc.document_id,
                     "document_type": doc.document_type,
                     "reference_text": doc.text,
+                    "body_text": doc.body_text,
                     "expected": doc.expected.model_dump(mode="json"),
                 }
                 for doc in scenario.documents
@@ -99,6 +100,7 @@ def implementation_fingerprint():
     for name in ("document_ingestion", "document_extraction", "document_models", "ocr"):
         paths.extend((source / "claims" / name).rglob("*.py"))
     paths.append(source / "claims" / "consistency.py")
+    paths.extend((source / "evaluation/deterministic/document_generation").glob("*.py"))
     digest = hashlib.sha256()
     for path in sorted(paths):
         digest.update(str(path.relative_to(source)).encode())

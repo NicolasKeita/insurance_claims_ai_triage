@@ -21,6 +21,7 @@ from claims.review.demo.preparation import TITLES
 from claims.review.demo.state import knowledge_state, section
 from claims.review.demo.vision import import_vision
 from claims.review.models import ReviewSection
+from evaluation.deterministic.document_generation.identifiers import display_identifiers
 from evaluation.scenarios import load_scenarios
 from ml.inference import TriagePrediction
 from retrieval.models import SimilarClaimsResponse
@@ -56,7 +57,7 @@ def _import_one(root, path, scenarios):
     timestamp = datetime.fromisoformat(summary["created_at"].replace("Z", "+00:00"))
     sections = _sections(observation, claim, timestamp)
     images = import_vision(root, scenario, observation, sections, timestamp)
-    review = build_review(claim, sections, mode="demo")
+    review = display_identifiers(build_review(claim, sections, mode="demo"))
     snapshot = f"saved-{scenario.scenario_id}.json"
     (root / snapshot).write_text(review.model_dump_json(indent=2), encoding="utf-8")
     return {

@@ -1,7 +1,6 @@
 """Generate controlled synthetic claim fixtures in an isolated directory."""
 
 import json
-import shutil
 from decimal import Decimal
 from pathlib import Path
 from tempfile import mkdtemp
@@ -10,18 +9,25 @@ import pymupdf
 
 from claims.case import ClaimCase
 from claims.loader import load_claim_case
+from evaluation.deterministic.document_generation import render_page
+from evaluation.deterministic.document_generation.assets import (
+    SYNTHETIC_PROVENANCE,
+    _copy_visual_assets,
+    _write_image,
+    _write_provenance,
+)
+from evaluation.deterministic.document_generation.identifiers import fake_identifiers
 from evaluation.deterministic.documents import document_payloads, document_texts
 
+__all__ = ["ROOT", "SYNTHETIC_PROVENANCE", "materialize_scenario_case"]
+
 ROOT = Path(__file__).resolve().parents[3]
-SYNTHETIC_PROVENANCE = "Generated controlled synthetic E2E fixture; no third-party imagery or real personal data."
 
 
 def _pdf(path: Path, text: str):
-    document = pymupdf.open()
-    page = document.new_page()
-    page.insert_text((45, 45), text, fontsize=10)
-    document.save(path)
-    document.close()
+    with pymupdf.open() as document:
+        render_page(document, text, kind=path.stem)
+        document.save(path, no_new_id=True, garbage=4, deflate=True)
 
 
 def _scenario_payload(scenario, inputs):
@@ -32,8 +38,9 @@ def _scenario_payload(scenario, inputs):
         source /= "claim.json"
     payload = json.loads(source.read_text(encoding="utf-8"))
     payload["claim_id"] = inputs.get("claim_id", f"DEMO-E2E-{scenario.scenario_id.upper()}")
-    payload["customer"]["customer_id"] = f"DEMO-E2E-CUSTOMER-{scenario.scenario_id}"
-    payload["policy"]["policy_id"] = f"DEMO-E2E-POLICY-{scenario.scenario_id}"
+    customer_id, policy_id = fake_identifiers(scenario.scenario_id)
+    payload["customer"]["customer_id"] = customer_id
+    payload["policy"]["policy_id"] = policy_id
     payload["declared_damage"] = inputs.get("declared_damage", ["FRONT_BUMPER"])
     quoted = inputs.get("quote_damage", payload["declared_damage"])
     payload["images"] = ["synthetic_geometry.png"] if scenario.vision_required else []
@@ -46,60 +53,6 @@ def _apply_overrides(payload, inputs):
             payload[key].update(value)
         else:
             payload[key] = value
-
-
-def _write_image(root, payload):
-    from PIL import Image, ImageDraw
-
-    images = root / "images"
-    images.mkdir(exist_ok=True)
-    with Image.new("RGB", (128, 128), "#d8dee3") as image:
-        drawing = ImageDraw.Draw(image)
-        drawing.rectangle((12, 12, 116, 116), outline="#304050", width=2)
-        drawing.line((44, 44, 64, 62), fill="#8b3344", width=3)
-        image.save(images / payload["images"][0])
-
-
-def _copy_visual_assets(root, scenario, payload):
-    from evaluation.visual_assets import visual_assets
-
-    assets = visual_assets(scenario)
-    if not assets:
-        raise RuntimeError("Visual scenario requires validated image assets; no generated geometry fallback")
-    images = root / "images"
-    images.mkdir(exist_ok=True)
-    copied = []
-    for index, asset in enumerate(assets, start=1):
-        filename = f"{index:02d}-{Path(asset['path']).name}"
-        shutil.copyfile(asset["path"], images / filename)
-        copied.append({**asset, "fixture_filename": filename})
-    payload["images"] = [asset["fixture_filename"] for asset in copied]
-    return copied
-
-
-def _write_provenance(root, scenario, source, visual_assets):
-    provenance = (
-        "Controlled synthetic claim and documents; source image origin is recorded per asset."
-        if visual_assets else SYNTHETIC_PROVENANCE
-    )
-    (root / "fixture_provenance.json").write_text(
-        json.dumps(
-            {
-                "scenario_id": scenario.scenario_id,
-                "source_claim": str(source),
-                "provenance": provenance,
-                "vision_semantics": (
-                    "Validated source images copied unchanged for model inference; "
-                    "image origin and annotation scope are recorded per asset."
-                    if visual_assets else
-                    "Generated pixels exercise geometry only; fake detections are explicit test inputs."
-                ),
-                "visual_assets": visual_assets,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
 
 
 def materialize_scenario_case(scenario, root_dir=None, *, use_visual_assets=False) -> ClaimCase:
@@ -123,7 +76,9 @@ def materialize_scenario_case(scenario, root_dir=None, *, use_visual_assets=Fals
     amount = Decimal(str(inputs.get("repair_amount", 1500)))
     payload["repair_estimate"]["amount"] = str(amount)
     _apply_overrides(payload, inputs)
-    visual_assets = _copy_visual_assets(root, scenario, payload) if use_visual_assets and scenario.vision_required else []
+    visual_assets = (
+        _copy_visual_assets(root, scenario, payload) if use_visual_assets and scenario.vision_required else []
+    )
     texts = document_texts(payload, inputs, quoted, amount)
     docs = root / "documents"
     docs.mkdir(exist_ok=True)

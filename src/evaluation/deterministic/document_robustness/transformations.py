@@ -4,6 +4,8 @@ import hashlib
 from io import BytesIO
 from pathlib import Path
 
+from evaluation.deterministic.document_generation import BODY_FONT_SIZE, STYLE_VERSION
+
 VARIANTS = (
     "native_clean",
     "scan_clean",
@@ -29,23 +31,28 @@ def variant_config(variant: str, document_id: str) -> dict:
         "noise_stddev": 8.0 if variant == "scan_noisy" else 0.0,
         "noise_mean": 0.0,
         "seed": seed,
-        "font_size": 12,
+        "font_size": BODY_FONT_SIZE,
         "language": "eng",
+        "template_version": STYLE_VERSION,
     }
 
 
-def _native_page(document, text):
+def _native_page(document, text, *, professional=False, **layout):
+    if professional:
+        from evaluation.deterministic.document_generation import render_page
+
+        return render_page(document, text, **layout)
     page = document.new_page(width=595, height=842)
     page.insert_text((45, 55), text, fontsize=12, fontname="helv")
     return page
 
 
-def _raster(text, config):
+def _raster(text, config, **layout):
     import pymupdf
     from PIL import Image
 
     with pymupdf.open() as source:
-        page = _native_page(source, text)
+        page = _native_page(source, text, **layout)
         pixmap = page.get_pixmap(dpi=config["source_dpi"], colorspace=pymupdf.csRGB, alpha=False)
         return Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
 
@@ -66,8 +73,8 @@ def _degrade(image, config):
     return image
 
 
-def _scan_page(document, text, config):
-    image = _degrade(_raster(text, config), config)
+def _scan_page(document, text, config, **layout):
+    image = _degrade(_raster(text, config, **layout), config)
     encoded = BytesIO()
     image.save(
         encoded,
@@ -85,16 +92,21 @@ def materialize_variant(reference, variant: str, path: Path) -> dict:
     if path.exists():
         raise FileExistsError(f"Document variant already exists: {path}")
     config = variant_config(variant, reference.document_id)
+    body_text = getattr(reference, "body_text", None)
+    text = reference.text if body_text is None else body_text
+    layout = {"kind": reference.document_type, "professional": body_text is not None}
+    if body_text is None:
+        config.update(font_size=12, template_version="plain_v1")
     path.parent.mkdir(parents=True, exist_ok=True)
     with pymupdf.open() as document:
         if variant == "native_clean":
-            _native_page(document, reference.text)
+            _native_page(document, text, **layout)
         elif variant == "mixed_native_and_scan":
-            lines = reference.text.splitlines()
+            lines = text.splitlines()
             split = max(1, len(lines) // 2)
-            _native_page(document, "\n".join(lines[:split]))
-            _scan_page(document, "\n".join(lines[split:]), config)
+            _native_page(document, "\n".join(lines[:split]), footer=False, **layout)
+            _scan_page(document, "\n".join(lines[split:]), config, header=False, **layout)
         else:
-            _scan_page(document, reference.text, config)
+            _scan_page(document, text, config, **layout)
         document.save(path, no_new_id=True)
     return config

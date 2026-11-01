@@ -11,6 +11,7 @@ from claims.document_extraction import extract_accident_report, extract_claim_fo
 from claims.document_ingestion import extract_pdf_text
 from claims.document_models import MoneyAmount
 from evaluation.deterministic.document_robustness.corpus import TYPES, build_corpus
+from evaluation.deterministic.document_robustness.metrics import text_metrics
 from evaluation.deterministic.document_robustness.transformations import materialize_variant
 
 EXTRACTORS = (extract_claim_form, extract_accident_report, extract_garage_quote)
@@ -40,8 +41,12 @@ def test_native_extraction_matches_source_models(tmp_path):
             path = tmp_path / scenario.scenario_id / f"{document.document_type}.pdf"
             materialize_variant(document, "native_clean", path)
             asset = DocumentAsset(kind, path.name, path)
-            actual = extractor(extract_pdf_text(asset))
+            extraction = extract_pdf_text(asset)
+            actual = extractor(extraction)
             assert actual.model_dump() == document.expected.model_dump()
+            assert document.body_text is not None and document.text != document.body_text
+            assert text_metrics(document.text, extraction.text)["cer"] == 0
+            assert text_metrics(document.text, extraction.text)["wer"] == 0
 
 
 def test_ground_truth_financial_schema_rejects_invalid_currency_and_amount():

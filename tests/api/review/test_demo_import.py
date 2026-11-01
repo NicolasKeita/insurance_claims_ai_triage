@@ -7,6 +7,7 @@ import pytest
 from claims.review.demo.observations import import_observations
 from claims.review.demo.preparation import prepare_demo
 from claims.review.demo.provider import DemoReviewService
+from evaluation.deterministic.document_generation.identifiers import fake_identifiers
 
 
 def saved_observation(tmp_path, observation, mode="real"):
@@ -61,3 +62,23 @@ def test_import_rejects_claim_identity_drift(tmp_path):
     )
     with pytest.raises(ValueError, match="canonical scenario"):
         import_observations(tmp_path, [path])
+
+
+def test_import_replaces_legacy_references_in_new_snapshots_only(tmp_path):
+    minimal = tmp_path / "minimal"
+    prepare_demo(minimal)
+    claim = DemoReviewService(minimal).get_review("E2E-COHERENT-0001").claim
+    claim.customer.customer_id = "DEMO-E2E-CUSTOMER-simple_coherent_claim"
+    claim.policy.policy_id = "DEMO-E2E-POLICY-simple_coherent_claim"
+    path = saved_observation(
+        tmp_path,
+        {"facts": {"claim": claim.model_dump(mode="json")}, "provenance": {"mode": "real"}},
+    )
+    frozen = path.read_bytes()
+    imported = tmp_path / "imported"
+    prepare_demo(imported, [path])
+    payload = json.loads((imported / "saved-simple_coherent_claim.json").read_text(encoding="utf-8"))
+    customer, policy = fake_identifiers("simple_coherent_claim")
+    assert payload["claim"]["customer"]["customer_id"] == customer
+    assert payload["claim"]["policy"]["policy_id"] == policy
+    assert path.read_bytes() == frozen

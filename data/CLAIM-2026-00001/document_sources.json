@@ -1,0 +1,5 @@
+{
+  "claim_form.pdf": "CLAIM FORM\nClaim ID: CLAIM-2026-00001\nIncident date: 20/09/2026\nLocation: Bordeaux\nVehicle: Renault Clio\nVehicle year: 2021\nCollision type: Front collision\nDeclared damage:\nFront bumper\nLeft headlight\nInjuries declared: No",
+  "accident_report.pdf": "ACCIDENT REPORT\nClaim ID: CLAIM-2026-00001\nDate: 20/09/2026\nLocation: Bordeaux\nCollision type: Front collision\nVehicle:\nRenault Clio\nReported damage:\nFront bumper\nLeft headlight\nPassengers: 1\nInjuries: No",
+  "garage_quote.pdf": "GARAGE QUOTE\nGarage: GARAGE-42\nClaim ID: CLAIM-2026-00001\nFront bumper: 780 EUR\nLeft headlight: 620 EUR\nHood: 840 EUR\nLabor: 920 EUR\nTotal: 3160 EUR"
+}

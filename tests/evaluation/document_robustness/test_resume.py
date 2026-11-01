@@ -1,6 +1,8 @@
 """Interrupted source recovery and baseline comparability use immutable evidence."""
 
 import json
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -65,3 +67,27 @@ def test_resume_rejects_changed_implementation_without_modifying_manifest(tmp_pa
     with pytest.raises(ValueError, match="Resume implementation differs"):
         storage.prepare_run(tmp_path, identity, resume=True)
     assert manifest.read_bytes() == original
+
+
+def test_corpus_identity_includes_rendered_body_separately_from_visible_reference():
+    corpus = build_corpus()
+    original = storage.run_identity(corpus, {})
+    scenario = corpus[0]
+    document = scenario.documents[0]
+    changed = replace(document, body_text=document.body_text + "\nChanged source body")
+    updated = (replace(scenario, documents=(changed, *scenario.documents[1:])), *corpus[1:])
+    assert storage.run_identity(updated, {})["corpus_sha256"] != original["corpus_sha256"]
+
+
+@pytest.mark.parametrize("module", ("__init__.py", "stationery.py"))
+def test_renderer_changes_invalidate_implementation_identity(monkeypatch, module):
+    original = storage.implementation_fingerprint()
+    read_bytes = Path.read_bytes
+
+    def changed_renderer(path):
+        content = read_bytes(path)
+        changed = path.parent.name == "document_generation" and path.name == module
+        return content + b"\n# changed renderer" if changed else content
+
+    monkeypatch.setattr(Path, "read_bytes", changed_renderer)
+    assert storage.implementation_fingerprint() != original

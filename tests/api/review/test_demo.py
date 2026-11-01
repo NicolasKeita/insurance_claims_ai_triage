@@ -4,6 +4,7 @@ import pytest
 
 from claims.review.demo.preparation import prepare_demo
 from claims.review.demo.provider import DemoReviewService
+from evaluation.deterministic.document_generation.identifiers import fake_identifiers
 from persistence.repositories import ClaimNotFoundError
 
 
@@ -50,6 +51,19 @@ def test_review_requests_do_not_recompute_or_mutate_snapshots(prepared, monkeypa
     assert first.generated_at == second.generated_at
     with pytest.raises(ClaimNotFoundError):
         service.get_review("UNKNOWN")
+
+
+def test_prepared_customer_and_policy_references_do_not_reveal_scenario_names(prepared):
+    service = DemoReviewService(prepared)
+    for scenario_id, claim_id in (
+        ("simple_coherent_claim", "E2E-COHERENT-0001"),
+        ("additional_quote_damage", "E2E-QUOTE-0001"),
+        ("missing_documents", "E2E-MISSING-0001"),
+    ):
+        review = service.get_review(claim_id)
+        customer, policy = fake_identifiers(scenario_id)
+        assert review.claim.customer.customer_id == customer
+        assert review.claim.policy.policy_id == policy
 
 
 def test_setup_and_existing_outputs_fail_without_overwriting(prepared, tmp_path):

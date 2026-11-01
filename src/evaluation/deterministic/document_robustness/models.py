@@ -25,6 +25,7 @@ class ReferenceDocument:
     document_type: DocumentKind
     text: str
     expected: StructuredDocument
+    body_text: str | None = None
 
 
 @dataclass(frozen=True)

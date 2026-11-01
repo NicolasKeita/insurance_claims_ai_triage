@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from evaluation.deterministic.document_generation import visible_text
 from evaluation.deterministic.document_robustness.models import (
     KINDS,
     TYPES,
@@ -51,7 +52,13 @@ def _scenario(source, index, row):
     texts = document_texts(payload, {"document_overrides": overrides}, quoted, Decimal(row[4]))
     scenario_id = f"demo_{index:02d}"
     documents = tuple(
-        ReferenceDocument(f"{scenario_id}_{kind}", kind, texts[str(doc_type)], value)
+        ReferenceDocument(
+            f"{scenario_id}_{kind}",
+            kind,
+            visible_text(texts[str(doc_type)], kind=kind),
+            value,
+            body_text=texts[str(doc_type)],
+        )
         for kind, doc_type, value in zip(KINDS, TYPES, expected, strict=True)
     )
     facts = dict.fromkeys(

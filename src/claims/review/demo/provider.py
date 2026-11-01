@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from claims.review.models import ClaimReview, DemoClaim
+from evaluation.deterministic.document_generation.identifiers import display_identifiers
 from persistence.repositories import ClaimNotFoundError
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -42,7 +43,7 @@ class DemoReviewService:
 
     def get_review(self, claim_id: str, analysis_id=None) -> ClaimReview:
         if self.archive is not None:
-            return self.archive.get_review(claim_id, analysis_id)
+            return display_identifiers(self.archive.get_review(claim_id, analysis_id))
         if analysis_id is not None:
             raise ClaimNotFoundError("A specific analysis requires an exported analysis archive")
         entry = self._entry(claim_id)
@@ -50,7 +51,7 @@ class DemoReviewService:
         review = ClaimReview.model_validate_json(snapshot.read_text(encoding="utf-8"))
         if review.claim.claim_id != claim_id:
             raise ValueError("Prepared snapshot identity differs from its manifest entry")
-        return review
+        return display_identifiers(review)
 
     def image_path(self, claim_id: str, filename: str, analysis_id=None) -> Path | None:
         if self.archive is not None:

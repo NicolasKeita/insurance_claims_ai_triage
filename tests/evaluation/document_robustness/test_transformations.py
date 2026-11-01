@@ -1,12 +1,16 @@
 """Small deterministic raster fixtures require no Tesseract installation."""
 
+from dataclasses import replace
+
 import pymupdf
 import pytest
 
 from claims.assets import DocumentAsset
 from claims.document_ingestion import extract_pdf_text, extract_pdf_text_auto
 from claims.enums import DocumentType, TextExtractionMethod
+from evaluation.deterministic.document_generation import BODY_FONT_SIZE, STYLE_VERSION, visible_text
 from evaluation.deterministic.document_robustness.corpus import build_corpus
+from evaluation.deterministic.document_robustness.metrics import normalize_text
 from evaluation.deterministic.document_robustness.transformations import VARIANTS, materialize_variant
 
 
@@ -64,7 +68,36 @@ def test_variants_record_settings_and_never_overwrite(tmp_path):
     assert config["jpeg_quality"] == 35
     assert config["source_dpi"] == 180
     assert config["noise_stddev"] == 0
+    assert config["font_size"] == BODY_FONT_SIZE
+    assert config["template_version"] == STYLE_VERSION
     with pytest.raises(FileExistsError):
         materialize_variant(reference, "scan_clean", path)
     with pytest.raises(ValueError):
         materialize_variant(reference, "unknown", tmp_path / "invalid.pdf")
+
+
+def test_mixed_pages_preserve_reference_text_without_repeated_decorations(tmp_path):
+    reference = build_corpus()[0].documents[0]
+    path = tmp_path / "mixed.pdf"
+    materialize_variant(reference, "mixed_native_and_scan", path)
+    lines = reference.body_text.splitlines()
+    scanned_body = "\n".join(lines[max(1, len(lines) // 2) :])
+
+    class ReferenceOcr:
+        def extract_text(self, image):
+            return visible_text(scanned_body, kind=reference.document_type, header=False)
+
+    asset = DocumentAsset(DocumentType.CLAIM_FORM, path.name, path)
+    actual = extract_pdf_text_auto(asset, ReferenceOcr(), dpi=72)
+    assert actual.method == TextExtractionMethod.HYBRID
+    assert normalize_text(actual.text) == normalize_text(reference.text)
+
+
+def test_custom_plain_references_remain_undecorated(tmp_path):
+    source = build_corpus()[0].documents[0]
+    reference = replace(source, text=source.body_text, body_text=None)
+    path = tmp_path / "plain.pdf"
+    config = materialize_variant(reference, "native_clean", path)
+    asset = DocumentAsset(DocumentType.CLAIM_FORM, path.name, path)
+    assert normalize_text(extract_pdf_text(asset).text) == normalize_text(reference.text)
+    assert config["template_version"] == "plain_v1"
