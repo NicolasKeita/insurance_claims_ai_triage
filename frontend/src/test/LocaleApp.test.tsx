@@ -44,7 +44,7 @@ describe('Bilingual prepared review', () => {
     vi.stubGlobal('fetch', fetcher);
     const { container } = render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Collision à l’avant du véhicule' });
-    expect(screen.getByRole('tab', { name: 'Résultats du système' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Résultats de l’analyse' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
@@ -65,7 +65,7 @@ describe('Bilingual prepared review', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
     await screen.findByRole('heading', { level: 1, name: 'Front collision' });
-    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Analysis results' })).toHaveAttribute(
       'aria-selected',
       'true',
     );

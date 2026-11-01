@@ -769,3 +769,33 @@ de données sont conservés.
 
 Tests E2E non exécutés faute de demande explicite. Version **0.1.52 → 0.1.53**,
 source unique `pyproject.toml`. Aucun changement de dépendance, tag ou push.
+
+## Update — 1 novembre 2026 : libellés explicites et incertitudes directement visibles
+
+Le bandeau générique « Une aide par l’IA » devient **L’IA recommande une prochaine
+étape. Le gestionnaire prend la décision finale.** Le titre et l'onglet initial
+deviennent **Résultats de l’analyse / Analysis results**. Les catalogues TOML FR
+et EN restent alignés ; les données et recommandations enregistrées ne changent
+pas.
+
+Le bouton **Voir les incertitudes** ciblait auparavant toute la recommandation.
+Il ouvre désormais la bonne rubrique et place le défilement ainsi que le focus
+clavier sur `agent-uncertainties`. Cet encadré nommé **Incertitudes à examiner**
+affiche le nombre réel de points et leur liste numérotée complète, distincte des
+outils et autres informations. Les incertitudes proviennent uniquement de la
+recommandation enregistrée ; leur lecture ne déclenche aucun appel supplémentaire
+ni nouvelle analyse. Les mécanismes existants d'ouverture des preuves gardent
+leur comportement de focus et de dialogue.
+
+Validation : **101 tests frontend réussis**, dont cinq nouveaux cas couvrant les
+deux éléments exacts, la cible et le défilement, le retour après une autre rubrique,
+la langue française et l'absence de recommandation. ESLint, Prettier et le build
+TypeScript/Vite dans Docker passent. Les services `frontend_demo` et `api` sont
+recréés et sains. Vérification visuelle manuelle dans la démo ouverte : les deux
+points sont immédiatement visibles après le clic, sans chercher dans la page.
+Captures conservées : `docs/images/step33-analysis-copy-fr.jpg` et
+`docs/images/step33-uncertainties-focus-fr.jpg`.
+
+Tests E2E non exécutés faute de demande explicite. Aucun modèle ni benchmark
+lancé. Version **0.1.53 → 0.1.54**, source unique `pyproject.toml`. Aucun changement
+de dépendance, tag ou push.

@@ -287,7 +287,7 @@ describe('Review API integration', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Matching documents' })).toHaveFocus(),
     );
-    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Analysis results' })).toHaveAttribute(
       'aria-selected',
       'true',
     );

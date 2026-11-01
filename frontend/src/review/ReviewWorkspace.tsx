@@ -18,7 +18,7 @@ import type { ReviewView } from '../types';
 type ViewTab = 'overview' | 'evidence' | 'technical';
 type GroupId = 'documents' | 'photos' | 'policy' | 'history' | 'recommendation';
 const tabs: { id: ViewTab; label: string }[] = [
-  { id: 'overview', label: 'System results' },
+  { id: 'overview', label: 'Analysis results' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'technical', label: 'Technical details' },
 ];
@@ -57,7 +57,7 @@ function destination(section: string): { tab: ViewTab; group?: GroupId } {
     return { tab: 'evidence', group: 'photos' };
   if (section === 'knowledge') return { tab: 'evidence', group: 'policy' };
   if (['history', 'similar_claims'].includes(section)) return { tab: 'evidence', group: 'history' };
-  if (['agent', 'investigation'].includes(section))
+  if (['agent', 'investigation', 'agent-uncertainties'].includes(section))
     return { tab: 'evidence', group: 'recommendation' };
   if (['triage', 'anomaly', 'audit', 'priority-details'].includes(section))
     return { tab: 'technical' };
@@ -103,7 +103,10 @@ export function ReviewConsole({
       document.getElementById(focusRequest.section) ||
       document.getElementById(`review-panel-${activeTab}`);
     if (target) {
-      target.scrollIntoView?.({ behavior: 'instant', block: 'center' });
+      target.scrollIntoView?.({
+        behavior: 'instant',
+        block: focusRequest.section === 'agent-uncertainties' ? 'start' : 'center',
+      });
       target.focus({ preventScroll: true });
       if (focusRequest.evidenceId) {
         target.classList.add('evidence-highlight');
@@ -201,7 +204,7 @@ export function ReviewConsole({
       <div className="human-banner">
         <span aria-hidden="true">◇</span>
         <strong>{t('HUMAN REVIEW REQUIRED')}</strong>
-        <span>{t('AI-assisted guidance. Final decisions remain human.')}</span>
+        <span>{t('AI recommends a next step. The claims reviewer makes the final decision.')}</span>
       </div>
       <div className="case-navigation" role="tablist" aria-label={t('Claim review views')}>
         {tabs.map((tab, index) => (

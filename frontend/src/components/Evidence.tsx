@@ -188,16 +188,28 @@ export function AgentRecommendation({
                 </ol>
               </div>
               <div className="uncertainties">
-                <h3>{t('Uncertainties')}</h3>
-                {agent.recommendation.uncertainties.length ? (
-                  <ul>
-                    {agent.recommendation.uncertainties.map((item, index) => (
-                      <li key={index}>{translate(item)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>{t('No uncertainties recorded by this run.')}</p>
-                )}
+                <section
+                  id="agent-uncertainties"
+                  className="agent-uncertainties"
+                  aria-labelledby="agent-uncertainties-title"
+                  tabIndex={-1}
+                >
+                  <div className="uncertainty-heading">
+                    <h3 id="agent-uncertainties-title">{t('Uncertainties to review')}</h3>
+                    <span className="overview-count">
+                      {agent.recommendation.uncertainties.length}
+                    </span>
+                  </div>
+                  {agent.recommendation.uncertainties.length ? (
+                    <ol className="uncertainty-list" aria-label={t('Recorded uncertainties')}>
+                      {agent.recommendation.uncertainties.map((item, index) => (
+                        <li key={index}>{translate(item)}</li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p>{t('No uncertainties recorded by this run.')}</p>
+                  )}
+                </section>
                 <h3>{t('Tools used')}</h3>
                 <ul className="tool-list">
                   {agent.tools_used.map((tool) => (

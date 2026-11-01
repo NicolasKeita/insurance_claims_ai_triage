@@ -87,7 +87,7 @@ describe('Progressive claim review', () => {
     view.audit.evidence_ids = [`knowledge:${sourceId}`];
     view.knowledge.data!.sources[0].chunk_id = sourceId;
     const { container } = render(<ReviewConsole view={view} />);
-    expect(screen.getByRole('tab', { name: 'System results' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Analysis results' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
@@ -105,7 +105,7 @@ describe('Progressive claim review', () => {
     const view = fullReview();
     const original = JSON.stringify(view);
     render(<ReviewConsole view={view} scenarioTitle="Front collision" />);
-    expect(screen.getByRole('heading', { name: 'What the system found' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Analysis results' })).toBeVisible();
     expect(screen.getByText(view.investigation.data!.signals[0].explanation)).toBeVisible();
     expect(
       screen.queryByText(view.agent.data!.recommendation!.case_summary),
@@ -132,7 +132,7 @@ describe('Progressive claim review', () => {
     view.investigation.data!.signals = [];
     const original = JSON.stringify(view);
     render(<ReviewConsole view={view} />);
-    expect(screen.getByRole('heading', { name: 'What the system found' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Analysis results' })).toBeVisible();
     expect(screen.getByText(view.agent.data!.recommendation!.case_summary)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Understand the recommendation' })).toBeVisible();
     expect(JSON.stringify(view)).toBe(original);
@@ -196,13 +196,13 @@ describe('Progressive claim review', () => {
       'false',
     );
     expect(screen.queryByRole('region', { name: 'Documents' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'System results' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Analysis results' }));
     expect(screen.queryByRole('region', { name: 'Visual Evidence' })).not.toBeInTheDocument();
   });
 
   it('supports keyboard navigation between the optional detail tabs', async () => {
     render(<ReviewConsole view={fullReview()} />);
-    screen.getByRole('tab', { name: 'System results' }).focus();
+    screen.getByRole('tab', { name: 'Analysis results' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveFocus();
     expect(screen.getByRole('tab', { name: 'Evidence' })).toHaveAttribute('aria-selected', 'true');
@@ -210,7 +210,7 @@ describe('Progressive claim review', () => {
     expect(screen.getByRole('tab', { name: 'Technical details' })).toHaveFocus();
     expect(screen.getByRole('region', { name: 'ML Triage' })).toBeVisible();
     await userEvent.keyboard('{Home}');
-    expect(screen.getByRole('tab', { name: 'System results' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Analysis results' })).toHaveFocus();
     expect(screen.queryByRole('region', { name: 'ML Triage' })).not.toBeInTheDocument();
   });
 

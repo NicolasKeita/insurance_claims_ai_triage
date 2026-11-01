@@ -21,8 +21,8 @@ language; changing language does not reload the claim or run an assessment.
 
 Visitors land directly on a prepared case; no initial choice or claim ID is
 required. When present, the front collision case is the default. The numbered
-**System results → Evidence** tabs guide exploration. Beside the source photo,
-**What the system found** shows the first recorded review signal and the
+**Analysis results → Evidence** tabs guide exploration. Beside the source photo,
+**Analysis results** shows the first recorded review signal and the
 recommended next step; **Understand the recommendation** opens its full rationale
 and uncertainties. **Check the photo evidence** opens the recorded visual
 observations and overlays. When no review signal is recorded, an available,
@@ -54,6 +54,8 @@ Additional captures: [generated workflow in the console](docs/images/step33-gene
 [investigation signals](docs/images/step33-investigation-signals.jpg),
 [visual evidence](docs/images/step33-visual-evidence.jpg),
 [agent recommendation](docs/images/step33-agent-recommendation.jpg).
+
+[Direct access to the recorded uncertainties](docs/images/step33-uncertainties-focus-fr.jpg).
 
 Translations live in [fr.toml](frontend/locales/fr.toml) and
 [en.toml](frontend/locales/en.toml). Both use a `[messages]` table with matching

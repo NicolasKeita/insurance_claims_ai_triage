@@ -114,7 +114,7 @@ export function CaseOverview({
         />
         <div className="overview-review-summary">
           <section className="overview-next-step" aria-labelledby="overview-result-title">
-            <h2 id="overview-result-title">{t('What the system found')}</h2>
+            <h2 id="overview-result-title">{t('Analysis results')}</h2>
             {mainSignal ? (
               <p className="overview-result-text">{translate(mainSignal.explanation)}</p>
             ) : recommendation?.case_summary ? (
@@ -265,7 +265,11 @@ export function CaseOverview({
                 )}
               </p>
             </div>
-            <button type="button" className="overview-link" onClick={() => onOpenDetails('agent')}>
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => onOpenDetails('agent-uncertainties')}
+            >
               {t('View uncertainties')}
               <span aria-hidden="true">↗</span>
             </button>
