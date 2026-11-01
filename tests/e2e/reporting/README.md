@@ -329,10 +329,10 @@ sur le capot alors que seul le pare-chocs avant est déclaré. Ce résultat a é
 défini pour des détecteurs simulés. Le test retire explicitement les images
 annotées de référence d'une copie du scénario, puis demande une évaluation réelle.
 
-**Résultat attendu :** l'analyse visuelle ne peut pas être exécutée et le
-scénario reste non vérifié complètement, avec une explication sur l'absence
-d'image de référence. Aucun
-signal de dommage supplémentaire vu sur une photo ne doit être produit.
+**Résultat attendu :** la préparation du dossier est refusée avec une explication
+sur l'absence d'image de référence. Le scénario est en échec et l'analyse visuelle
+n'est pas exécutée. Aucun signal de dommage supplémentaire vu sur une photo ne
+doit être produit. Le test pytest réussit quand il constate ce refus attendu.
 
 **Erreur à éviter :** présenter le dommage prévu par un scénario de démonstration
 comme un dommage réellement observé sur une photo, puis prétendre avoir validé
@@ -345,9 +345,16 @@ Une copie du scénario `visual_additional_damage` avec `external_assets=[]` est
 exécutée en mode `real` avec un `PreflightReport()` vide injecté. Le manifeste
 versionné conserve ses références visuelles annotées. La copie décrit un dommage
 `HOOD` pour des détecteurs factices alors que seul `FRONT_BUMPER` est déclaré.
-Le test attend un scénario `SKIP`, un composant `vision=SKIP` avec un motif contenant
-`No annotated visual reference images configured`, `observation.vision=None` et
-l'absence du signal `VISUAL_ADDITIONAL_DAMAGE`.
+Le préflight vide contourne le contrôle habituel des prérequis. La matérialisation
+du dossier refuse alors l'absence d'images annotées avant tout appel aux détecteurs ;
+elle ne remplace pas ces images par la géométrie du scénario déterministe.
+
+Le test attend un scénario `FAIL` et un composant `claim=FAIL` avec un motif contenant
+`No annotated visual reference images configured`. Le composant `vision` reste
+`SKIP` avec le motif `Claim loading failed`, `observation.vision` reste `None` et
+le signal `VISUAL_ADDITIONAL_DAMAGE` est absent. Les erreurs et les composants sont
+affichés si le statut global diffère de l'échec attendu. Le `FAIL` du scénario
+correspond ici au refus contrôlé que le test pytest doit vérifier pour réussir.
 
 Aucun détecteur réel n'est évalué et aucune qualité de détection n'est mesurée.
 

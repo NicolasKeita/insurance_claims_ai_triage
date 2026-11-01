@@ -48,10 +48,13 @@ def test_fake_visual_golden_labels_are_not_reused_as_real_image_ground_truth(tmp
     config = RealEvaluationConfig(fixture_dir=tmp_path / "fixtures")
     pipeline = RealClaimsEvaluationPipeline(config, PreflightReport())
     report = evaluate_scenarios([scenario], pipeline, mode="real")
-    observed = report.results[0].observation
-    assert report.results[0].status == "SKIP"
+    result = report.results[0]
+    observed = result.observation
+    assert result.status == "FAIL", {"errors": result.errors, "components": result.component_results}
+    assert observed.components["claim"].status == "FAIL"
+    assert "No annotated visual reference images configured" in observed.components["claim"].reason
     assert observed.components["vision"].status == "SKIP"
-    assert "No annotated visual reference images configured" in observed.components["vision"].reason
+    assert observed.components["vision"].reason == "Claim loading failed"
     assert observed.vision is None
     assert "VISUAL_ADDITIONAL_DAMAGE" not in observed.signals
 
