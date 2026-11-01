@@ -1,88 +1,73 @@
-# Console Docker
+# Démo statique Docker
 
-Le `compose.yaml` à la racine regroupe PostgreSQL, Qdrant, le backend (`api`)
-et le frontend de démonstration (`frontend_demo`).
-Le profil `console` ajoute les deux derniers services. L'API Docker consulte les
-analyses exportées ; elle ne lance aucun modèle et ne se connecte pas aux bases.
-Le backend complet `api.main:app` reste disponible dans l'environnement Python.
+Le service `frontend_demo` construit la démo et sert uniquement ses fichiers
+statiques dans Nginx. Les quatre dossiers, résultats enregistrés, PDF synthétiques
+professionnels et images sont inclus dans l'image. Aucun backend, montage
+d'archives, modèle, PostgreSQL ou Qdrant n'est nécessaire pour la consulter.
 
 ## Démarrer
 
-Prérequis : Docker Desktop avec le moteur Linux actif et un export existant dans
-`analysis_results/`, contenant `manifest.json` et ses sous-dossiers. Les exports
-ne sont pas versionnés ; sur un autre ordinateur, copier la collection complète
-ou un sous-dossier d'analyse autonome avant de lancer les conteneurs.
-Python, Node.js et une `.venv` ne sont pas nécessaires sur l'ordinateur hôte.
-
-Depuis la racine du projet :
+Depuis la racine du projet, avec Docker Desktop et son moteur Linux actifs :
 
 ```powershell
-# Console seule : frontend et API, sans démarrer PostgreSQL ni Qdrant.
 docker compose up --build -d frontend_demo
 ```
 
-Ouvrir **http://localhost:8080**. Nginx sert le frontend compilé et transmet les
-requêtes `/v1/` à l'API interne. Les identifiants d'analyse dans les URLs restent
-conservés, y compris pour les PDF et photos. Le port 8000 de l'API n'est pas
-publié sur l'hôte. Les exports sont montés en lecture seule et conservés lors de
-l'arrêt ou de la reconstruction des conteneurs.
+Ouvrir **http://localhost:8080**. Cette commande démarre seulement `frontend_demo`.
+Python et Node.js ne sont pas nécessaires sur l'hôte. Ils sont utilisés pendant
+la construction ; seule la sortie `frontend/dist/` est copiée dans Nginx.
+L'interface lit des JSON locaux et ouvre les PDF/photos inclus dans le site.
+Aucune requête n'est transmise à `/v1/` et aucune analyse n'est exécutée.
 
-Pour démarrer aussi les services habituels PostgreSQL et Qdrant :
+```powershell
+$env:CLAIMS_REVIEW_PORT = '8081'
+docker compose up --build -d frontend_demo
+docker compose logs frontend_demo
+docker compose stop frontend_demo
+Remove-Item Env:CLAIMS_REVIEW_PORT -ErrorAction SilentlyContinue
+```
+
+Nginx s'exécute sans utilisateur root, avec un système de fichiers en lecture
+seule et `/tmp` séparé. `/readyz` vérifie sa disponibilité sans autre service.
+Les JSON et documents manquants produisent une réponse 404, sans renvoyer le
+HTML de l'application à leur place.
+
+## Actualiser les dossiers
+
+Le jeu statique versionné se trouve dans `frontend/public/demo/`. Une collection
+d'analyses synthétiques existante peut être exportée explicitement avec
+l'environnement Python du projet :
+
+```powershell
+.\.venv\Scripts\python.exe scripts/export_static_demo.py --source-dir analysis_results --output-dir frontend/public/demo --replace
+docker compose up --build -d frontend_demo
+```
+
+L'export préserve les archives originales et les résultats déjà calculés. Son
+manifeste distingue les copies PDF remises en forme des documents analysés à
+l'origine. Les pièces absentes restent absentes. Aucun benchmark ni modèle n'est
+lancé. La reconstruction de l'image embarque les nouvelles copies statiques.
+
+## API d'archives séparée
+
+Le service optionnel `api` conserve son fonctionnement : consultation en lecture
+seule d'une collection existante dans `analysis_results/`. Il n'est pas démarré
+par `frontend_demo`. `CLAIMS_ANALYSIS_DIR` sélectionne son dossier monté ; cette
+variable n'affecte pas la démo statique. Son port n'est pas publié par défaut.
+
+Le profil `console` permet toujours de démarrer explicitement tous ses services
+avec les bases :
 
 ```powershell
 docker compose --profile console up --build -d
 ```
 
-Cette commande démarre les quatre services. Elle ne relie pas l'API de lecture
-aux bases et ne lance ni migration, ni import, ni nouvelle analyse. Les services
-`postgres-test` et `qdrant-test` restent réservés au profil `test`.
+Cette commande requiert les archives pour l'API ; elle ne lance ni migration,
+import ni analyse. Les services `postgres-test` et `qdrant-test` restent dans le
+profil `test`. Le frontend connecté à une API se construit séparément avec
+`npm --prefix frontend run build` ; les paramètres existants de développement
+et de lancement Python restent disponibles.
 
-## Choisir le dossier ou le port
-
-```powershell
-$env:CLAIMS_ANALYSIS_DIR = 'C:\chemin\vers\mes-analyses'
-$env:CLAIMS_REVIEW_PORT = '8081'
-docker compose up --build -d frontend_demo
-```
-
-Le dossier choisi peut être une collection ou une seule analyse autonome. Il doit
-déjà exister. Un manifeste absent, vide ou illisible empêche le démarrage de
-l'API ; aucun exemple ni résultat n'est créé automatiquement. Une pièce absente
-reste signalée dans la revue. Pour revenir aux valeurs par défaut dans PowerShell :
-
-```powershell
-Remove-Item Env:CLAIMS_ANALYSIS_DIR -ErrorAction SilentlyContinue
-Remove-Item Env:CLAIMS_REVIEW_PORT -ErrorAction SilentlyContinue
-```
-
-## État, journaux et arrêt
-
-```powershell
-docker compose ps
-docker compose logs api frontend_demo
-# Recharger le catalogue après ajout d'un export :
-docker compose restart api
-# Arrêter uniquement la console, en laissant les bases telles quelles :
-docker compose stop frontend_demo api
-```
-
-L'API utilise `/readyz` pour sa disponibilité, sans charger de modèle. Nginx attend
-une API saine avant de démarrer et résout son nom Docker après sa recréation.
-Une panne de connexion produit le message « Backend indisponible » ; une erreur
-HTTP du backend conserve son statut et son explication.
-
-## Construction
-
-Le frontend est construit avec Node.js et Python 3.12 pour les traductions TOML,
-puis seuls ses fichiers compilés sont copiés dans Nginx. Le compilateur utilise
-`CLAIMS_I18N_PYTHON` dans l'image ; en développement local, la `.venv` du projet
-reste le choix par défaut.
-
-L'API utilise les contraintes FastAPI, Pydantic et SQLAlchemy déjà présentes dans
-`pyproject.toml` ; Uvicorn provient de l'extra FastAPI existant. L'image API
-n'installe pas les dépendances ML. Les modèles, données, exports, secrets, Git,
-métadonnées de packaging et environnements locaux sont exclus du contexte de
-construction. Les deux services
-s'exécutent sans utilisateur root, avec un système de fichiers en lecture seule
-et un répertoire temporaire séparé. Aucun téléchargement de modèle ni aucune
-inférence n'a lieu au démarrage.
+La démo peut aussi être construite sans Docker et hébergée depuis le seul
+dossier `frontend/dist/` ; voir le README principal pour les commandes et les
+préfixes d'URL.

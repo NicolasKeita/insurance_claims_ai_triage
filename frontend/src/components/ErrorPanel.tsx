@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n';
 import type { RequestFailure } from '../request';
+import { isStaticDemo } from '../assets';
 
 const backendCommand = String.raw`$env:CLAIMS_REVIEW_DEMO = '1'
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000`;
@@ -8,6 +9,8 @@ docker compose logs api`;
 
 export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry: () => void }) {
   const { t } = useI18n();
+
+  if (isStaticDemo()) return <StaticErrorPanel error={error} onRetry={onRetry} />;
 
   const docker = import.meta.env.VITE_REVIEW_RUNTIME === 'docker';
   const offline = error.kind === 'backend-unavailable';
@@ -105,6 +108,32 @@ export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry:
       )}
       <button className="primary-button" type="button" onClick={onRetry}>
         {t(offline ? 'Retry connection' : 'Try again')}
+      </button>
+      <p className="retry-help">
+        {t('Retry refreshes the demo list and reopens the selected claim when available.')}
+      </p>
+    </section>
+  );
+}
+
+function StaticErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry: () => void }) {
+  const { t } = useI18n();
+  const missing = error.kind === 'claim-not-found';
+  return (
+    <section className="panel request-error" role="alert" aria-labelledby="request-error-title">
+      <p className="eyebrow">{t('Review unavailable')}</p>
+      <h1 id="request-error-title" tabIndex={-1}>
+        {t(missing ? 'Claim not found' : 'Demo unavailable')}
+      </h1>
+      <p>
+        {t(
+          missing
+            ? 'The selected analysis is not included in this demo. Check the link or choose an available case.'
+            : 'The prepared demo files could not be loaded. Reload the page or try again.',
+        )}
+      </p>
+      <button className="primary-button" type="button" onClick={onRetry}>
+        {t('Try again')}
       </button>
       <p className="retry-help">
         {t('Retry refreshes the demo list and reopens the selected claim when available.')}

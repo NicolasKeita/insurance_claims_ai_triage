@@ -1,4 +1,8 @@
 [messages]
+"Demo unavailable" = "Demo unavailable"
+"The case list could not be loaded. Try again." = "The case list could not be loaded. Try again."
+"The prepared demo files could not be loaded. Reload the page or try again." = "The prepared demo files could not be loaded. Reload the page or try again."
+"The selected analysis is not included in this demo. Check the link or choose an available case." = "The selected analysis is not included in this demo. Check the link or choose an available case."
 "The recommendation and points to verify" = "The recommendation and points to verify"
 "Analysis details" = "Analysis details"
 "Points to verify" = "Points to verify"

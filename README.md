@@ -79,7 +79,63 @@ summaries, signals, uncertainties and source excerpts. Original recommendation
 and source text remains available in collapsed details. Unrecognized source
 narratives keep their original text; adding another dataset may require new
 catalogue entries. IDs, model versions, filenames, evidence references and API
-payloads are preserved.
+payloads are preserved. Legacy scenario-labelled customer and policy references
+are displayed as stable fictional `CLI-…` and `AUTO-…` identifiers in demo mode.
+
+### Static portfolio demo
+
+The four prepared cases, professional synthetic PDFs, photographs and saved
+results are bundled in `frontend/public/demo/`. Build and serve the interactive
+demo without FastAPI, a database, model loading or an inference service:
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend run build:demo
+npm --prefix frontend run preview:demo
+```
+
+Open **http://localhost:4173**. The resulting **`frontend/dist/`** is a complete
+static website: publish its contents to an HTTP static server. Node.js and the
+project's Python 3.12+ `.venv` are needed at build time only (Python compiles the
+translation TOML). Neither is needed to serve the finished files. Opening
+`index.html` directly through `file://` is unsupported because the browser loads
+the bundled JSON files using HTTP. For development, use `npm --prefix frontend
+run dev:demo`.
+
+For hosting under a subdirectory, set the base during the build, for example:
+
+```powershell
+npm --prefix frontend run build:demo -- --base=/insurance-demo/
+```
+
+Case selection, `?claim=…&analysis=…` links, FR/EN, themes, photo overlays and PDF
+links work from the bundled files. No browser action runs a new analysis or
+uploads a document. `npm run build` / `npm run dev` retain the API-connected mode.
+
+To explicitly refresh the bundled cases from an existing synthetic analysis
+collection (never from a new benchmark run):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/export_static_demo.py --source-dir analysis_results --output-dir frontend/public/demo --replace
+```
+
+The exporter preserves the source archives, verifies their copied assets, keeps
+the recorded component results and creates professional presentation copies of
+synthetic PDFs. Its manifest records the source analysis and restyling provenance;
+the saved analysis was not recomputed. Missing documents remain missing. The
+bundled dataset is versioned so a clean checkout can build the same website.
+
+The reference claim PDFs can be regenerated independently from their preserved
+original content in `data/CLAIM-2026-00001/document_sources.json`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_claim_pdfs.py
+.\.venv\Scripts\python.exe scripts/create_scanned_fixture.py
+```
+
+The demo and OCR corpus share the same branded renderer. Logos, contact details
+and administrative text are fictional, visible and extractable; incident facts,
+repair amounts and deliberate inconsistencies remain unchanged.
 
 ### Minimal demo
 
@@ -158,20 +214,19 @@ endpoint and never starts a service automatically.
 ### Docker console
 
 The existing `compose.yaml` includes an optional **console** profile alongside
-PostgreSQL and Qdrant. With Docker Desktop running and an existing exported
-`analysis_results/manifest.json`, start only the frontend and archive API:
+PostgreSQL and Qdrant. With Docker Desktop running, start only the static demo:
 
 ```powershell
 docker compose up --build -d frontend_demo
 ```
 
-Open [Claim Review](http://localhost:8080). This builds the frontend inside Docker
-and mounts exported analyses read-only; host Python/Node installations, a GPU,
-PostgreSQL and Qdrant are not required for archive consultation. To start the
-four services together, use `docker compose --profile console up --build -d`.
-The archive API remains read-only in either case. Existing database volumes and
-test profiles keep their configuration. See [Docker instructions](deploy/docker/README.md)
-for alternate archive directories/ports, logs and stopping only the console.
+Open [Claim Review](http://localhost:8080). This builds and serves the bundled
+website in one Nginx container, with no API dependency or archive mount. Host
+Python/Node installations, a GPU, PostgreSQL and Qdrant are not required. The
+optional `api` service remains available for the API-connected console and
+existing archives; database volumes and test profiles keep their configuration.
+See [Docker instructions](deploy/docker/README.md) for ports, logs and the
+separate archive API.
 
 ### Autonomous analysis exports
 

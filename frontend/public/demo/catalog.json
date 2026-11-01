@@ -1,0 +1,22 @@
+[
+  {
+    "claim_id": "E2E-COHERENT-0001",
+    "title": "Documents cohérents · Renault Clio",
+    "description": "Archived analysis ANALYSIS-419a5af4c528; results and copied source files."
+  },
+  {
+    "claim_id": "E2E-QUOTE-0001",
+    "title": "Dommages supplémentaires du devis · Renault Clio",
+    "description": "Archived analysis ANALYSIS-de48e08a0b64; results and copied source files."
+  },
+  {
+    "claim_id": "E2E-MISSING-0001",
+    "title": "Documents manquants · Renault Clio",
+    "description": "Archived analysis ANALYSIS-f0bea3807d94; results and copied source files."
+  },
+  {
+    "claim_id": "E2E-VISUAL-0001",
+    "title": "Dommages visuels supplémentaires · Renault Clio",
+    "description": "Archived analysis ANALYSIS-a0f4747edf8c; results and copied source files."
+  }
+]

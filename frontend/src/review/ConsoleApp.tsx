@@ -4,7 +4,9 @@ import type { FormEvent } from 'react';
 import { ErrorPanel } from '../components/ErrorPanel';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LanguageToggle } from '../components/LanguageToggle';
-import { fetchJson, isAbortError, requestFailure } from '../request';
+import { isAbortError, requestFailure } from '../request';
+import { appBaseUrl, isStaticDemo } from '../assets';
+import { getClaimReview, getDemoClaims } from '../reviewData';
 import type { RequestFailure } from '../request';
 import type { DemoClaim, ReviewView } from '../types';
 import { ReviewConsole } from './ReviewWorkspace';
@@ -40,7 +42,6 @@ export default function App() {
       selection.searchParams.delete('analysis');
       window.history.replaceState(null, '', selection);
     }
-    const analysisQuery = analysis ? `?analysis=${encodeURIComponent(analysis)}` : '';
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
@@ -48,13 +49,7 @@ export default function App() {
     setError(null);
     setLoading(true);
     try {
-      const result = await fetchJson<ReviewView>(
-        `/v1/claims/${encodeURIComponent(trimmed)}/review${analysisQuery}`,
-        {
-          signal: request.signal,
-          resource: 'claim',
-        },
-      );
+      const result = await getClaimReview(trimmed, analysis, request.signal);
       if (!request.signal.aborted) {
         setView(result);
         const url = new URL(window.location.href);
@@ -86,10 +81,7 @@ export default function App() {
       let catalogError: RequestFailure | null = null;
       let claims: DemoClaim[] = [];
       try {
-        claims = await fetchJson<DemoClaim[]>('/v1/review/demo-claims', {
-          signal: controller.signal,
-          resource: 'catalog',
-        });
+        claims = await getDemoClaims(controller.signal);
         if (!controller.signal.aborted) {
           setDemoClaims(claims);
           setDemoUnavailable(false);
@@ -163,7 +155,7 @@ export default function App() {
         {t('Skip to claim review')}
       </a>
       <aside className="sidebar guided-sidebar" aria-label={t('Review workspace')}>
-        <a className="brand" href="/" aria-label={t('Insurance AI home')}>
+        <a className="brand" href={appBaseUrl()} aria-label={t('Insurance AI home')}>
           <span className="brand-mark" aria-hidden="true">
             ▦
           </span>
@@ -199,9 +191,11 @@ export default function App() {
           <p className="sidebar-home-note">
             {t(
               demoUnavailable
-                ? error?.kind === 'backend-unavailable'
-                  ? 'Start FastAPI to load the prepared cases.'
-                  : 'The case list could not be loaded. Check the connection details.'
+                ? isStaticDemo()
+                  ? 'The case list could not be loaded. Try again.'
+                  : error?.kind === 'backend-unavailable'
+                    ? 'Start FastAPI to load the prepared cases.'
+                    : 'The case list could not be loaded. Check the connection details.'
                 : demoClaims.length > 0
                   ? 'Choose a case to begin. You do not need a claim ID.'
                   : 'Open a stored claim using its claim ID.',

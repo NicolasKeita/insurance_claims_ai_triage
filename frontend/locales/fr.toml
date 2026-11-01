@@ -1,4 +1,8 @@
 [messages]
+"Demo unavailable" = "Démonstration indisponible"
+"The case list could not be loaded. Try again." = "La liste des dossiers n’a pas pu être chargée. Réessayez."
+"The prepared demo files could not be loaded. Reload the page or try again." = "Les fichiers de démonstration n’ont pas pu être chargés. Rechargez la page ou réessayez."
+"The selected analysis is not included in this demo. Check the link or choose an available case." = "L’analyse sélectionnée n’est pas incluse dans cette démonstration. Vérifiez le lien ou choisissez un dossier disponible."
 "The recommendation and points to verify" = "La recommandation et les points à vérifier"
 "Analysis details" = "Détails de l’analyse"
 "Points to verify" = "Points à vérifier"

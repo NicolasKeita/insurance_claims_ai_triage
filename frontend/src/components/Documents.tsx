@@ -1,6 +1,7 @@
 import { Badge, FactList, Section, Tags, humanize } from '../presentation';
 import { useI18n } from '../i18n';
 import type { ReviewView } from '../types';
+import { reviewAssetUrl } from '../assets';
 
 export function Documents({ view }: { view: ReviewView }) {
   const { t, translate } = useI18n();
@@ -16,10 +17,8 @@ export function Documents({ view }: { view: ReviewView }) {
           {documents.items.map((document, index) => {
             const extraction = document.extracted_data || documents.extractions?.[document.type];
             const documentUrl =
-              document.available &&
-              document.filename?.toLowerCase().endsWith('.pdf') &&
-              document.document_url?.startsWith('/v1/')
-                ? document.document_url
+              document.available && document.filename?.toLowerCase().endsWith('.pdf')
+                ? reviewAssetUrl(document.document_url, 'documents')
                 : null;
             return (
               <article className="document" key={`${document.type}-${index}`}>

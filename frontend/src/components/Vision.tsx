@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge, Metric, Section, Tags, anchor, humanize, percent } from '../presentation';
 import type { Polygon, ReviewView, VisionImage } from '../types';
 import { useI18n } from '../i18n';
+import { reviewAssetUrl } from '../assets';
 
 function polygonPath(polygon: Polygon): string {
   const ring = (points: Polygon['points']) =>
@@ -17,7 +18,7 @@ function EvidenceImage({ image }: { image: VisionImage }) {
   const { t, translate } = useI18n();
   const [failed, setFailed] = useState(false);
   const filename = image.filename || image.damage_assessment?.filename || t('Claim photograph');
-  const safeUrl = image.image_url?.startsWith('/v1/') ? image.image_url : null;
+  const safeUrl = reviewAssetUrl(image.image_url, 'images');
   if (!safeUrl || failed)
     return (
       <div className="photo-unavailable">

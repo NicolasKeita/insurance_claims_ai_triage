@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Badge, StateBadge, humanize } from '../presentation';
 import type { ReviewView, VisionImage } from '../types';
 import { recommendationConcerns } from '../review/recommendationConcerns';
+import { reviewAssetUrl } from '../assets';
 
 function PhotoFeature({
   images,
@@ -20,9 +21,9 @@ function PhotoFeature({
   const { t, translate } = useI18n();
 
   const [failed, setFailed] = useState<string[]>([]);
-  const photographs = images.filter(
-    (image) => image.image_url?.startsWith('/v1/') && !failed.includes(image.image_url),
-  );
+  const photographs = images
+    .map((image) => ({ ...image, image_url: reviewAssetUrl(image.image_url, 'images') }))
+    .filter((image) => image.image_url && !failed.includes(image.image_url));
   const photograph = photographs[0];
   const unavailableReason = failed.length
     ? 'The registered source photographs could not be loaded.'
