@@ -4,6 +4,7 @@ import { Badge, StateBadge, humanize, narrative, rationaleText } from '../presen
 import type { ReviewView, VisionImage } from '../types';
 import { recommendationConcerns } from '../review/recommendationConcerns';
 import { reviewAssetUrl } from '../assets';
+import { DamageComparison } from './DamageComparison';
 
 function PhotoFeature({
   images,
@@ -125,6 +126,7 @@ export function CaseOverview({
         <div className="overview-review-summary">
           <section className="overview-next-step" aria-labelledby="overview-result-title">
             <h2 id="overview-result-title">{t('Analysis results')}</h2>
+            <DamageComparison view={view} />
             {mainRationale && (
               <p className="overview-result-text">
                 {rationaleText(mainRationale.statement, mainRationale.evidence_ids)}

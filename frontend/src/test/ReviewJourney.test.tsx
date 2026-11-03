@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ReviewConsole } from '../App';
@@ -15,11 +15,11 @@ describe('Progressive claim review', () => {
       'fr',
       'L’évaluation d’investigation relève des dommages supplémentaires (enfoncement du capot)',
     ],
-  ] as const)('foregrounds the saved investigation rationale in %s', (locale, lead) => {
+  ] as const)('foregrounds the saved investigation rationale in %s', async (locale, lead) => {
     setLocale(locale, false);
     const view = visualReview as ReviewView;
     const original = JSON.stringify(view);
-    const { container } = render(<CaseOverview view={view} onOpenDetails={vi.fn()} />);
+    const { container } = render(<ReviewConsole view={view} />);
     const rationale = screen.getByText((text) => text.startsWith(lead));
     expect(rationale).toBeVisible();
     expect(rationale).toHaveClass('overview-result-text');
@@ -35,6 +35,19 @@ describe('Progressive claim review', () => {
     ).toBeTruthy();
     expect(container).not.toHaveTextContent('evidence_id');
     expect(container).not.toHaveTextContent('investigation:16062e46');
+    const comparisonLabel =
+      locale === 'fr' ? 'Dommages déclarés et supplémentaires' : 'Declared and additional damage';
+    const bumper = locale === 'fr' ? 'Pare-chocs avant' : 'Front bumper';
+    const hood = locale === 'fr' ? 'Capot' : 'Hood';
+    expect(within(screen.getByLabelText(comparisonLabel)).getByText(bumper)).toBeVisible();
+    expect(within(screen.getByLabelText(comparisonLabel)).getByText(hood)).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: locale === 'fr' ? 'Comprendre la recommandation' : 'Understand the recommendation',
+      }),
+    );
+    expect(within(screen.getByLabelText(comparisonLabel)).getByText(bumper)).toBeVisible();
+    expect(within(screen.getByLabelText(comparisonLabel)).getByText(hood)).toBeVisible();
     expect(JSON.stringify(view)).toBe(original);
   });
 

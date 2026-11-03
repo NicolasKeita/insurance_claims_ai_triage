@@ -401,6 +401,31 @@
   gap: 12px;
   min-width: 0;
 }
+.damage-comparison {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line-accent);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+}
+.damage-comparison > div {
+  display: grid;
+  gap: 4px;
+}
+.damage-comparison dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.damage-comparison dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
 .overview-next-step {
   padding: 15px 17px;
   border: 1px solid var(--line-accent);

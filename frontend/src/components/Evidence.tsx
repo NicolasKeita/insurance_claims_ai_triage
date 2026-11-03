@@ -15,6 +15,7 @@ import {
 import type { Evidence, ReviewView } from '../types';
 import { useI18n } from '../i18n';
 import { recommendationConcerns } from '../review/recommendationConcerns';
+import { DamageComparison } from './DamageComparison';
 
 export function KnowledgeEvidence({ view }: { view: ReviewView }) {
   const { locale, t, translate } = useI18n();
@@ -177,6 +178,7 @@ export function AgentRecommendation({
               </div>
               <Badge tone="human">{t('HUMAN REVIEW REQUIRED')}</Badge>
             </div>
+            <DamageComparison view={view} />
             <p className="case-summary">{narrative(agent.recommendation.case_summary)}</p>
             <div className="agent-columns">
               <div>
