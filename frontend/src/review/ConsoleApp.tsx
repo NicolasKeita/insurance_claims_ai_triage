@@ -214,7 +214,13 @@ export default function App() {
       </aside>
       <div className="main-shell">
         <div className="topbar">
-          <span>{t('Claim review')}</span>
+          {isStaticDemo() ? (
+            <a className="portfolio-return" href="/?projet=insurance-claims-ai#projets">
+              {t('Back to portfolio')}
+            </a>
+          ) : (
+            <span>{t('Claim review')}</span>
+          )}
           <div className="topbar-actions">
             <span className="workspace-status">{t('Prepared evidence')}</span>
             <LanguageToggle />

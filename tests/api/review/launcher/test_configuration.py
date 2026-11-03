@@ -12,15 +12,29 @@ def test_prepared_snapshot_commands_use_the_current_python_and_no_external_stack
     options, demo = configured(monkeypatch, tmp_path)
     monkeypatch.setenv("DATABASE_URL", "postgresql://unrelated-configuration")
     monkeypatch.setenv("CLAIMS_REVIEW_DEMO", "0")
+    monkeypatch.setenv("CLAIMS_REVIEW_RUNTIME", "static")
+    monkeypatch.setenv("CLAIMS_REVIEW_BASE_PATH", "/insurance-demo")
     env, jobs = settings.configuration(options)
     assert env["CLAIMS_REVIEW_DEMO"] == "1"
     assert env["CLAIMS_REVIEW_DEMO_DIR"] == str(demo.resolve())
     assert "DATABASE_URL" not in env
     assert settings.os.environ["DATABASE_URL"] == "postgresql://unrelated-configuration"
     assert settings.os.environ["CLAIMS_REVIEW_DEMO"] == "0"
+    assert env["CLAIMS_REVIEW_RUNTIME"] == "api"
+    assert env["CLAIMS_REVIEW_BASE_PATH"] == ""
+    assert settings.os.environ["CLAIMS_REVIEW_RUNTIME"] == "static"
+    assert settings.os.environ["CLAIMS_REVIEW_BASE_PATH"] == "/insurance-demo"
     assert jobs[0][0][:4] == [settings.sys.executable, "-m", "uvicorn", "api.main:app"]
     assert jobs[0][2].endswith("/v1/review/demo-claims")
-    assert jobs[1][0][0] == "node-local" and "--strictPort" in jobs[1][0]
+    assert jobs[1][0] == [
+        "node-local",
+        str(tmp_path / "frontend/tooling/run-next.mjs"),
+        "dev",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "5173",
+    ]
     assert all("/health" not in url for _, _, url in jobs)
 
 
@@ -58,17 +72,17 @@ def test_missing_manifest_does_not_prepare_or_overwrite_snapshots(monkeypatch, t
     assert not options.demo_dir.exists()
 
 
-@pytest.mark.parametrize("version", ["v20.19.0", "v22.11.0"])
+@pytest.mark.parametrize("version", ["v20.19.0", "v22.11.0", "v22.12.0", "v23.0.0"])
 def test_unsupported_node_has_an_explicit_prerequisite_message(monkeypatch, tmp_path, version):
     options, _ = configured(monkeypatch, tmp_path)
     monkeypatch.setattr(settings.subprocess, "check_output", lambda *args, **kwargs: version)
-    with pytest.raises(RuntimeError, match="Node.js 22.12"):
+    with pytest.raises(RuntimeError, match="Node.js 22.13"):
         settings.configuration(options)
 
 
 def test_missing_frontend_dependencies_are_not_installed_automatically(monkeypatch, tmp_path):
     options, _ = configured(monkeypatch, tmp_path)
-    (tmp_path / "frontend/node_modules/vite/bin/vite.js").unlink()
+    (tmp_path / "frontend/node_modules/next/dist/bin/next").unlink()
     with pytest.raises(RuntimeError, match="npm --prefix frontend ci"):
         settings.configuration(options)
 
@@ -77,6 +91,13 @@ def test_occupied_port_is_reported_without_touching_its_owner(monkeypatch, tmp_p
     options, _ = configured(monkeypatch, tmp_path)
     monkeypatch.setattr(settings.socket, "create_connection", lambda *args, **kwargs: nullcontext(object()))
     with pytest.raises(RuntimeError, match="Port 8000 is in use"):
+        settings.configuration(options)
+
+
+def test_missing_next_runner_is_reported_before_starting_servers(monkeypatch, tmp_path):
+    options, _ = configured(monkeypatch, tmp_path)
+    (tmp_path / "frontend/tooling/run-next.mjs").unlink()
+    with pytest.raises(RuntimeError, match="Next.js launcher missing"):
         settings.configuration(options)
 
 

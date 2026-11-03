@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import catalogues from 'virtual:review-locales';
+import translations from './generated/locales.json';
+
+const catalogues: Record<'fr' | 'en', Record<string, string>> = translations;
 
 export type Locale = 'fr' | 'en';
 export const LOCALE_STORAGE_KEY = 'claims-review-locale';
@@ -8,13 +10,15 @@ const listeners = new Set<() => void>();
 
 export function preferredLocale(): Locale {
   try {
+    const linkedLocale = new URLSearchParams(window.location.search).get('lang');
+    if (linkedLocale === 'fr' || linkedLocale === 'en') return linkedLocale;
     return window.localStorage.getItem(LOCALE_STORAGE_KEY) === 'en' ? 'en' : 'fr';
   } catch {
     return 'fr';
   }
 }
 
-let activeLocale = preferredLocale();
+let activeLocale: Locale = 'fr';
 
 export function currentLocale(): Locale {
   return activeLocale;
@@ -24,6 +28,13 @@ export function setLocale(locale: Locale, persist = true): void {
   activeLocale = locale === 'en' ? 'en' : 'fr';
   if (typeof document !== 'undefined') document.documentElement.lang = activeLocale;
   if (persist) {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('lang')) {
+        url.searchParams.set('lang', activeLocale);
+        window.history.replaceState(null, '', url);
+      }
+    }
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, activeLocale);
     } catch {

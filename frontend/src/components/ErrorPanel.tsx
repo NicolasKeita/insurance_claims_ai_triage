@@ -12,7 +12,7 @@ export function ErrorPanel({ error, onRetry }: { error: RequestFailure; onRetry:
 
   if (isStaticDemo()) return <StaticErrorPanel error={error} onRetry={onRetry} />;
 
-  const docker = import.meta.env.VITE_REVIEW_RUNTIME === 'docker';
+  const docker = process.env.NEXT_PUBLIC_REVIEW_RUNTIME === 'docker';
   const offline = error.kind === 'backend-unavailable';
   const heading = {
     'backend-unavailable': 'Backend unavailable',

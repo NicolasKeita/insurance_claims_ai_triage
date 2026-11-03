@@ -9,6 +9,9 @@
 !deploy/docker/**
 **/node_modules/
 **/dist/
+**/.next/
+**/out/
+**/styled-system/
 **/coverage/
 **/__pycache__/
 **/*.egg-info/

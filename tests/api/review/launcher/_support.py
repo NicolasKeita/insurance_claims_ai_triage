@@ -11,9 +11,12 @@ def configured(monkeypatch, tmp_path):
     demo = tmp_path / "artifacts/Demonstrations/review_demo"
     demo.mkdir(parents=True)
     (demo / "manifest.json").write_text("{}", encoding="utf-8")
-    vite = tmp_path / "frontend/node_modules/vite/bin/vite.js"
-    vite.parent.mkdir(parents=True)
-    vite.write_text("// controlled CLI placeholder", encoding="utf-8")
+    next_cli = tmp_path / "frontend/node_modules/next/dist/bin/next"
+    next_cli.parent.mkdir(parents=True)
+    next_cli.write_text("// controlled CLI placeholder", encoding="utf-8")
+    frontend_runner = tmp_path / "frontend/tooling/run-next.mjs"
+    frontend_runner.parent.mkdir(parents=True)
+    frontend_runner.write_text("// controlled Next.js runner", encoding="utf-8")
     monkeypatch.setattr(settings, "ROOT", tmp_path)
     monkeypatch.setattr(settings.importlib.util, "find_spec", lambda _: object())
     monkeypatch.setattr(settings.shutil, "which", lambda _: "node-local")
@@ -47,7 +50,7 @@ class Child:
 
 def controlled_run(monkeypatch):
     children, stopped = [], []
-    jobs = [(["controlled-api"], ".", "http://localhost/catalog"), (["controlled-vite"], ".", "http://localhost/")]
+    jobs = [(["controlled-api"], ".", "http://localhost/catalog"), (["controlled-next"], ".", "http://localhost/")]
 
     def spawn(command, **kwargs):
         child = Child(1001 + len(children))

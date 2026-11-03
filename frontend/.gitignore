@@ -1,3 +1,8 @@
 node_modules/
 dist/
+.next/
+out/
+styled-system/
+src/generated/
+next-env.d.ts
 *.tsbuildinfo

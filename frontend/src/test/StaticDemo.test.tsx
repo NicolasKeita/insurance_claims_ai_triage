@@ -49,8 +49,8 @@ function fileServer() {
 }
 
 beforeEach(() => {
-  vi.stubEnv('VITE_REVIEW_RUNTIME', 'static');
-  vi.stubEnv('BASE_URL', '/portfolio/');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_RUNTIME', 'static');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_BASE_PATH', '/portfolio/');
   vi.stubGlobal('scrollTo', vi.fn());
   window.history.replaceState(null, '', '/portfolio/');
 });

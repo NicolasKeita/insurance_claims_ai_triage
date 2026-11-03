@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { initializeTheme, THEME_STORAGE_KEY } from '../theme';
+import { themeBootstrap } from '../theme-bootstrap';
 
 beforeEach(() => {
   const values = new Map<string, string>();
@@ -92,8 +92,7 @@ describe('Console theme preference', () => {
 });
 
 describe('Theme before the application bundle loads', () => {
-  const html = readFileSync('index.html', 'utf8');
-  const script = html.match(/<script id="theme-bootstrap">([\s\S]*?)<\/script>/)?.[1];
+  const script = themeBootstrap;
 
   it.each(['light', 'dark', null])(
     'agrees with application startup for saved preference %s',

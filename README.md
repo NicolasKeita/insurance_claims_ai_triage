@@ -12,7 +12,7 @@ Decisions remain human. Review scores are not fraud probabilities.
 - **Data:** PostgreSQL 18, SQLAlchemy, Alembic and Qdrant 1.19.
 - **ML / documents:** scikit-learn, MLflow, PyTorch, Ultralytics, PyMuPDF and Tesseract.
 - **LLM / retrieval:** Ollama and Sentence Transformers.
-- **Frontend:** React 19, TypeScript 5.9 and Vite 7. Node.js 22.12+ and npm.
+- **Frontend:** Next.js 16, React 19, TypeScript 6 and Panda CSS. Node.js 22.13+ and npm.
 - **Build / checks:** setuptools, pytest, nk-python-style, Vitest, ESLint and Prettier.
 - **Version:** `pyproject.toml` is the application version source.
 
@@ -39,10 +39,20 @@ npm --prefix frontend run preview:demo
 ```
 
 - Open [localhost:4173](http://localhost:4173).
-- Python is required at build time to compile translations.
-- Serve `frontend/dist/` over HTTP. The built site needs no backend or models.
+- Serve `frontend/out/` over HTTP. The built site needs no backend, Python or models.
 - Development: `npm --prefix frontend run dev:demo`.
-- Subdirectory hosting: append `-- --base=/insurance-demo/` to the build command.
+- Next.js uses Webpack for development and builds; Panda generates the styles.
+- Subdirectory hosting: build with `CLAIMS_REVIEW_BASE_PATH=/insurance-demo`,
+  then publish the contents of `frontend/out/` at `/insurance-demo/`:
+
+```powershell
+$env:CLAIMS_REVIEW_BASE_PATH = '/insurance-demo'
+npm --prefix frontend run build:demo
+Remove-Item Env:CLAIMS_REVIEW_BASE_PATH
+```
+
+- The public demo reads synthetic cases and saved results. Visiting it does not
+  run inference or accept new claim documents.
 
 With Docker Desktop, build and serve the same demo without host Python or Node:
 
@@ -54,7 +64,7 @@ Open [localhost:8080](http://localhost:8080). See [Docker commands](deploy/docke
 
 ## Local snapshot demo
 
-Prepare document-only snapshots, then start FastAPI and Vite together:
+Prepare document-only snapshots, then start FastAPI and Next.js together:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/prepare_review_demo.py

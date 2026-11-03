@@ -5,7 +5,8 @@ import frenchIllustration from '../assets/review-workflow-fr-v2.png';
 /** The generated illustration explains the workflow; it is not claim evidence. */
 export function DemoFlow() {
   const { t, locale } = useI18n();
-  const workflowIllustration = locale === 'fr' ? frenchIllustration : englishIllustration;
+  const illustration = locale === 'fr' ? frenchIllustration : englishIllustration;
+  const workflowIllustration = typeof illustration === 'string' ? illustration : illustration.src;
 
   return (
     <figure className="demo-flow" aria-label={t('Illustrated review workflow')}>

@@ -1,5 +1,10 @@
 node_modules
 dist
+.next
+out
+styled-system
+src/generated
+next-env.d.ts
 package-lock.json
 *.tsbuildinfo
 .cache

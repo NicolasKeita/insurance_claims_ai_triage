@@ -18,8 +18,8 @@ function response(value: unknown, status = 200) {
 }
 
 beforeEach(() => {
-  vi.stubEnv('VITE_REVIEW_RUNTIME', 'static');
-  vi.stubEnv('BASE_URL', '/portfolio/');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_RUNTIME', 'static');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_BASE_PATH', '/portfolio/');
 });
 afterEach(() => {
   vi.unstubAllEnvs();

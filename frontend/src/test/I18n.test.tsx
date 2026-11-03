@@ -49,11 +49,13 @@ function LocaleProbe() {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.stubGlobal('localStorage', storage());
   initializeI18n();
 });
 
 afterEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -61,6 +63,18 @@ afterEach(() => {
 const plainSpaces = (value: string | null) => value?.replace(/[\u00a0\u202f]/g, ' ');
 
 describe('Local language preference', () => {
+  it('uses the portfolio language link and keeps it consistent after switching languages', async () => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
+    window.history.replaceState(null, '', '/insurance-demo/?lang=en&claim=DEMO-1');
+    initializeI18n();
+    render(<LocaleProbe />);
+    expect(screen.getByText('Available')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'FR' }));
+    expect(new URLSearchParams(window.location.search).get('lang')).toBe('fr');
+    expect(new URLSearchParams(window.location.search).get('claim')).toBe('DEMO-1');
+    expect(preferredLocale()).toBe('fr');
+  });
+
   it.each([null, 'unsupported'])(
     'starts in French without a supported saved preference (%s)',
     (saved) => {

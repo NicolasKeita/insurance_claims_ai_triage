@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appBaseUrl, reviewAssetUrl } from '../assets';
 
 beforeEach(() => {
-  vi.stubEnv('VITE_REVIEW_RUNTIME', 'static');
-  vi.stubEnv('BASE_URL', '/portfolio/');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_RUNTIME', 'static');
+  vi.stubEnv('NEXT_PUBLIC_REVIEW_BASE_PATH', '/portfolio/');
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -45,7 +45,7 @@ describe('Local static evidence URLs', () => {
   });
 
   it('retains registered API asset links with analysis selection in API mode', () => {
-    vi.stubEnv('VITE_REVIEW_RUNTIME', 'api');
+    vi.stubEnv('NEXT_PUBLIC_REVIEW_RUNTIME', 'api');
     const url = '/v1/claims/CLAIM/review/documents/claim.pdf?analysis=ANALYSIS-01';
     expect(reviewAssetUrl(url, 'documents')).toBe(url);
     expect(reviewAssetUrl('/v1/../../outside/claim.pdf', 'documents')).toBeNull();

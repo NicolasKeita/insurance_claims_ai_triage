@@ -1,9 +1,11 @@
 # Démo statique Docker
 
 - Prérequis : Docker Desktop avec moteur Linux.
-- Build : Node.js 24 et Python 3.12 dans Docker. Serveur : Nginx.
+- Build : Next.js/Webpack et Panda CSS avec Node.js 24 dans Docker. Serveur : Nginx.
 - Les quatre cas, PDF, photos et résultats sont embarqués depuis `frontend/public/demo/`.
 - Aucun backend ni modèle requis. Python et Node inutiles sur l'hôte.
+- L'export Next.js `frontend/out/` est servi à la racine ; les fichiers générés
+  sous `/_next/static/` sont conservés avec leurs noms versionnés.
 
 ## Démarrer
 

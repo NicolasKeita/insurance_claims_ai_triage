@@ -1,17 +1,16 @@
 import { useI18n } from '../i18n';
-import { useState } from 'react';
-import { applyTheme, currentTheme } from '../theme';
+import { useSyncExternalStore } from 'react';
+import { applyTheme, currentTheme, subscribeTheme } from '../theme';
 
 export function ThemeToggle() {
   const { t } = useI18n();
 
-  const [theme, setTheme] = useState(currentTheme);
+  const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => 'dark');
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
   const label = t(nextTheme === 'light' ? 'Use light mode' : 'Use dark mode');
 
   function toggle() {
     applyTheme(nextTheme);
-    setTheme(nextTheme);
   }
 
   return (

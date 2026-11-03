@@ -1,11 +1,11 @@
 export function isStaticDemo(): boolean {
-  return import.meta.env.VITE_REVIEW_RUNTIME === 'static';
+  return process.env.NEXT_PUBLIC_REVIEW_RUNTIME === 'static';
 }
 
 export function appBaseUrl(): string {
-  const base = new URL(import.meta.env.BASE_URL || '/', window.location.href);
-  if (base.origin !== window.location.origin || base.search || base.hash) return '/';
-  return base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
+  const base = process.env.NEXT_PUBLIC_REVIEW_BASE_PATH || '';
+  if (base && !/^\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\/?$/.test(base)) return '/';
+  return base.endsWith('/') ? base : `${base}/`;
 }
 
 function safeSegments(path: string): string[] | null {

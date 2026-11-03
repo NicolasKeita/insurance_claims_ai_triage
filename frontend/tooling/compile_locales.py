@@ -1,4 +1,4 @@
-"""Parse complete TOML catalogues with Python's standard library for Vite."""
+"""Validate frontend TOML catalogues with Python's standard library."""
 
 import json
 import re

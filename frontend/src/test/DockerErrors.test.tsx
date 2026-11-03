@@ -6,7 +6,7 @@ import { setLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { RequestFailure } from '../request';
 
-beforeEach(() => vi.stubEnv('VITE_REVIEW_RUNTIME', 'docker'));
+beforeEach(() => vi.stubEnv('NEXT_PUBLIC_REVIEW_RUNTIME', 'docker'));
 afterEach(() => vi.unstubAllEnvs());
 
 describe('Docker connection guidance', () => {

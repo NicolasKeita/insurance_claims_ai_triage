@@ -23,20 +23,30 @@ def configuration(options):
         raise RuntimeError("Use the project's installed .venv Python; application dependencies are required.")
     node = shutil.which("node")
     if node is None:
-        raise RuntimeError("Node.js 22.12+ is required. Install Node.js, then reopen this terminal.")
+        raise RuntimeError("Node.js 22.13+ is required. Install Node.js, then reopen this terminal.")
     version = subprocess.check_output([node, "--version"], text=True).strip().removeprefix("v")
-    if tuple(map(int, version.split(".")[:2])) < (22, 12):
-        raise RuntimeError("Node.js 22.12+ is required by the frontend.")
-    vite = ROOT / "frontend/node_modules/vite/bin/vite.js"
-    if not vite.is_file():
+    major, minor = map(int, version.split(".")[:2])
+    if not (major == 22 and minor >= 13 or major >= 24):
+        raise RuntimeError("Node.js 22.13+ (22.x) or 24+ is required by the frontend.")
+    next_cli = ROOT / "frontend/node_modules/next/dist/bin/next"
+    if not next_cli.is_file():
         raise RuntimeError("Frontend dependencies missing. Run: npm --prefix frontend ci")
+    frontend_runner = ROOT / "frontend/tooling/run-next.mjs"
+    if not frontend_runner.is_file():
+        raise RuntimeError("Frontend Next.js launcher missing. Restore frontend/tooling/run-next.mjs.")
     if options.frontend_port == 8000 or not 1 <= options.frontend_port <= 65535:
         raise RuntimeError("Choose a frontend port between 1 and 65535 other than the API's port 8000.")
     _available_ports((8000, options.frontend_port))
-    env = {**os.environ, "CLAIMS_REVIEW_DEMO": "1", "CLAIMS_REVIEW_DEMO_DIR": str(demo)}
+    env = {
+        **os.environ,
+        "CLAIMS_REVIEW_DEMO": "1",
+        "CLAIMS_REVIEW_DEMO_DIR": str(demo),
+        "CLAIMS_REVIEW_RUNTIME": "api",
+        "CLAIMS_REVIEW_BASE_PATH": "",
+    }
     env.pop("DATABASE_URL", None)
     api = [sys.executable, "-m", "uvicorn", "api.main:app", "--host", HOST, "--port", "8000"]
-    frontend = [node, str(vite), "--host", HOST, "--port", str(options.frontend_port), "--strictPort"]
+    frontend = [node, str(frontend_runner), "dev", "--hostname", HOST, "--port", str(options.frontend_port)]
     return env, [
         (api, ROOT, f"http://{HOST}:8000/v1/review/demo-claims"),
         (frontend, ROOT / "frontend", f"http://{HOST}:{options.frontend_port}/"),

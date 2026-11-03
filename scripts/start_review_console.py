@@ -1,4 +1,4 @@
-"""Start the prepared snapshot API and Vite together; Ctrl+C stops only these children."""
+"""Start the prepared snapshot API and Next.js together; Ctrl+C stops only these children."""
 
 import argparse
 import subprocess

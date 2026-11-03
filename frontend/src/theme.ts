@@ -1,6 +1,12 @@
 export type Theme = 'dark' | 'light';
 
 export const THEME_STORAGE_KEY = 'claims-review-theme';
+const themeEvent = 'claims-review-theme-change';
+
+export function subscribeTheme(listener: () => void): () => void {
+  window.addEventListener(themeEvent, listener);
+  return () => window.removeEventListener(themeEvent, listener);
+}
 
 export function preferredTheme(): Theme {
   try {
@@ -11,6 +17,7 @@ export function preferredTheme(): Theme {
 }
 
 export function currentTheme(): Theme {
+  if (typeof document === 'undefined') return 'dark';
   const theme = document.documentElement.dataset.theme;
   return theme === 'light' || theme === 'dark' ? theme : preferredTheme();
 }
@@ -28,6 +35,7 @@ export function applyTheme(theme: Theme, persist = true): void {
       // The current session remains usable when browser storage is unavailable.
     }
   }
+  window.dispatchEvent(new Event(themeEvent));
 }
 
 export function initializeTheme(): void {

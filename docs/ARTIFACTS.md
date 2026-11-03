@@ -32,7 +32,7 @@ ZIP peuvent faire l'objet d'un tri distinct lorsqu'ils ne sont plus nécessaires
 
 La démo statique utilise les cas, JSON, PDF, photographies et superpositions
 versionnés sous `frontend/public/demo/`. La commande
-`npm --prefix frontend run build:demo` les intègre au site dans `frontend/dist/`.
+`npm --prefix frontend run build:demo` les intègre à l’export Next.js dans `frontend/out/`.
 Le site construit ne lit pas `artifacts/` et ne charge aucun modèle.
 
 `artifacts/Demonstrations/static_demo/` contient des archives ZIP d'anciens exports.

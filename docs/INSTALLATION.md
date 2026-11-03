@@ -5,6 +5,26 @@ FiftyOne data preparation in **`.venv`**. The default is recorded in
 `.python-version`. Install the `dev`, `vision` and `cardd-hf` extras together.
 Pytest never installs dependencies, starts services or downloads checkpoints/models.
 
+## Web frontend
+
+The review console uses Next.js 16 with Webpack, React 19, TypeScript 6 and
+Panda CSS. Install Node.js 22.13+ (Node.js 24 LTS is suitable), then run:
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend run dev
+```
+
+This starts the frontend at [127.0.0.1:5173](http://127.0.0.1:5173).
+The API mode expects FastAPI on port 8000. The snapshot launcher in the
+[README](../README.md#local-snapshot-demo) starts both processes.
+
+For the independent public demo, run `npm --prefix frontend run build:demo`.
+Serve `frontend/out/` with `npm --prefix frontend run preview:demo`; no Python,
+backend, database or models are required to build or browse this static export.
+Use `CLAIMS_REVIEW_BASE_PATH=/insurance-demo` when publishing below the portfolio.
+Styles and translation catalogues are prepared by the frontend build itself.
+
 ## Windows with the current NVIDIA GPU
 
 Create the environment explicitly with Python 3.12, then use only its interpreter
