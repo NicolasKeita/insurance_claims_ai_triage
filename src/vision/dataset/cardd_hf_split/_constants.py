@@ -10,7 +10,7 @@ SPLIT_VERSION = "cardd_hf_split_v2"
 
 DEFAULT_RATIOS = {"train": 0.7, "val": 0.15, "test": 0.15}
 
-DEFAULT_SPLIT_MANIFEST_PATH = Path(__file__).resolve().parents[4] / "artifacts" / "vision" / "cardd_hf_split_v2.json"
+DEFAULT_SPLIT_MANIFEST_PATH = Path(__file__).resolve().parents[4] / "artifacts" / "Modeles" / "vision" / "cardd_hf_split_v2.json"
 
 ALGORITHM = "deterministic_multilabel_greedy_grouped_pair_balance_v2"
 

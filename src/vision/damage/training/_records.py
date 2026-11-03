@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from persistence.artifact_storage import relocate_path
 from vision.damage.training._artifacts import file_sha256, verify_class_names
 from vision.damage.training._config import DamageTrainingConfig
 
@@ -51,7 +52,7 @@ def base_checkpoint_identity(
 ) -> tuple[Path, str | None]:
     """Resolve the pretrained starting weights and their recorded digest."""
     source = recovery["base_checkpoint"] if recovery else getattr(model, "ckpt_path", config.base_model)
-    base_checkpoint = Path(source).resolve()
+    base_checkpoint = relocate_path(source).resolve()
     if recovery:
         return base_checkpoint, recovery["base_checkpoint_sha256"]
     return base_checkpoint, file_sha256(base_checkpoint) if base_checkpoint.is_file() else None

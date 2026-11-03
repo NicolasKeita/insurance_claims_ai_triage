@@ -105,7 +105,7 @@ def main() -> None:
         print(f"Persisted investigation: {stored.id}; policy={stored.result.policy_version}")
         print(f"Persisted anomaly: {anomaly.id}; model={anomaly.result.registered_model}")
         print("Historical signals persisted as exact evidence snapshots: verified")
-        output = root / "artifacts" / "step25"
+        output = root / "artifacts" / "Recherche_et_agents" / "historique_des_sinistres"
         output.mkdir(parents=True, exist_ok=True)
         (output / "history_response.json").write_text(json.dumps(history.json(), indent=2), encoding="utf-8")
         (output / "investigation_response.json").write_text(json.dumps(body, indent=2), encoding="utf-8")

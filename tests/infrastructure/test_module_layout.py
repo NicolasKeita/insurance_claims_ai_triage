@@ -24,9 +24,9 @@ def test_default_paths_still_use_repository_data_and_artifacts():
     assert DEFAULT_PREPARED_DIR == REPOSITORY / "data/external_prepared/cardd_yolo"
     assert DEFAULT_HF_PREPARED_DIR == REPOSITORY / "data/external_prepared/cardd_hf_v1"
     assert DEFAULT_DATASET_ROOT == REPOSITORY / "data/external/carparts-seg"
-    assert DEFAULT_MANIFEST_PATH == REPOSITORY / "artifacts/vision/cardd_dataset_manifest.json"
-    assert DEFAULT_HF_MANIFEST_PATH == REPOSITORY / "artifacts/vision/cardd_hf_dataset_manifest.json"
-    assert DEFAULT_SPLIT_MANIFEST_PATH == REPOSITORY / "artifacts/vision/cardd_hf_split_v2.json"
+    assert DEFAULT_MANIFEST_PATH == REPOSITORY / "artifacts/Modeles/vision/cardd_dataset_manifest.json"
+    assert DEFAULT_HF_MANIFEST_PATH == REPOSITORY / "artifacts/Modeles/vision/cardd_hf_dataset_manifest.json"
+    assert DEFAULT_SPLIT_MANIFEST_PATH == REPOSITORY / "artifacts/Modeles/vision/cardd_hf_split_v2.json"
 
 
 def test_directory_layout_respects_the_linter_subdirectory_limit():

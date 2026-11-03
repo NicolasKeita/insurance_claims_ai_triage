@@ -8,13 +8,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+from persistence.artifact_storage import relocate_path
+
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 
 
 def configuration(options):
-    default = os.environ.get("CLAIMS_REVIEW_DEMO_DIR", ROOT / "artifacts/review_demo")
-    demo = Path(options.demo_dir or default).resolve()
+    default = os.environ.get("CLAIMS_REVIEW_DEMO_DIR", ROOT / "artifacts/Demonstrations/review_demo")
+    demo = relocate_path(Path(options.demo_dir or default).resolve(), root=ROOT)
     if not (demo / "manifest.json").is_file():
         raise RuntimeError(f"Prepared demo manifest missing: {demo}. Run scripts/prepare_review_demo.py first.")
     if not all(importlib.util.find_spec(name) for name in ("uvicorn", "api")):

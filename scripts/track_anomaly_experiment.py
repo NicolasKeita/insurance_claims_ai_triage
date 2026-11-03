@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threshold-percentile", type=float, default=0.98)
     parser.add_argument("--n-estimators", type=int, default=200)
     parser.add_argument(
-        "--previous-analysis", type=Path, default=Path("artifacts/anomaly_v1")
+        "--previous-analysis", type=Path, default=Path("artifacts/Modeles/anomaly_v1")
     )
     return parser.parse_args()
 

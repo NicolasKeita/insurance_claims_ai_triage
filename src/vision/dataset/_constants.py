@@ -12,6 +12,6 @@ PREPARATION_VERSION = "cardd_yolo_segmentation_v1"
 
 DEFAULT_PREPARED_DIR = ROOT / "data" / "external_prepared" / "cardd_yolo"
 
-DEFAULT_MANIFEST_PATH = ROOT / "artifacts" / "vision" / "cardd_dataset_manifest.json"
+DEFAULT_MANIFEST_PATH = ROOT / "artifacts" / "Modeles" / "vision" / "cardd_dataset_manifest.json"
 
 PREPARED_MANIFEST_NAME = "cardd_dataset_manifest.json"

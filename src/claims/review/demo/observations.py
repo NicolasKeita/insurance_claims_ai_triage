@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 from agent.models import AgentRunResult
 from claims.consistency import ClaimConsistencyReport
@@ -24,6 +23,7 @@ from claims.review.models import ReviewSection
 from evaluation.deterministic.document_generation.identifiers import display_identifiers
 from evaluation.scenarios import load_scenarios
 from ml.inference import TriagePrediction
+from persistence.artifact_storage import relocate_path
 from retrieval.models import SimilarClaimsResponse
 
 
@@ -31,7 +31,7 @@ def import_observations(root, sources):
     scenarios = {scenario.scenario_id: scenario for scenario in load_scenarios()}
     entries = {}
     for source in sources:
-        source = Path(source).resolve()
+        source = relocate_path(source).resolve()
         paths = [source] if source.is_file() else sorted(source.rglob("observations/*.json"))
         if not paths:
             raise ValueError(f"No saved observations found under {source}")

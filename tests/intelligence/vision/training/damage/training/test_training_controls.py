@@ -24,7 +24,7 @@ def test_baseline_payload_keeps_the_historical_configuration_shape():
         "optimizer": "auto",
         "base_model": "yolo26n-seg.pt",
         "dataset_yaml": str(DEFAULT_TRAINING_CONFIG.parents[2] / "data/external_prepared/cardd_hf_v1/dataset.yaml"),
-        "output_dir": str(DEFAULT_TRAINING_CONFIG.parents[2] / "artifacts/vision/damage_segmentation_v1"),
+        "output_dir": str(DEFAULT_TRAINING_CONFIG.parents[2] / "artifacts/Modeles/vision/damage_segmentation_v1"),
         "experiment_name": "insurance-claims-vision-damage",
         "track_mlflow": False,
         "log_checkpoint": False,

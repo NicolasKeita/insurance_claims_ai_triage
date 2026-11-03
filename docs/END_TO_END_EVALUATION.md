@@ -272,27 +272,27 @@ From the repository root in PowerShell:
 .\.venv\Scripts\python.exe -m pytest -rs
 
 # Persist a deterministic benchmark run.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/evaluation/e2e_v2/deterministic
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --output-dir artifacts/Evaluations/e2e_v2/deterministic
 
 # Lightweight prerequisite checks only; no model loading or scenario execution.
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
 
 # Request the available real components; unavailable components remain explicit.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v2/real
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/Evaluations/e2e_v2/real
 
 # Run controlled claims against this project's local, isolated test services.
 # This uses the already installed model; it never pulls an Ollama model.
 $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
-.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --save-baseline --output-dir artifacts/evaluation/e2e_v2/isolated_real
+.\.venv\Scripts\python.exe -u scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --save-baseline --output-dir artifacts/Evaluations/e2e_v2/isolated_real
 
 # Select a case (repeat --scenario to select multiple).
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --scenario visual_non_detection --output-dir artifacts/evaluation/e2e_v2/non_detection
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode deterministic --scenario visual_non_detection --output-dir artifacts/Evaluations/e2e_v2/non_detection
 
 # A successful complete real-stack run may create the stable baseline.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --save-baseline --output-dir artifacts/evaluation/e2e_v2
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --save-baseline --output-dir artifacts/Evaluations/e2e_v2
 
 # Compare a later real run against that baseline.
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --baseline artifacts/evaluation/e2e_v2/baseline_summary.json --output-dir artifacts/evaluation/e2e_v2/current
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --baseline artifacts/Evaluations/e2e_v2/baseline_summary.json --output-dir artifacts/Evaluations/e2e_v2/current
 ```
 
 `--isolated-demo-stack` validates an explicitly selected test database, creates
@@ -424,7 +424,7 @@ From the repository root in PowerShell, using the installed
   --database-url "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test" `
   --qdrant-url "http://127.0.0.1:6335" `
   --cooldown-seconds 30 `
-  --output-dir artifacts/evaluation/e2e_v2/serial_damage960_conf035
+  --output-dir artifacts/Evaluations/e2e_v2/serial_damage960_conf035
 ```
 
 The suite enables vision only for cases requiring it: `visual_additional_damage`

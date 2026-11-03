@@ -25,5 +25,5 @@ def diagnostic_context(declared_damage):
         "ground_truth_available": False,
         "detection_truth_labels_loaded": False,
         "meaning": "Conditional integration diagnostic; does not establish facts about an insurance claim",
-        "existing_visualizations": "artifacts/environment_merge/gpu-smoke/run_20261015T135812_022547Z/summary.json",
+        "existing_visualizations": "artifacts/Historique_technique/environment_merge/gpu-smoke/run_20261015T135812_022547Z/summary.json",
     }

@@ -18,7 +18,7 @@ SMOKE_CASES = [
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/rag/generation_smoke.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/Recherche_et_agents/rag/generation_smoke.json")
     parser.add_argument("--debug", action="store_true", help="Explicit local query/debug logging; excerpts are printed by this demo script")
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)

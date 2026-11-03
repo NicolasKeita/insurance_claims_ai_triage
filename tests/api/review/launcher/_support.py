@@ -8,7 +8,7 @@ from scripts.review_console import runtime
 
 
 def configured(monkeypatch, tmp_path):
-    demo = tmp_path / "artifacts/review_demo"
+    demo = tmp_path / "artifacts/Demonstrations/review_demo"
     demo.mkdir(parents=True)
     (demo / "manifest.json").write_text("{}", encoding="utf-8")
     vite = tmp_path / "frontend/node_modules/vite/bin/vite.js"

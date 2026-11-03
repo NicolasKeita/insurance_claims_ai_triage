@@ -12,7 +12,7 @@ from retrieval.knowledge.indexing import KnowledgeIndexer
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recreate", action="store_true", help="Delete/rebuild the two configured, owned RAG collections")
-    parser.add_argument("--manifest", type=Path, default=ROOT / "artifacts/rag/knowledge_index_manifest.json")
+    parser.add_argument("--manifest", type=Path, default=ROOT / "artifacts/Recherche_et_agents/rag/knowledge_index_manifest.json")
     args = parser.parse_args()
     store = create_knowledge_store()
     try:

@@ -10,4 +10,4 @@ HF_PREPARATION_VERSION = "cardd_hf_yolo_segmentation_v1"
 
 DEFAULT_HF_PREPARED_DIR = ROOT / "data" / "external_prepared" / "cardd_hf_v1"
 
-DEFAULT_HF_MANIFEST_PATH = ROOT / "artifacts" / "vision" / "cardd_hf_dataset_manifest.json"
+DEFAULT_HF_MANIFEST_PATH = ROOT / "artifacts" / "Modeles" / "vision" / "cardd_hf_dataset_manifest.json"

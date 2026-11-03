@@ -32,7 +32,7 @@ def test_v2_preserves_deterministic_cases_and_declares_real_action_policies():
 def test_defaults_and_diagnostics_use_the_same_version_without_loading_services():
     config = RealEvaluationConfig.from_toml()
     assert DEFAULT_CONFIG == ROOT / "configs/evaluation/e2e_v2.toml"
-    assert config.fixture_dir == ROOT / "artifacts/evaluation/e2e_v2/fixtures"
+    assert config.fixture_dir == ROOT / "artifacts/Evaluations/e2e_v2/fixtures"
     assert [item.scenario_id for item in real_diagnostic_scenarios()] == [
         "reference_claim_documents",
         "local_cardd_multimodal_diagnostic",

@@ -24,7 +24,7 @@ DATASET = Path(
 )
 
 OUTPUT_DIR = Path(
-    "artifacts/triage_v1/analysis"
+    "artifacts/Modeles/triage_v1/analysis"
 )
 
 SEED = 42

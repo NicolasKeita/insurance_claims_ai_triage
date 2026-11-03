@@ -13,7 +13,7 @@ from retrieval.knowledge.models import KnowledgeSourceType
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--benchmark", type=Path, default=ROOT / "data/evaluation/rag_retrieval_v1.json")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/rag")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/Recherche_et_agents/rag")
     args = parser.parse_args()
     retriever = create_knowledge_retriever()
     try:

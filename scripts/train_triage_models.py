@@ -28,7 +28,7 @@ parser.add_argument(
     "--output-dir",
     type=Path,
     default=Path(
-        "artifacts/triage_v1"
+        "artifacts/Modeles/triage_v1"
     ),
 )
 

@@ -39,7 +39,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claim-id", default="CLAIM-2026-00001")
     parser.add_argument("--objective", default=SMOKE_OBJECTIVE)
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/agent/claims_agent_smoke.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/Recherche_et_agents/agent/claims_agent_smoke.json")
     parser.add_argument("--debug", action="store_true", help="Print structured planner/tool audit steps")
     args = parser.parse_args()
     engine = create_database_engine(DatabaseConfig.from_env())

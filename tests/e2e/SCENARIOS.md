@@ -685,7 +685,7 @@ pas établi ; le détail est expliqué ci-dessous.
 **Entrées et préparation prévues.** `external_vision_diagnostic: true`,
 source `external-local-CarDD-manifest`, modèles locaux `damage_vision` et
 `part_vision`, et actifs CarDD locaux. La sélection vient notamment de
-`artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json` et des
+`artifacts/Modeles/vision/damage_segmentation_v1/test_smoke/smoke_summary.json` et des
 résumés locaux configurés. Les images ne sont pas redistribuées. Le manifeste
 déclare `ground_truth_available: false` et exige de conserver identifiants de
 source et chemins locaux dans la trace. La déclaration et les dommages du

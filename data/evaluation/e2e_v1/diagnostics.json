@@ -40,7 +40,7 @@
       "files": [],
       "external_assets": [
         {
-          "source_manifest": "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json",
+          "source_manifest": "artifacts/Modeles/vision/damage_segmentation_v1/test_smoke/smoke_summary.json",
           "redistributed": false,
           "ground_truth_available": false,
           "provenance": "Existing local source selection from STEP29/STEP30; source IDs and local paths must be retained in the execution trace."

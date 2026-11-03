@@ -16,7 +16,7 @@ from vision.visualization import save_annotated_image
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claim-dir", type=Path, default=ROOT / "data/CLAIM-2026-00001")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/vision/reference_claim")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/Modeles/vision/reference_claim")
     parser.add_argument("--model", type=Path, help="Existing trained local .pt checkpoint")
     parser.add_argument("--confidence-threshold", type=float)
     args = parser.parse_args()

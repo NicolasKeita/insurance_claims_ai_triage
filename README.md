@@ -125,6 +125,11 @@ synthetic PDFs. Its manifest records the source analysis and restyling provenanc
 the saved analysis was not recomputed. Missing documents remain missing. The
 bundled dataset is versioned so a clean checkout can build the same website.
 
+Local generated files are grouped by purpose under `artifacts/`; see the
+[artifact directory guide](docs/ARTIFACTS.md) for their contents and migration.
+The static website builds from `frontend/public/demo/` and runs from
+`frontend/dist/`; it does not read `artifacts/`.
+
 The reference claim PDFs can be regenerated independently from their preserved
 original content in `data/CLAIM-2026-00001/document_sources.json`:
 
@@ -174,7 +179,7 @@ Inspect the overview, then open only the evidence that interests you. Other case
 and claim-ID entry remain optional.
 The source is `data/evaluation/e2e_v2/scenarios.json`, transformed centrally by
 the existing fixture builder; the console maintains no duplicate claim JSON.
-Preparation writes snapshots under ignored `artifacts/review_demo/`. Refreshing
+Preparation writes snapshots under ignored `artifacts/Demonstrations/review_demo/`. Refreshing
 the page only reads snapshots. Preparation refuses to overwrite an existing
 demo directory; use `--output-dir` and set `CLAIMS_REVIEW_DEMO_DIR` to that path
 to prepare a separate demonstration.
@@ -242,7 +247,7 @@ and physical copies of the available original PDFs and photos. Recorded visual
 annotations are embedded in the HTML; no model or service runs when it is opened.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/export_analysis_results.py --demo-dir artifacts/review_demo_step33_saved
+.\.venv\Scripts\python.exe scripts/export_analysis_results.py --demo-dir artifacts/Demonstrations/review_demo_step33_saved
 ```
 
 Existing fixture PDFs are copied where present. Use `--case-dir <original-case>`
@@ -279,9 +284,9 @@ benchmark run into a separate demo directory. For example, if this local run
 already exists:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/prepare_review_demo.py --output-dir artifacts/review_demo_saved --observations artifacts/evaluation/e2e_v2/serial_damage960_conf035/run_20261027_112250_854978
+.\.venv\Scripts\python.exe scripts/prepare_review_demo.py --output-dir artifacts/Demonstrations/review_demo_saved --observations artifacts/Evaluations/e2e_v2/serial_damage960_conf035/run_20261027_112250_854978
 $env:CLAIMS_REVIEW_DEMO = '1'
-$env:CLAIMS_REVIEW_DEMO_DIR = (Join-Path $PWD 'artifacts/review_demo_saved')
+$env:CLAIMS_REVIEW_DEMO_DIR = (Join-Path $PWD 'artifacts/Demonstrations/review_demo_saved')
 .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -295,16 +300,16 @@ snapshots, not new measurements. The repository redistributes no CarDD photos.
 For an already prepared directory, the same launcher starts both services:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/review_demo_saved
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/Demonstrations/review_demo_saved
 ```
 
 This workspace's richer four-case set is in
-`artifacts/review_demo_step33_saved`; pass that directory to `--demo-dir` to
+`artifacts/Demonstrations/review_demo_step33_saved`; pass that directory to `--demo-dir` to
 explore the saved recommendations and photo evidence without new inference.
 These ignored local artifacts must be prepared separately on another machine.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/review_demo_step33_saved
+.\.venv\Scripts\python.exe scripts/start_review_console.py --demo-dir artifacts/Demonstrations/review_demo_step33_saved
 ```
 
 Open the root console URL to start on the photo case. A previously copied URL
@@ -324,8 +329,8 @@ $env:QDRANT_URL = 'http://127.0.0.1:6333'
 $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
 $env:CLAIMS_LLM_MODEL = 'gemma3:4b'
 $env:CLAIMS_REVIEW_ASSET_ROOT = (Join-Path $PWD 'data')
-$env:DAMAGE_MODEL_PATH = (Join-Path $PWD 'artifacts/vision/damage_segmentation_v1/train/weights/best.pt')
-$env:PART_MODEL_PATH = (Join-Path $PWD 'artifacts/vision/vehicle_parts_v1/train/weights/best.pt')
+$env:DAMAGE_MODEL_PATH = (Join-Path $PWD 'artifacts/Modeles/vision/damage_segmentation_v1/train/weights/best.pt')
+$env:PART_MODEL_PATH = (Join-Path $PWD 'artifacts/Modeles/vision/vehicle_parts_v1/train/weights/best.pt')
 .\.venv\Scripts\python.exe -m alembic upgrade head
 # Run once on a new demonstration database; existing business IDs are preserved.
 .\.venv\Scripts\python.exe scripts/import_reference_claim.py
@@ -453,7 +458,7 @@ If needed, populate this cache deliberately before testing:
 
 Vision uses the existing local damage checkpoint; it needs no dataset and never
 downloads weights. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` remain optional overrides.
-Use normal pytest reporting, for example `pytest --junitxml=artifacts/pytest.xml`.
+Use normal pytest reporting, for example `pytest --junitxml=artifacts/Diagnostics_et_validation/Journaux_et_rapports/pytest.xml`.
 The vision case appears once in the same pytest/JUnit result. `--help`,
 `--markers` and `--collect-only` do not display the suite
 panel or check service prerequisites. See the `Final pytest developer experience`
@@ -528,7 +533,7 @@ while preserving exact sizes, default ratios **70% / 15% / 15%** and **seed 42**
 Images with identical encoded bytes, filename or filepath are grouped into one
 split, so exact duplicate photographs cannot leak between splits. Near-duplicate
 perceptual similarity is not automatically detected. The frozen manifest is
-`artifacts/vision/cardd_hf_split_v2.json`: source SHA, stable sample IDs,
+`artifacts/Modeles/vision/cardd_hf_split_v2.json`: source SHA, stable sample IDs,
 source/content/annotation fingerprints, classes, ratios, seed, split IDs,
 distributions and split version. Existing manifests are validated and reused;
 source or parameter mismatches fail instead of regenerating the same version.
@@ -542,7 +547,7 @@ be explicitly validated/reused; they are never silently regenerated as v2.
 Preparation applies those frozen IDs and writes image/label pairs and
 `dataset.yaml`. It validates class indices, normalized polygons, exact inventories,
 instance counts, source-to-prepared image hashes, split membership and label hashes.
-The portable manifest is `artifacts/vision/cardd_hf_dataset_manifest.json`, with a
+The portable manifest is `artifacts/Modeles/vision/cardd_hf_dataset_manifest.json`, with a
 copy named `cardd_dataset_manifest.json` in the prepared directory for shared
 training validation. `--converter native` requires no Ultralytics installation in
 the data environment; `auto` can use the compatible official COCO converter on
@@ -589,7 +594,7 @@ box/mask precision, recall, mAP50 and mAP50-95 and available per-class metrics;
 unavailable values stay null. Weak measured classes and distributions accompany
 global scores. **Metrics are evaluated on the project's deterministic held-out 422-image test split of the 2,816-image Hugging Face CarDD mirror, not on the official CarDD test split.** There are no official benchmark scores implied by these outputs.
 
-Generated artifacts live under `artifacts/vision/damage_segmentation_v1/`:
+Generated artifacts live under `artifacts/Modeles/vision/damage_segmentation_v1/`:
 `train/weights/best.pt`, `train/weights/last.pt`, `train/results.csv`,
 `train/results.png`, `training_progress.json`, `training_summary.json`,
 `test_metrics.json`, `per_class_metrics.csv`, bounded `error_examples/` and
@@ -616,7 +621,7 @@ Image validation includes decoding, format/size/dimensions and EXIF orientation.
 `resolve_image_assets()` and preserves per-image boxes, optional polygons and
 confidence. Repeated observations are not counted as unique physical damage.
 `check_claim_vision.py` saves annotated masks/boxes/classes/confidence and JSON
-under `artifacts/vision/reference_claim/` only after successful real inference.
+under `artifacts/Modeles/vision/reference_claim/` only after successful real inference.
 The reference JPEGs currently are empty placeholders. Debug images never replace
 the structured output. The claim-aware HTTP endpoint remains deferred because
 PostgreSQL filenames do not provide a physical claim storage root.
@@ -891,10 +896,10 @@ The last script uses FastAPI's HTTP TestClient against the real database,
 compares the real reference PDFs, supplies a clearly marked illustrative
 current anomaly input, and verifies the saved evidence snapshot. It appends
 one current anomaly and investigation per run. Use `--anomaly-model
-artifacts/anomaly_v1/anomaly_detector.joblib` to reuse the existing local trained
+artifacts/Modeles/anomaly_v1/anomaly_detector.joblib` to reuse the existing local trained
 detector, or `--registered-anomaly` with `MLFLOW_TRACKING_URI` to use the
 existing registered candidate. Neither option trains a model. Response JSON
-files are written under ignored `artifacts/step25/`.
+files are written under ignored `artifacts/Recherche_et_agents/historique_des_sinistres/`.
 
 Fixtures have reserved `DEMO-STEP25-HISTORY-*` IDs, synthetic location/product
 labels, six previous incidents at D-2/-15/-30/-90/-365/-400, plus same-day,
@@ -938,7 +943,7 @@ unmanaged collections raise an explicit error without deletion, including when
 two models share a dimension. Prefer a new collection such as
 `insurance_claims_similar_v2` when the representation/model changes, reindex it,
 then switch the API configuration and restart. The local reproducibility
-manifest is `artifacts/similar_claims/index_manifest.json`; it is not authoritative.
+manifest is `artifacts/Recherche_et_agents/similar_claims/index_manifest.json`; it is not authoritative.
 
 Eligibility is strictly `candidate.incident_date < current.incident_date`, and
 by default `candidate.claim_type == current.claim_type`. Both filters run in
@@ -964,7 +969,7 @@ python .\scripts\seed_historical_claims.py
 python .\scripts\seed_similar_claims.py
 python .\scripts\index_similar_claims.py
 python .\scripts\index_similar_claims.py # same UUIDs, same point count
-python .\scripts\check_similar_claims.py --output .\artifacts\similar_claims\demo_response.json
+python .\scripts\check_similar_claims.py --output .\artifacts\Recherche_et_agents\similar_claims\demo_response.json
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
 # In a second terminal:
 Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/similar?limit=5'
@@ -1120,7 +1125,7 @@ $answer = @{question='What is the collision deductible?'; source_type='POLICY'; 
 Invoke-RestMethod 'http://127.0.0.1:8000/v1/claims/CLAIM-2026-00001/knowledge/answer' -Method Post -ContentType 'application/json' -Body $answer
 ```
 
-The index manifest is `artifacts/rag/knowledge_index_manifest.json`. Repeat
+The index manifest is `artifacts/Recherche_et_agents/rag/knowledge_index_manifest.json`. Repeat
 upserts do not delete obsolete chunks; search ignores IDs absent from current
 sources. A manifest records this run's sources/chunks plus total stored point
 counts. Remove old versions/obsolete points with an explicitly controlled rebuild
@@ -1138,7 +1143,7 @@ five results. Unsupported queries are excluded from recall/MRR and separately
 report returned count, top score and empty-result rate. With no calibrated
 threshold, those are diagnostics, not unsupported-answer detection accuracy.
 Generation abstention is tested separately. Results are saved to
-`artifacts/rag/retrieval_metrics.json` and `retrieval_results.csv`. This small
+`artifacts/Recherche_et_agents/rag/retrieval_metrics.json` and `retrieval_results.csv`. This small
 synthetic benchmark compares configurations and cannot establish production
 quality; pytest imposes no semantic quality threshold.
 
@@ -1269,7 +1274,7 @@ Invoke-RestMethod "http://127.0.0.1:8000/v1/agent/runs/$($run.run_id)"
 
 The smoke script defaults to `CLAIM-2026-00001`, prints tools, iterations, evidence
 IDs, recommendation and uncertainties, and saves the terminal result under
-`artifacts/agent/claims_agent_smoke.json`. `--debug` prints the structured action
+`artifacts/Recherche_et_agents/agent/claims_agent_smoke.json`. `--debug` prints the structured action
 trace. `pytest -m unit` uses fake planners/finalizers/tools and needs no external
 services. PostgreSQL integrations are selected with `-m postgres` and use the
 dedicated test database automatically.
@@ -1283,7 +1288,7 @@ The independent Carparts-Seg model starts from COCO `yolo26n-seg.pt`. It shares
 the step29 image loader, normalized geometry, Ultralytics extraction helpers and
 training/evaluation orchestration. Preparation downloads only the official
 archive when explicitly requested, checks every supplied split and writes
-`artifacts/vision/carparts_dataset_manifest.json`. Imports and unit tests
+`artifacts/Modeles/vision/carparts_dataset_manifest.json`. Imports and unit tests
 never download images or weights.
 
 Run the explicit baseline from a CUDA-capable interpreter. The same interpreter
@@ -1378,7 +1383,7 @@ embeddings, Ollama and local model evaluation run through the dedicated script.
 .\.venv\Scripts\python.exe -m pytest tests/e2e -q
 .\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --preflight-only
 $env:OLLAMA_HOST = 'http://127.0.0.1:11434'
-.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/evaluation/e2e_v2/real
+.\.venv\Scripts\python.exe scripts/evaluate_end_to_end.py --mode real --isolated-demo-stack --database-url 'postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test' --qdrant-url 'http://127.0.0.1:6335' --llm-model gemma3:4b --include-vision --include-agent --include-rag --include-similar-claims --output-dir artifacts/Evaluations/e2e_v2/real
 ```
 
 The isolated mode validates the explicit test database and uses a temporary
@@ -1399,7 +1404,7 @@ To run all ten golden cases automatically with a 30-second pause between cases:
   --database-url "postgresql+psycopg://claims_test:claims_test@127.0.0.1:5434/insurance_claims_test" `
   --qdrant-url "http://127.0.0.1:6335" `
   --cooldown-seconds 30 `
-  --output-dir artifacts/evaluation/e2e_v2/serial_damage960_conf035
+  --output-dir artifacts/Evaluations/e2e_v2/serial_damage960_conf035
 ```
 
 Cases run in manifest order in separate child processes, with vision enabled only
@@ -1418,7 +1423,7 @@ The manifest is `data/evaluation/e2e_v2/scenarios.json`. Reports distinguish
 mandatory component leaves the run `PARTIAL`. The two empty reference JPEGs
 remain unchanged. Separate local vision diagnostics preserve asset/model
 provenance and do not imply golden-label accuracy. JSON/CSV artifacts and
-structured traces are saved under `artifacts/evaluation/e2e_v2/`.
+structured traces are saved under `artifacts/Evaluations/e2e_v2/`.
 
 In real mode, each golden case's `real_agent_action_policy` requires follow-up
 when the observed assessments contain one of the triggers above; otherwise its
@@ -1487,10 +1492,10 @@ Run from the repository with the existing `.venv`:
 .\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --preflight-only
 .\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py
 .\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --resume
-.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --document-type garage_quote --output-dir artifacts/evaluation/document_ocr_v1/quotes
-.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --variant scan_rotated_small --output-dir artifacts/evaluation/document_ocr_v1/rotated
-.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_03 --output-dir artifacts/evaluation/document_ocr_v1/one_scenario
-.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_01 --document-type claim_form --variant scan_clean --output-dir artifacts/evaluation/document_ocr_v1/one_case
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --document-type garage_quote --output-dir artifacts/Evaluations/document_ocr_v1/quotes
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --variant scan_rotated_small --output-dir artifacts/Evaluations/document_ocr_v1/rotated
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_03 --output-dir artifacts/Evaluations/document_ocr_v1/one_scenario
+.\.venv\Scripts\python.exe scripts/evaluate_document_robustness.py --scenario demo_01 --document-type claim_form --variant scan_clean --output-dir artifacts/Evaluations/document_ocr_v1/one_case
 ```
 
 Selections are repeatable and always run serially. Use a fresh output directory,
@@ -1505,7 +1510,7 @@ unavailable the status is `OCR benchmark: NOT EXECUTED` with exact reasons,
 unexecuted cases are excluded from aggregate scores, their text and stage
 measurements remain null, and the CLI returns 2.
 
-The default output is `artifacts/evaluation/document_ocr_v1/`: manifest,
+The default output is `artifacts/Evaluations/document_ocr_v1/`: manifest,
 `ground_truth.json`, `summary.json`, `per_document.csv`, `per_variant.csv`,
 `per_document_type.csv`, `critical_fields.csv`, raw text in `ocr_text/`,
 per-case JSON in `results/`, generated PDFs in `sources/`, and field/context

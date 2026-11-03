@@ -78,7 +78,7 @@ def build_parser():
         default=True,
         help="Stop on any incomplete scenario; safety stops always abort (default: enabled)",
     )
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/evaluation/e2e_v2/serial")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/Evaluations/e2e_v2/serial")
     parser.add_argument(
         "--dry-run",
         action="store_true",

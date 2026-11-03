@@ -10,7 +10,7 @@ place. Chaque expérience et chaque diagnostic utilisent un nouveau répertoire.
 Depuis la racine du dépôt, reprendre le chemin réellement utilisé pour la baseline :
 
 ```powershell
-$baseline = Get-Content .\artifacts\vision\damage_segmentation_v1\training_summary.json -Raw | ConvertFrom-Json
+$baseline = Get-Content .\artifacts\Modeles\vision\damage_segmentation_v1\training_summary.json -Raw | ConvertFrom-Json
 $env:DAMAGE_DATASET_YAML = $baseline.config.dataset_yaml
 if (-not (Test-Path -LiteralPath $env:DAMAGE_DATASET_YAML -PathType Leaf)) {
     throw "Dataset préparé introuvable. Renseigner DAMAGE_DATASET_YAML avec son emplacement actuel, sans le régénérer."
@@ -30,14 +30,14 @@ modifient ni le dataset ni les paramètres d'inférence de l'application.
 Vérifier d'abord les chemins, le checkpoint et la provenance, sans charger le modèle :
 
 ```powershell
-.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\vision\damage_diagnostics\baseline_val640_v1 --device 0 --check-only
+.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\Modeles\vision\damage_diagnostics\baseline_val640_v1 --device 0 --check-only
 ```
 
 Puis mesurer sur **VAL**, à 640 et à 960 pixels, avec le même checkpoint existant :
 
 ```powershell
-.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\vision\damage_diagnostics\baseline_val640_v1 --device 0 --operating-confidence 0.25
-.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\vision\damage_diagnostics\baseline_val960_v1 --device 0 --imgsz 960 --batch 4 --operating-confidence 0.25
+.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\Modeles\vision\damage_diagnostics\baseline_val640_v1 --device 0 --operating-confidence 0.25
+.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_v1.toml --output-dir .\artifacts\Modeles\vision\damage_diagnostics\baseline_val960_v1 --device 0 --imgsz 960 --batch 4 --operating-confidence 0.25
 ```
 
 Le second diagnostic teste une résolution d'inférence plus élevée **sans
@@ -90,7 +90,7 @@ Pour reproduire les mesures, utiliser la préparation de session ci-dessus et
 lancer trois fois le diagnostic avec le TOML `cardd_hf_yolo26n_seg_960_v2.toml`,
 `--imgsz 640 --batch 1 --device cpu`, puis `--operating-confidence 0.25`, `0.35`
 et `0.5`, dans trois nouveaux répertoires. Les rapports de cette comparaison sont
-dans `artifacts/vision/damage_diagnostics/nano960_v2_val640_conf025_20261026/`,
+dans `artifacts/Modeles/vision/damage_diagnostics/nano960_v2_val640_conf025_20261026/`,
 `nano960_v2_val640_conf035_20261026/` et `nano960_v2_val640_conf050_20261026/` ;
 le fichier `nano960_v2_val640_calibration_20261026.json` rassemble leur provenance,
 les comptes par classe et le critère de sélection. Les poids et métadonnées
@@ -125,9 +125,9 @@ la mémoire et le temps réels restent à vérifier.
 
 | Essai | Modèle | Image | Batch | Changement étudié | Répertoire de sortie |
 |---|---|---:|---:|---|---|
-| Résolution | YOLO26n-seg | 960 | 4 | Détails fins | `artifacts/vision/damage_segmentation_960_v2` |
-| Capacité | YOLO26s-seg | 640 | 4 | Modèle plus grand | `artifacts/vision/damage_segmentation_small_v2` |
-| Masques | YOLO26n-seg | 640 | 8 | `mask_ratio=2`, au lieu de 4 | `artifacts/vision/damage_segmentation_masks_v2` |
+| Résolution | YOLO26n-seg | 960 | 4 | Détails fins | `artifacts/Modeles/vision/damage_segmentation_960_v2` |
+| Capacité | YOLO26s-seg | 640 | 4 | Modèle plus grand | `artifacts/Modeles/vision/damage_segmentation_small_v2` |
+| Masques | YOLO26n-seg | 640 | 8 | `mask_ratio=2`, au lieu de 4 | `artifacts/Modeles/vision/damage_segmentation_masks_v2` |
 
 Lancer **un essai à la fois**, selon le diagnostic :
 
@@ -151,7 +151,7 @@ Ne pas employer `--resume` sur la baseline terminée. Cette option sert uniqueme
 Après un entraînement terminé, lancer le diagnostic du candidat, par exemple :
 
 ```powershell
-.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_960_v2.toml --output-dir .\artifacts\vision\damage_diagnostics\nano960_v2_val --device 0 --operating-confidence 0.25
+.\.venv\Scripts\python.exe .\scripts\diagnose_damage_segmentation.py --config .\configs\vision\cardd_hf_yolo26n_seg_960_v2.toml --output-dir .\artifacts\Modeles\vision\damage_diagnostics\nano960_v2_val --device 0 --operating-confidence 0.25
 ```
 
 Comparer aux diagnostics de baseline avec le même protocole. Regarder les trois

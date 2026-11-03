@@ -20,7 +20,7 @@ from evaluation.deterministic.document_robustness.transformations import VARIANT
 
 @dataclass(frozen=True)
 class BenchmarkConfig:
-    output_dir: Path = Path("artifacts/evaluation/document_ocr_v1")
+    output_dir: Path = Path("artifacts/Evaluations/document_ocr_v1")
     scenarios: tuple[str, ...] = ()
     variants: tuple[str, ...] = ()
     document_types: tuple[str, ...] = ()

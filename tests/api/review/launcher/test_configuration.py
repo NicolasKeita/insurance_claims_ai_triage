@@ -35,6 +35,21 @@ def test_demo_directory_option_takes_precedence_over_environment(monkeypatch, tm
     assert settings.configuration(options)[0]["CLAIMS_REVIEW_DEMO_DIR"] == str(demo.resolve())
 
 
+@pytest.mark.parametrize("source", ["option", "environment"])
+def test_previous_demo_directory_is_relocated_before_manifest_validation(monkeypatch, tmp_path, source):
+    options, demo = configured(monkeypatch, tmp_path)
+    previous = tmp_path / "artifacts/review_demo"
+    if source == "option":
+        options.demo_dir = previous
+    else:
+        monkeypatch.setenv("CLAIMS_REVIEW_DEMO_DIR", str(previous))
+
+    env, _ = settings.configuration(options)
+
+    assert env["CLAIMS_REVIEW_DEMO_DIR"] == str(demo.resolve())
+    assert not previous.exists()
+
+
 def test_missing_manifest_does_not_prepare_or_overwrite_snapshots(monkeypatch, tmp_path):
     options, _ = configured(monkeypatch, tmp_path)
     options.demo_dir = tmp_path / "not-prepared"

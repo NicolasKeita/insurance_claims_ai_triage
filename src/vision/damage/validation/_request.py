@@ -26,7 +26,7 @@ def _operating_confidence(params: ValidationParams) -> float:
 
 
 def _destination(config: DamageTrainingConfig, image_size: int, output_dir: Path | None) -> Path:
-    path = output_dir or ROOT / "artifacts/vision/damage_diagnostics" / config.version / f"val_imgsz_{image_size}"
+    path = output_dir or ROOT / "artifacts/Modeles/vision/damage_diagnostics" / config.version / f"val_imgsz_{image_size}"
     path = Path(path).expanduser()
     path = ((ROOT / path) if not path.is_absolute() else path).resolve()
     if path.is_relative_to(config.output_dir.resolve()):

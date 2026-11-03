@@ -16,9 +16,10 @@ Source imports follow these responsibility groups:
 | `vision.parts_detector`, `vision.parts_evaluation`, `vision.parts_training`, `vision.parts_tracking` | `vision.parts.detector`, `vision.parts.evaluation`, `vision.parts.training`, `vision.parts.tracking` |
 
 Imports in application code, scripts and tests use these paths. HTTP routes,
-model identifiers and the default locations under `data/`, `configs/` and
-`artifacts/` remain the same. External Python callers should update the imports
-listed above.
+model identifiers and the default locations under `data/` and `configs/` remain
+the same. Local files under `artifacts/` are grouped by purpose; the
+[artifact directory guide](ARTIFACTS.md) describes their layout, uses and migration.
+External Python callers should update the imports listed above.
 
 Tests are grouped under `tests/domain` (claims, investigation, persistence),
 `tests/intelligence` (knowledge, ML, retrieval, vision) and `tests/infrastructure`

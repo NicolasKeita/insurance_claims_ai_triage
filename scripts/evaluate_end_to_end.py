@@ -85,7 +85,7 @@ def build_parser():
     parser.add_argument("--vision-max-temperature-c", type=float, help="Stop GPU tests at this temperature (default: 80 C)")
     parser.add_argument("--vision-max-images", dest="diagnostic_max_images", type=int,
                         help="Maximum number of external diagnostic images; start with 1, then increase")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/evaluation/e2e_v2")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/Evaluations/e2e_v2")
     parser.add_argument("--fail-fast", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--dependency-unavailable", choices=("SKIP", "FAIL"), default=None)
     parser.add_argument("--preflight-only", action="store_true")

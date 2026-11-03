@@ -25,7 +25,7 @@ from vision.visualization import save_multimodal_annotated_image
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claim-dir", type=Path, default=ROOT / "data/CLAIM-2026-00001")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/vision/multimodal_reference_claim")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/Modeles/vision/multimodal_reference_claim")
     parser.add_argument("--damage-model", type=Path)
     parser.add_argument("--part-model", type=Path)
     parser.add_argument("--fusion-config", type=Path, help="Versioned fusion policy TOML")

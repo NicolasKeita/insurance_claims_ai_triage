@@ -32,7 +32,7 @@ def _temporary_uri_directory(config: Any) -> Path | None:
     """A local SQLite store makes explicit part training reproducible without a server."""
     if not (config.track_mlflow and not os.environ.get("MLFLOW_TRACKING_URI")):
         return None
-    directory = REPO_ROOT / "artifacts/vision/mlflow_parts"
+    directory = REPO_ROOT / "artifacts/Modeles/vision/mlflow_parts"
     directory.mkdir(parents=True, exist_ok=True)
     os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///" + (directory / "tracking.db").as_posix()
     return directory

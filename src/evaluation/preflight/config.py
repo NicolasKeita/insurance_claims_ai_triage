@@ -9,9 +9,9 @@ import tomllib
 
 from evaluation import E2E_BENCHMARK_VERSION
 from evaluation.preflight.thresholds import confidence_thresholds, validate_confidence_thresholds
+from persistence.artifact_storage import ROOT, relocate_override
 from vision.config import DEFAULT_CONFIDENCE_THRESHOLD
 
-ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "configs/evaluation/e2e_v2.toml"
 SWITCH_KEYS = (
     "include_vision",
@@ -38,21 +38,21 @@ class RealEvaluationConfig:
     database_url: str | None = None
     qdrant_url: str | None = None
     llm_model: str | None = None
-    triage_checkpoint: Path = ROOT / "artifacts/triage_v1/logistic_regression.joblib"
-    anomaly_checkpoint: Path = ROOT / "artifacts/anomaly_v1/anomaly_detector.joblib"
-    damage_checkpoint: Path = ROOT / "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
-    part_checkpoint: Path = ROOT / "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
+    triage_checkpoint: Path = ROOT / "artifacts/Modeles/triage_v1/logistic_regression.joblib"
+    anomaly_checkpoint: Path = ROOT / "artifacts/Modeles/anomaly_v1/anomaly_detector.joblib"
+    damage_checkpoint: Path = ROOT / "artifacts/Modeles/vision/damage_segmentation_v1/train/weights/best.pt"
+    part_checkpoint: Path = ROOT / "artifacts/Modeles/vision/vehicle_parts_v1/train/weights/best.pt"
     damage_confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
     part_confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
     vision_device: str | None = None
     vision_image_size: int = 640
     vision_max_temperature_c: float = 80.0
-    source_summary: Path = ROOT / "artifacts/vision/damage_segmentation_v1/test_smoke/smoke_summary.json"
-    training_summary: Path = ROOT / "artifacts/vision/damage_segmentation_v1/training_summary.json"
+    source_summary: Path = ROOT / "artifacts/Modeles/vision/damage_segmentation_v1/test_smoke/smoke_summary.json"
+    training_summary: Path = ROOT / "artifacts/Modeles/vision/damage_segmentation_v1/training_summary.json"
     diagnostic_max_images: int = 2
     synthetic_declared_damage: tuple[str, ...] = ("FRONT_BUMPER",)
     synthetic_quoted_damage: tuple[str, ...] = ()
-    fixture_dir: Path = ROOT / "artifacts/evaluation/e2e_v2/fixtures"
+    fixture_dir: Path = ROOT / "artifacts/Evaluations/e2e_v2/fixtures"
     isolated_demo_stack: bool = False
 
     def __post_init__(self):
@@ -99,10 +99,10 @@ def checkpoint_paths(models):
     for key in CHECKPOINT_KEYS:
         if key in models:
             model_path = Path(models[key]).expanduser()
-            values[key] = model_path if model_path.is_absolute() else ROOT / model_path
+            values[key] = relocate_override(model_path if model_path.is_absolute() else ROOT / model_path)
     for key, variable in ENVIRONMENT_CHECKPOINTS:
         if os.environ.get(variable):
-            values[key] = Path(os.environ[variable]).expanduser()
+            values[key] = relocate_override(os.environ[variable])
     values["vision_device"] = os.environ.get("DAMAGE_DEVICE") or models.get("vision_device")
     return values
 
@@ -113,7 +113,7 @@ def vision_diagnostic_paths(visual):
     for key in ("source_summary", "training_summary"):
         if key in visual:
             source = Path(visual[key]).expanduser()
-            values[key] = source if source.is_absolute() else ROOT / source
+            values[key] = relocate_override(source if source.is_absolute() else ROOT / source)
     values["diagnostic_max_images"] = int(visual.get("max_images", 2))
     values["synthetic_declared_damage"] = tuple(visual.get("synthetic_declared_damage", ["FRONT_BUMPER"]))
     values["synthetic_quoted_damage"] = tuple(visual.get("synthetic_quoted_damage", []))

@@ -1,6 +1,7 @@
 """Saved-result import checks provenance, dates and absence without inference."""
 
 import json
+from functools import partial
 
 import pytest
 
@@ -8,6 +9,7 @@ from claims.review.demo.observations import import_observations
 from claims.review.demo.preparation import prepare_demo
 from claims.review.demo.provider import DemoReviewService
 from evaluation.deterministic.document_generation.identifiers import fake_identifiers
+from persistence.artifact_storage import relocate_path
 
 
 def saved_observation(tmp_path, observation, mode="real"):
@@ -82,3 +84,27 @@ def test_import_replaces_legacy_references_in_new_snapshots_only(tmp_path):
     assert payload["claim"]["customer"]["customer_id"] == customer
     assert payload["claim"]["policy"]["policy_id"] == policy
     assert path.read_bytes() == frozen
+
+
+def test_import_finds_relocated_saved_run_without_rewriting_observations(tmp_path, monkeypatch):
+    from claims.review.demo import observations
+
+    minimal = tmp_path / "minimal"
+    prepare_demo(minimal)
+    claim = DemoReviewService(minimal).get_review("E2E-COHERENT-0001").claim
+    original = saved_observation(
+        tmp_path / "artifacts/evaluation",
+        {"facts": {"claim": claim.model_dump(mode="json")}, "provenance": {"mode": "real"}},
+    )
+    frozen = original.read_bytes()
+    current = tmp_path / "artifacts/Evaluations"
+    original.parents[2].rename(current)
+    monkeypatch.setattr(observations, "relocate_path", partial(relocate_path, root=tmp_path))
+    imported = tmp_path / "imported"
+
+    prepare_demo(imported, [original])
+
+    review = DemoReviewService(imported).get_review(claim.claim_id)
+    assert review.claim.claim_id == claim.claim_id
+    assert review.mode == "demo"
+    assert (current / "saved-run/observations/simple_coherent_claim.json").read_bytes() == frozen

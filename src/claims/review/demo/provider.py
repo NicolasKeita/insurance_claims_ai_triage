@@ -6,10 +6,11 @@ from pathlib import Path
 
 from claims.review.models import ClaimReview, DemoClaim
 from evaluation.deterministic.document_generation.identifiers import display_identifiers
+from persistence.artifact_storage import relocate_path
 from persistence.repositories import ClaimNotFoundError
 
 ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_DEMO_DIR = ROOT / "artifacts/review_demo"
+DEFAULT_DEMO_DIR = ROOT / "artifacts/Demonstrations/review_demo"
 DEMO_FORMAT = "claim_review_demo_v1"
 
 
@@ -17,7 +18,7 @@ class DemoReviewService:
     """A read-only filesystem adapter: no extraction, inference or network on GET."""
 
     def __init__(self, root: str | Path | None = None):
-        self.root = Path(root or os.environ.get("CLAIMS_REVIEW_DEMO_DIR", DEFAULT_DEMO_DIR)).resolve()
+        self.root = relocate_path(Path(root or os.environ.get("CLAIMS_REVIEW_DEMO_DIR", DEFAULT_DEMO_DIR)).resolve())
         manifest_path = self.root / "manifest.json"
         if not manifest_path.is_file():
             raise FileNotFoundError("Demo snapshots are unavailable. Run scripts/prepare_review_demo.py first.")

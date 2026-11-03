@@ -11,7 +11,7 @@ def parser():
     result = argparse.ArgumentParser(description="CPU-only Document AI robustness evaluation")
     for name in ("document-type", "variant", "scenario"):
         result.add_argument(f"--{name}", action="append", help="Repeat to select several values; default: all")
-    result.add_argument("--output-dir", type=Path, default=Path("artifacts/evaluation/document_ocr_v1"))
+    result.add_argument("--output-dir", type=Path, default=Path("artifacts/Evaluations/document_ocr_v1"))
     result.add_argument("--resume", action="store_true", help="Reuse recorded cases without overwriting them")
     result.add_argument("--language", default="eng")
     result.add_argument("--tesseract-cmd", help="Optional existing executable; never installs system packages")

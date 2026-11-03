@@ -16,7 +16,7 @@ def main():
                         help="Delete and rebuild the configured Qdrant collection; PostgreSQL is read only")
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--manifest", type=Path, default=Path(__file__).resolve().parents[1]
-                        / "artifacts" / "similar_claims" / "index_manifest.json")
+                        / "artifacts" / "Recherche_et_agents" / "similar_claims" / "index_manifest.json")
     args = parser.parse_args()
     config = RetrievalConfig.from_env()
     engine = create_database_engine(DatabaseConfig.from_env())

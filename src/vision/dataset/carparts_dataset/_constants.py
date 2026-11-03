@@ -14,7 +14,7 @@ DEFAULT_DATASET_ROOT = REPO_ROOT / "data/external/carparts-seg"
 
 DEFAULT_DATASET_YAML = DEFAULT_DATASET_ROOT / "dataset.yaml"
 
-DEFAULT_MANIFEST = REPO_ROOT / "artifacts/vision/carparts_dataset_manifest.json"
+DEFAULT_MANIFEST = REPO_ROOT / "artifacts/Modeles/vision/carparts_dataset_manifest.json"
 
 MANIFEST_NAME = "carparts_dataset_manifest.json"
 

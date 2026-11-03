@@ -5,9 +5,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from persistence.artifact_storage import relocate_override
+
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIDENCE_THRESHOLD = 0.25
-DEFAULT_MODEL_PATH = ROOT / "artifacts/vision/damage_segmentation_v1/train/weights/best.pt"
+DEFAULT_MODEL_PATH = ROOT / "artifacts/Modeles/vision/damage_segmentation_v1/train/weights/best.pt"
 
 
 @dataclass(frozen=True)
@@ -37,8 +39,9 @@ class VisionSettings:
 
     @classmethod
     def from_env(cls):
+        model_path = Path(os.environ.get("DAMAGE_MODEL_PATH", str(DEFAULT_MODEL_PATH))).expanduser()
         return cls(
-            model_path=Path(os.environ.get("DAMAGE_MODEL_PATH", str(DEFAULT_MODEL_PATH))),
+            model_path=relocate_override(model_path),
             confidence_threshold=float(os.environ.get("DAMAGE_CONFIDENCE_THRESHOLD", DEFAULT_CONFIDENCE_THRESHOLD)),
             device=os.environ.get("DAMAGE_DEVICE") or None,
         )

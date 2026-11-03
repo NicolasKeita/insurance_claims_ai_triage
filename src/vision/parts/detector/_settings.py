@@ -4,11 +4,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from persistence.artifact_storage import relocate_override
 from vision.config import DEFAULT_CONFIDENCE_THRESHOLD, ROOT, VisionSettings
 from vision.damage.detector import DamageDetectorError
 from vision.models import ImagePartAssessment, VisionModelMetadata
 
-DEFAULT_PART_MODEL_PATH = ROOT / "artifacts/vision/vehicle_parts_v1/train/weights/best.pt"
+DEFAULT_PART_MODEL_PATH = ROOT / "artifacts/Modeles/vision/vehicle_parts_v1/train/weights/best.pt"
 
 
 @dataclass(frozen=True)
@@ -17,8 +18,9 @@ class VehiclePartSettings(VisionSettings):
 
     @classmethod
     def from_env(cls):
+        model_path = Path(os.environ.get("PART_MODEL_PATH", str(DEFAULT_PART_MODEL_PATH))).expanduser()
         return cls(
-            model_path=Path(os.environ.get("PART_MODEL_PATH", str(DEFAULT_PART_MODEL_PATH))),
+            model_path=relocate_override(model_path),
             confidence_threshold=float(os.environ.get("PART_CONFIDENCE_THRESHOLD", DEFAULT_CONFIDENCE_THRESHOLD)),
             device=os.environ.get("PART_DEVICE") or None,
         )

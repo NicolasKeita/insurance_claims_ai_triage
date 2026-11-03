@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/anomaly_v1"),
+        default=Path("artifacts/Modeles/anomaly_v1"),
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(

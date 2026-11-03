@@ -21,8 +21,8 @@ from vision.fusion_config import DEFAULT_FUSION_POLICY
 from vision.images import SUPPORTED_EXTENSIONS
 from vision.models import ClaimMultimodalVisionAssessment
 
-DEFAULT_RUN = ROOT / "artifacts/vision/damage_segmentation_v1"
-DEFAULT_OUTPUT = ROOT / "artifacts/vision/step30_final_audit/real_integration_smoke"
+DEFAULT_RUN = ROOT / "artifacts/Modeles/vision/damage_segmentation_v1"
+DEFAULT_OUTPUT = ROOT / "artifacts/Modeles/vision/step30_final_audit/real_integration_smoke"
 
 
 @dataclass(frozen=True)

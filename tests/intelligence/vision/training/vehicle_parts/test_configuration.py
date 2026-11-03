@@ -25,7 +25,7 @@ def test_frozen_part_baseline_independent_coco_and_experiment():
     assert config.base_model == "yolo26n-seg.pt" and config.confidence_threshold == 0.25
     assert config.experiment_name == "insurance-claims-vision-parts"
     with pytest.raises(ValueError, match="independent COCO"):
-        replace(config, base_model="artifacts/vision/damage_segmentation_v1/train/weights/best.pt")
+        replace(config, base_model="artifacts/Modeles/vision/damage_segmentation_v1/train/weights/best.pt")
 
 
 def test_gpu_request_refuses_cpu_build_before_model_loading(tmp_path):

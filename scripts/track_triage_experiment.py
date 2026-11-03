@@ -39,7 +39,7 @@ DATASET_METADATA_PATH = Path(
 )
 
 ANALYSIS_DIR = Path(
-    "artifacts/triage_v1/analysis"
+    "artifacts/Modeles/triage_v1/analysis"
 )
 
 EXPERIMENT_NAME = (

@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from persistence.artifact_storage import relocate_path
 from vision.damage.training._artifacts import dataset_provenance, file_sha256, verify_class_names
 from vision.damage.training._config import DamageTrainingConfig
 
@@ -35,9 +36,20 @@ def _validate_resume_checkpoints(config: DamageTrainingConfig, metadata: dict[st
         checkpoint = config.output_dir / f"train/weights/{name}.pt"
         if not checkpoint.is_file() or file_sha256(checkpoint) != metadata.get(f"{name}_checkpoint_sha256"):
             raise ValueError(f"Resume {name}.pt SHA-256 differs from validated recovery metadata")
-    base = Path(metadata.get("base_checkpoint", ""))
+    base = relocate_path(metadata.get("base_checkpoint", ""))
     if not base.is_file() or file_sha256(base) != metadata.get("base_checkpoint_sha256"):
         raise ValueError("Resume original pretrained checkpoint SHA-256 differs from recovery metadata")
+
+
+def _configuration_with_current_paths(configuration):
+    """Compare relocated storage paths without changing frozen run metadata."""
+    if not isinstance(configuration, dict):
+        return configuration
+    normalized = dict(configuration)
+    for key in ("dataset_yaml", "output_dir"):
+        if isinstance(normalized.get(key), str):
+            normalized[key] = str(relocate_path(normalized[key]).resolve())
+    return normalized
 
 
 def _validate_resume_metadata(
@@ -47,7 +59,7 @@ def _validate_resume_metadata(
     provenance_provider: Callable[[Path, dict[str, Any]], dict[str, Any]],
     metadata: dict[str, Any],
 ) -> None:
-    if metadata.get("config") != config.payload():
+    if _configuration_with_current_paths(metadata.get("config")) != _configuration_with_current_paths(config.payload()):
         raise ValueError("Resume configuration differs from the interrupted baseline")
     if metadata.get("dataset") != provenance_provider(config.dataset_yaml, manifest):
         raise ValueError("Resume dataset provenance differs from the interrupted baseline")
@@ -99,7 +111,7 @@ def validate_resume_checkpoint(
     if config.optimizer != "auto" and args.get("optimizer") != config.optimizer:
         raise ValueError("last.pt optimizer differs from the configured baseline")
     for key, expected_path in (("data", config.dataset_yaml), ("project", config.output_dir)):
-        if Path(args.get(key, "")).resolve() != expected_path.resolve():
+        if relocate_path(args.get(key, "")).resolve() != relocate_path(expected_path).resolve():
             raise ValueError(f"last.pt {key} path differs from the interrupted baseline")
     if args.get("name") != "train":
         raise ValueError("last.pt must belong to the exact train run directory")

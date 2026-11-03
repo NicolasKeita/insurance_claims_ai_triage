@@ -13,7 +13,7 @@ from retrieval.knowledge.config import ROOT
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claim-id", default="CLAIM-2026-00001")
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/rag/api_smoke.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/Recherche_et_agents/rag/api_smoke.json")
     args = parser.parse_args()
     responses = []
     with TestClient(create_app()) as client:
