@@ -461,8 +461,7 @@ downloads weights. `DAMAGE_MODEL_PATH` and `DAMAGE_DEVICE` remain optional overr
 Use normal pytest reporting, for example `pytest --junitxml=artifacts/Diagnostics_et_validation/Journaux_et_rapports/pytest.xml`.
 The vision case appears once in the same pytest/JUnit result. `--help`,
 `--markers` and `--collect-only` do not display the suite
-panel or check service prerequisites. See the `Final pytest developer experience`
-section of `CODEX_REPORT_TEST_INFRASTRUCTURE.md` for validation and failure probes.
+panel or check service prerequisites.
 
 To stop only the test services: `docker compose --profile test stop postgres-test qdrant-test`.
 
@@ -640,8 +639,7 @@ Raw photographs and error images are excluded; built-in image logging callbacks
 are removed. Vision Registry packaging remains deferred, with no production
 alias. `pytest -m unit` selects synthetic unit fixtures/stubs and requires no FiftyOne,
 MongoDB, dataset, weights, GPU or network. Real model tests are selected with
-`-m vision`, require a local checkpoint and never download/train. The durable
-execution record and actual provenance are in `CODEX_REPORT_STEP_29.md`.
+`-m vision`, require a local checkpoint and never download/train.
 
 Run the existing local damage checkpoint integration from the application environment:
 
@@ -654,8 +652,7 @@ missing Ultralytics or local weights fail the test explicitly.
 The `integration` marker groups the real PostgreSQL, Qdrant, RAG and vision
 tests. Use `pytest -m 'not integration'`
 for the lightweight suite, or `pytest --collect-only -q -m integration` to list
-the integrations. `CODEX_TEST_SKIP_AUDIT.md` preserves the earlier skip audit;
-the current automatic configuration is described in `CODEX_REPORT_TEST_INFRASTRUCTURE.md`.
+the integrations.
 
 The completed local baseline ran 100 epochs on CUDA and selected epoch 90 on VAL.
 On the frozen 422-image TEST split, mask mAP50 is 66.03% and mAP50-95 is 52.24%.
@@ -913,8 +910,7 @@ Run unit tests with `pytest -m unit`; select `pytest -m postgres` after manually
 the dedicated test services described above. Integration tests cover
 temporal/customer isolation, exact boundaries, currencies, latest-state ties,
 two-query behavior, fixture conflicts/idempotence, API atomic rollback and
-evidence preservation after history changes. `CODEX_REPORT_STEP_25.md` records
-the actual validation outputs and reproduction commands.
+evidence preservation after history changes.
 
 ## Similar Claims (STEP26)
 
@@ -1280,7 +1276,7 @@ services. PostgreSQL integrations are selected with `-m postgres` and use the
 dedicated test database automatically.
 Small local models may plan imperfectly, and recommendations depend on evidence
 quality/availability. This V1 has no long-term conversational memory or
-quantitative agent benchmark. `CODEX_REPORT_STEP_28.md` records actual validation.
+quantitative agent benchmark.
 
 ## Vehicle parts and multimodal perception (STEP30)
 
@@ -1362,9 +1358,8 @@ inference HTTP route is deferred because the current database has image filename
 but no authoritative filesystem claim directory. The filesystem service and
 reference script provide the inference path.
 
-The durable `CODEX_REPORT_STEP_30.md` records actual execution status, GPU proof,
-counts, metrics, tests and limitations. Reference photos that are empty or invalid
-produce a saved `NOT EXECUTED` status instead of invented observations.
+Reference photos that are empty or invalid produce a saved `NOT EXECUTED` status
+instead of invented observations.
 
 ## End-to-End Evaluation
 
@@ -1437,8 +1432,7 @@ The benchmark validates expected behavior on controlled demo scenarios. It is no
 
 See [the evaluation guide](docs/END_TO_END_EVALUATION.md) for configuration,
 golden cases, metrics, safety/provenance checks, stable baseline comparison and
-limitations. [CODEX_REPORT_STEP_31.md](CODEX_REPORT_STEP_31.md) records actual
-deterministic and real-stack execution results.
+limitations.
 
 ## Document AI robustness evaluation
 
@@ -1542,5 +1536,4 @@ The ordinary deterministic suite uses doubles for OCR and never needs its
 executable. E2E tests remain separate and require explicit authorization.
 The corpus uses synthetic layouts and degradations, is Tesseract-specific,
 does not evaluate handwriting, and does not represent all insurer layouts or
-general production OCR accuracy. Actual results and limitations are recorded in
-[CODEX_REPORT_STEP_32.md](CODEX_REPORT_STEP_32.md).
+general production OCR accuracy.

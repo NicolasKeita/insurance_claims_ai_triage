@@ -501,7 +501,4 @@ fail structured output, or vary despite temperature zero; wording is not tested
 for equality. A small controlled benchmark does not prove production insurance
 accuracy, calibrated fraud probabilities or generalization to real claims.
 
-Actual results, preflight versions, remaining pytest skips, observed failures,
-limitations and exact reproduction commands are recorded in
-`CODEX_REPORT_STEP_31.md`. Existing skip history remains in
-`CODEX_TEST_SKIP_AUDIT.md`; new evaluation tests do not introduce skip gates.
+Evaluation tests do not introduce skip gates.
