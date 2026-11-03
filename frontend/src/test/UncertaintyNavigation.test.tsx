@@ -8,7 +8,8 @@ import { fullReview, partialReview } from './fixtures';
 const hoodSource =
   "The nature and extent of the additional damage on the hood require further investigation and visual confirmation. The 'observations' data within the investigation assessment is truncated, preventing a full understanding of the damage. The exact details of the 'associations' within the 'observations' are missing.";
 const recorded = ['Maximum tool steps reached.', hoodSource];
-const hoodPoint = 'Confirm the presence and extent of the additional damage to the hood.';
+const hoodPoint =
+  'A human reviewer must examine the damage to the hood, which is not listed among the declared damaged parts, and assess its impact on the claim and repair cost.';
 const stepLimit =
   'The AI agent reached its step limit and produced a recommendation using the information already collected.';
 const dataLimit =

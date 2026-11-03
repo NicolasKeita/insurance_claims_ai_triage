@@ -1337,8 +1337,9 @@ tbody tr:last-child td {
 }
 .rationale {
   padding-left: 18px;
-  color: var(--text-secondary);
-  font-size: 11px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.7;
 }
 .rationale li {
   padding-left: 5px;

@@ -19,7 +19,7 @@
 "The AI agent reached its step limit and produced a recommendation using the information already collected." = "L’agent IA a atteint sa limite d’étapes et a produit une recommandation à partir des informations déjà recueillies."
 "Some evidence details were shortened to fit the AI model's context." = "Certains détails des éléments de preuve ont été raccourcis pour respecter la capacité de contexte du modèle IA."
 "No eligible similar claims were found for comparison." = "Aucun sinistre similaire admissible n’a été trouvé pour établir une comparaison."
-"Confirm the presence and extent of the additional damage to the hood." = "Confirmer la présence et l’étendue des dommages supplémentaires au capot."
+"A human reviewer must examine the damage to the hood, which is not listed among the declared damaged parts, and assess its impact on the claim and repair cost." = "Un examinateur humain doit examiner les dommages au capot, qui ne figure pas parmi les pièces déclarées endommagées, et évaluer leur incidence sur le dossier et le coût des réparations."
 "The saved recommendation reports that some investigation data consulted by the AI was truncated, limiting the analysis." = "La recommandation enregistrée indique que certaines données d’investigation consultées par l’IA étaient tronquées, ce qui a limité l’analyse."
 "The full recommendation, points to verify, analysis limits and review signals" = "La recommandation complète, les points à vérifier, les limites de l’analyse et les signaux à examiner"
 "The console cannot reach the API container. Start the Docker Compose demo, then retry the connection." = "La console ne peut pas joindre le conteneur API. Démarrez la démo Docker Compose, puis réessayez la connexion."

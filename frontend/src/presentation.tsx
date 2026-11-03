@@ -39,6 +39,27 @@ export function percent(value: number | null | undefined): string {
       }).format(value);
 }
 
+/** Format explicitly labelled confidence in prose without changing the saved narrative. */
+export function narrative(value: string): string {
+  return translateText(value).replace(
+    /\b((?:confidence of|confiance de)\s+)(0[.,]\d+|1[.,]0+)(?!\d|[.,]\d)/gi,
+    (_match, label: string, score: string) => `${label}${percent(Number(score.replace(',', '.')))}`,
+  );
+}
+
+/** Linked evidence carries verified references; keep technical citations out of the prose. */
+export function rationaleText(value: string, evidenceIds: string[]): string {
+  const retainedIds = new Set(evidenceIds);
+  return narrative(value)
+    .replace(
+      /\s*(?:The evidence_id is|La référence evidence_id est)\s+(\S+?)\.?\s*$/i,
+      (match, id: string) => (retainedIds.has(id) ? '' : match),
+    )
+    .replace(/\s*\(evidence_ids?\s*:\s*([^)]+)\)/gi, (match, references: string) =>
+      references.split(/\s*,\s*/).every((id) => retainedIds.has(id.trim())) ? '' : match,
+    );
+}
+
 export function money(value: number | string | null | undefined, currency?: string | null): string {
   if (value == null || !currency || !Number.isFinite(Number(value)))
     return translateText('Not available');

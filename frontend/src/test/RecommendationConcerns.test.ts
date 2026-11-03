@@ -8,7 +8,9 @@ describe('Recommendation concerns from saved uncertainty text', () => {
   it('separates the saved hood verification from both recorded technical limitations', () => {
     const source = Object.freeze(['Maximum tool steps reached.', hoodSource]);
     expect(recommendationConcerns(source)).toEqual({
-      points: ['Confirm the presence and extent of the additional damage to the hood.'],
+      points: [
+        'A human reviewer must examine the damage to the hood, which is not listed among the declared damaged parts, and assess its impact on the claim and repair cost.',
+      ],
       limits: [
         'The AI agent reached its step limit and produced a recommendation using the information already collected.',
         'The saved recommendation reports that some investigation data consulted by the AI was truncated, limiting the analysis.',

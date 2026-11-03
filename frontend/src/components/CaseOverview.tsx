@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import { useState } from 'react';
-import { Badge, StateBadge, humanize } from '../presentation';
+import { Badge, StateBadge, humanize, narrative, rationaleText } from '../presentation';
 import type { ReviewView, VisionImage } from '../types';
 import { recommendationConcerns } from '../review/recommendationConcerns';
 import { reviewAssetUrl } from '../assets';
@@ -97,6 +97,14 @@ export function CaseOverview({
   const investigation = view.investigation.status === 'AVAILABLE' ? view.investigation.data : null;
   const signals = investigation?.signals || [];
   const mainSignal = signals[0];
+  const investigationEvidence = new Set(
+    view.evidence.filter((item) => item.section === 'investigation').map((item) => item.id),
+  );
+  const mainRationale = mainSignal
+    ? recommendation?.rationale.find((item) =>
+        item.evidence_ids.some((id) => investigationEvidence.has(id)),
+      )
+    : undefined;
   const otherSignals = signals.slice(1);
   const documents = view.documents.data?.items || view.claim.documents;
   const availableDocuments = documents.filter((document) => document.available).length;
@@ -117,10 +125,17 @@ export function CaseOverview({
         <div className="overview-review-summary">
           <section className="overview-next-step" aria-labelledby="overview-result-title">
             <h2 id="overview-result-title">{t('Analysis results')}</h2>
+            {mainRationale && (
+              <p className="overview-result-text">
+                {rationaleText(mainRationale.statement, mainRationale.evidence_ids)}
+              </p>
+            )}
             {mainSignal ? (
-              <p className="overview-result-text">{translate(mainSignal.explanation)}</p>
+              <p className={mainRationale ? 'overview-result-context' : 'overview-result-text'}>
+                {narrative(mainSignal.explanation)}
+              </p>
             ) : recommendation?.case_summary ? (
-              <p className="overview-result-text">{translate(recommendation.case_summary)}</p>
+              <p className="overview-result-text">{narrative(recommendation.case_summary)}</p>
             ) : null}
             <p className="eyebrow overview-action-label">{t('Recommended next step')}</p>
             <h3 id="overview-next-step-title">

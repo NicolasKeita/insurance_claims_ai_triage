@@ -19,7 +19,7 @@
 "The AI agent reached its step limit and produced a recommendation using the information already collected." = "The AI agent reached its step limit and produced a recommendation using the information already collected."
 "Some evidence details were shortened to fit the AI model's context." = "Some evidence details were shortened to fit the AI model's context."
 "No eligible similar claims were found for comparison." = "No eligible similar claims were found for comparison."
-"Confirm the presence and extent of the additional damage to the hood." = "Confirm the presence and extent of the additional damage to the hood."
+"A human reviewer must examine the damage to the hood, which is not listed among the declared damaged parts, and assess its impact on the claim and repair cost." = "A human reviewer must examine the damage to the hood, which is not listed among the declared damaged parts, and assess its impact on the claim and repair cost."
 "The saved recommendation reports that some investigation data consulted by the AI was truncated, limiting the analysis." = "The saved recommendation reports that some investigation data consulted by the AI was truncated, limiting the analysis."
 "The full recommendation, points to verify, analysis limits and review signals" = "The full recommendation, points to verify, analysis limits and review signals"
 "The console cannot reach the API container. Start the Docker Compose demo, then retry the connection." = "The console cannot reach the API container. Start the Docker Compose demo, then retry the connection."

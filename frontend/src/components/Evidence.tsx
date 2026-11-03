@@ -9,6 +9,8 @@ import {
   decimal,
   humanize,
   money,
+  narrative,
+  rationaleText,
 } from '../presentation';
 import type { Evidence, ReviewView } from '../types';
 import { useI18n } from '../i18n';
@@ -175,14 +177,14 @@ export function AgentRecommendation({
               </div>
               <Badge tone="human">{t('HUMAN REVIEW REQUIRED')}</Badge>
             </div>
-            <p className="case-summary">{translate(agent.recommendation.case_summary)}</p>
+            <p className="case-summary">{narrative(agent.recommendation.case_summary)}</p>
             <div className="agent-columns">
               <div>
                 <h3>{t('Evidence-grounded rationale')}</h3>
                 <ol className="rationale">
                   {agent.recommendation.rationale.map((item, index) => (
                     <li key={index}>
-                      <p>{translate(item.statement)}</p>
+                      <p>{rationaleText(item.statement, item.evidence_ids)}</p>
                       <EvidenceLinks ids={item.evidence_ids} onOpen={onEvidence} />
                     </li>
                   ))}

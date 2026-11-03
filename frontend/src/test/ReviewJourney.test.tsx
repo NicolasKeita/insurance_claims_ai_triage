@@ -3,9 +3,41 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ReviewConsole } from '../App';
 import { CaseOverview } from '../components/CaseOverview';
+import { setLocale } from '../i18n';
+import type { ReviewView } from '../types';
+import visualReview from '../../public/demo/reviews/E2E-VISUAL-0001_ANALYSIS-a0f4747edf8c.json';
 import { fullReview, partialReview } from './fixtures';
 
 describe('Progressive claim review', () => {
+  it.each([
+    ['en', 'The investigation assessment highlights additional damage (dent on the hood)'],
+    [
+      'fr',
+      'L’évaluation d’investigation relève des dommages supplémentaires (enfoncement du capot)',
+    ],
+  ] as const)('foregrounds the saved investigation rationale in %s', (locale, lead) => {
+    setLocale(locale, false);
+    const view = visualReview as ReviewView;
+    const original = JSON.stringify(view);
+    const { container } = render(<CaseOverview view={view} onOpenDetails={vi.fn()} />);
+    const rationale = screen.getByText((text) => text.startsWith(lead));
+    expect(rationale).toBeVisible();
+    expect(rationale).toHaveClass('overview-result-text');
+    expect(rationale).toHaveTextContent(locale === 'fr' ? 'examen humain' : 'human review');
+    const context = container.querySelector('.overview-result-context')!;
+    expect(context).toHaveTextContent(
+      locale === 'fr'
+        ? 'qui ne figure pas parmi les pièces déclarées endommagées'
+        : 'which is not listed among the declared damaged parts',
+    );
+    expect(
+      rationale.compareDocumentPosition(context) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(container).not.toHaveTextContent('evidence_id');
+    expect(container).not.toHaveTextContent('investigation:16062e46');
+    expect(JSON.stringify(view)).toBe(original);
+  });
+
   it.each([
     { origin: 'ai_generated', caption: 'Demo image' },
     { origin: null, caption: 'Demo image' },

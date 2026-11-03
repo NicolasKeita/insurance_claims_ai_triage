@@ -11,7 +11,7 @@ import {
   translateText,
   useI18n,
 } from '../i18n';
-import { date, decimal, money, percent } from '../presentation';
+import { date, decimal, money, narrative, percent, rationaleText } from '../presentation';
 
 function storage(): Storage {
   const values = new Map<string, string>();
@@ -143,6 +143,43 @@ describe('Local language preference', () => {
         'fr',
       ),
     ).toBe('sha256:ec562cf22561ed00661c40d046351043f2cc0f503af98cb8ebbf561e993b5a1c');
+  });
+
+  it('shows prose confidence as a concise localized percentage while retaining other numbers', () => {
+    const source =
+      'The triage assessment recommends FAST_TRACK with a confidence of 0.40971294756240506. Source triage:0.40971294756240506.';
+    expect(plainSpaces(narrative(source))).toBe(
+      'The triage assessment recommends FAST_TRACK with a confidence of 41 %. Source triage:0.40971294756240506.',
+    );
+    expect(plainSpaces(narrative('Confiance de 0,40971294756240506.'))).toBe('Confiance de 41 %.');
+    setLocale('en', false);
+    expect(narrative(source)).toBe(
+      'The triage assessment recommends FAST_TRACK with a confidence of 41%. Source triage:0.40971294756240506.',
+    );
+    expect(narrative('confidence of 1.000.')).toBe('confidence of 100%.');
+    expect(narrative('confidence of 1.01; version 0.40971294756240506')).toBe(
+      'confidence of 1.01; version 0.40971294756240506',
+    );
+    expect(source).toContain('confidence of 0.40971294756240506');
+  });
+
+  it('removes inline technical citations only when their evidence links are retained', () => {
+    const id = 'investigation:16062e46-6cb4-4bba-be3d-8f7d76231cf3';
+    const source =
+      'The investigation assessment highlights additional damage (dent on the hood) not initially declared, necessitating a human review to assess its impact on the claim and repair cost. The evidence_id is ' +
+      id;
+    expect(rationaleText(source, [id])).toBe(
+      'L’évaluation d’investigation relève des dommages supplémentaires (enfoncement du capot) non déclarés initialement, nécessitant un examen humain de leur incidence sur le dossier et le coût des réparations.',
+    );
+    expect(rationaleText(source, [])).toContain(id);
+    setLocale('en', false);
+    expect(rationaleText(source, [id])).toBe(source.split(' The evidence_id is ')[0]);
+    const parenthetical = 'Observed damage (evidence_id: investigation:one, vision:two).';
+    expect(rationaleText(parenthetical, ['investigation:one', 'vision:two'])).toBe(
+      'Observed damage.',
+    );
+    expect(rationaleText(parenthetical, ['investigation:one'])).toBe(parenthetical);
+    expect(source).toContain('The evidence_id is ' + id);
   });
 
   it('preserves the policy exclusion and limit when showing its curated translation', () => {
